@@ -64,7 +64,12 @@
 	      projections: [
 	        { ref: "output", expr: "donuts" }
 	      ]
-	    },	    
+	    },
+	    {
+          op: "limit",
+          first: 0,
+          last: 2
+        },
 	    {
 	      op: "write",
 	      memo: "save file",
