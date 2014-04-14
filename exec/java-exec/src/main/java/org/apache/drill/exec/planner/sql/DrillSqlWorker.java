@@ -58,6 +58,8 @@ import org.eigenbase.sql.SqlKind;
 import org.eigenbase.sql.SqlLiteral;
 import org.eigenbase.sql.SqlNode;
 import org.eigenbase.sql.parser.SqlParseException;
+import org.eigenbase.sql.parser.impl.SqlParserImpl;
+import org.eigenbase.sql2rel.StandardConvertletTable;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.hive12.common.base.Preconditions;
@@ -69,17 +71,18 @@ public class DrillSqlWorker {
   private final static RuleSet[] RULES = new RuleSet[]{DrillRuleSets.DRILL_BASIC_RULES, DrillRuleSets.DRILL_PHYSICAL_MEM};
   private final static int LOGICAL_RULES = 0;
   private final static int PHYSICAL_MEM_RULES = 1;
-  
-  public DrillSqlWorker(DrillSchemaFactory schemaFactory, FunctionImplementationRegistry registry) throws Exception {
+
+  public DrillSqlWorker(QueryContext context, FunctionImplementationRegistry registry) throws Exception {
     final List<RelTraitDef> traitDefs = new ArrayList<RelTraitDef>();
     traitDefs.add(ConventionTraitDef.INSTANCE);
-    traitDefs.add(DrillDistributionTraitDef.INSTANCE);    
+    traitDefs.add(DrillDistributionTraitDef.INSTANCE);
     traitDefs.add(RelCollationTraitDef.INSTANCE);
-    
+
     DrillOperatorTable table = new DrillOperatorTable(registry);
     DrillParserFactory factory = new DrillParserFactory(table);
-    this.planner = Frameworks.getPlanner(Lex.MYSQL, factory, schemaFactory, table, traitDefs, RULES);
-//    this.planner = Frameworks.getPlanner(Lex.MYSQL, SqlParserImpl.FACTORY, schemaFactory, SqlStdOperatorTable.instance(), traitDefs, RULES);
+
+
+    this.planner = Frameworks.getPlanner(Lex.MYSQL, SqlParserImpl.FACTORY, context.getNewDefaultSchema(), table, traitDefs, StandardConvertletTable.INSTANCE, RULES);
   }
   
   public class RelResult{
@@ -99,13 +102,9 @@ public class DrillSqlWorker {
   /*
    * Given a SQL string, return the logical DrillRel tree, plus mode (execute, or EXPLAIN mode).  
    */
-  public RelResult getLogicalRel(String sql) throws SqlParseException, ValidationException, RelConversionException{
-    if(logger.isDebugEnabled()) {
-      logger.debug("SQL : " + sql);
-    }
+  private RelResult getRel(String sql) throws SqlParseException, ValidationException, RelConversionException{
+    SqlNode sqlNode = planner.parse(sql);
 
-    // Call optiq to parse the SQL string. 
-    SqlNode sqlNode = planner.parse(sql);  
     ResultMode resultMode = ResultMode.EXEC;
     
     //Process EXPLAIN
@@ -219,7 +218,7 @@ public class DrillSqlWorker {
 
     RelTraitSet traits = result.node.getTraitSet().plus(Prel.DRILL_PHYSICAL).plus(DrillDistributionTrait.SINGLETON);    
     Prel phyRelNode = (Prel) planner.transform(PHYSICAL_MEM_RULES, traits, result.node);
-    
+
     //Debug.
     if(logger.isDebugEnabled()) {     
       logger.debug("SQL : " + sql);
@@ -229,7 +228,7 @@ public class DrillSqlWorker {
         
     PhysicalPlanCreator pplanCreator = new PhysicalPlanCreator(qcontext);
     PhysicalPlan plan = pplanCreator.build(phyRelNode, true /* rebuild */);
-        
+
     planner.close();
     planner.reset();
     return plan;
