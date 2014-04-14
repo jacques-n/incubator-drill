@@ -28,7 +28,6 @@ import org.apache.drill.exec.physical.config.SelectionVectorRemover;
 import org.apache.drill.exec.planner.physical.DrillDistributionTrait.DistributionField;
 import org.apache.drill.exec.record.BatchSchema.SelectionVectorMode;
 import org.eigenbase.rel.RelNode;
-import org.eigenbase.rel.RelWriter;
 import org.eigenbase.rel.SingleRel;
 import org.eigenbase.relopt.RelOptCluster;
 import org.eigenbase.relopt.RelOptCost;
@@ -39,7 +38,7 @@ import org.eigenbase.relopt.RelTraitSet;
 public class HashToRandomExchangePrel extends SingleRel implements Prel {
 
   private final List<DistributionField> fields;
-  
+
   public HashToRandomExchangePrel(RelOptCluster cluster, RelTraitSet traitSet, RelNode input, List<DistributionField> fields) {
     super(cluster, traitSet, input);
     this.fields = fields;
@@ -48,7 +47,7 @@ public class HashToRandomExchangePrel extends SingleRel implements Prel {
 
   @Override
   public RelOptCost computeSelfCost(RelOptPlanner planner) {
-    return super.computeSelfCost(planner).multiplyBy(.1);    
+    return super.computeSelfCost(planner).multiplyBy(.1);
     //return planner.getCostFactory().makeZeroCost();
   }
 
@@ -56,12 +55,14 @@ public class HashToRandomExchangePrel extends SingleRel implements Prel {
   public RelNode copy(RelTraitSet traitSet, List<RelNode> inputs) {
     return new HashToRandomExchangePrel(getCluster(), traitSet, sole(inputs), fields);
   }
-  
+
   public PhysicalOperator getPhysicalOperator(PhysicalPlanCreator creator) throws IOException {
     Prel child = (Prel) this.getChild();
-    
+
     PhysicalOperator childPOP = child.getPhysicalOperator(creator);
-    
+
+    if(PlanningSettings.get().isSingleMode()) return childPOP;
+
     //Currently, only accepts "NONE". For other, requires SelectionVectorRemover
     if (!childPOP.getSVMode().equals(SelectionVectorMode.NONE)) {
       childPOP = new SelectionVectorRemover(childPOP);
@@ -70,9 +71,9 @@ public class HashToRandomExchangePrel extends SingleRel implements Prel {
 
     HashToRandomExchange g = new HashToRandomExchange(childPOP, PrelUtil.getHashExpression(this.fields, getChild().getRowType()));
     creator.addPhysicalOperator(g);
-    return g;    
+    return g;
   }
-  
+
   public List<DistributionField> getFields() {
     return this.fields;
   }
