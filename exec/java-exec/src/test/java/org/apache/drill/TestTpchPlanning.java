@@ -29,6 +29,7 @@ public class TestTpchPlanning extends BaseTestQuery{
   }
 
   @Test
+  @Ignore // DRILL-512
   public void tpch02() throws Exception{
     testSqlPlanFromFile("queries/tpch/02.sql");
   }
@@ -54,16 +55,19 @@ public class TestTpchPlanning extends BaseTestQuery{
   }
 
   @Test
+  @Ignore // DRILL-516
   public void tpch07() throws Exception{
     testSqlPlanFromFile("queries/tpch/07.sql");
   }
 
   @Test
+  @Ignore // DRILL-516
   public void tpch08() throws Exception{
     testSqlPlanFromFile("queries/tpch/08.sql");
   }
 
   @Test
+  @Ignore // DRILL-516
   public void tpch09() throws Exception{
     testSqlPlanFromFile("queries/tpch/09.sql");
   }
