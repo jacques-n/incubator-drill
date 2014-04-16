@@ -35,15 +35,20 @@ public class MaterializedField{
   public MaterializedField(FieldDef def) {
     this.def = def;
   }
-  
+
   public static MaterializedField create(FieldDef def){
     return new MaterializedField(def);
   }
-  
+
   public MaterializedField clone(FieldReference ref){
     return create(ref, def.getMajorType());
   }
-  
+
+  public static MaterializedField create(String path, MajorType type){
+    SchemaPath p = new SchemaPath(path);
+    return create(p, type);
+  }
+
   public static MaterializedField create(SchemaPath path, MajorType type) {
     FieldDef.Builder b = FieldDef.newBuilder();
     b.setMajorType(type);
@@ -68,7 +73,7 @@ public class MaterializedField{
   public FieldDef getDef() {
     return def;
   }
-  
+
   public String getName(){
     StringBuilder sb = new StringBuilder();
     boolean first = true;
@@ -82,7 +87,7 @@ public class MaterializedField{
           sb.append(".");
         }
         sb.append(np.getName());
-        
+
       }
     }
     return sb.toString();
@@ -103,7 +108,7 @@ public class MaterializedField{
   public DataMode getDataMode() {
     return def.getMajorType().getMode();
   }
-  
+
   public MaterializedField getOtherNullableVersion(){
     MajorType mt = def.getMajorType();
     DataMode newDataMode = null;
@@ -119,14 +124,14 @@ public class MaterializedField{
     }
     return new MaterializedField(def.toBuilder().setMajorType(mt.toBuilder().setMode(newDataMode).build()).build());
   }
-  
+
   public Class<?> getValueClass() {
     return TypeHelper.getValueVectorClass(getType().getMinorType(), getDataMode());
   }
 
   public boolean matches(SchemaPath path) {
     Iterator<NamePart> iter = def.getNameList().iterator();
-    
+
     for (PathSegment p = path.getRootSegment();; p = p.getChild()) {
       if(p == null) break;
       if (!iter.hasNext()) return false;
@@ -139,14 +144,14 @@ public class MaterializedField{
         if (p.getNameSegment().getPath().equalsIgnoreCase(n.getName())) continue;
         return false;
       }
-      
+
     }
     // we've reviewed all path segments. confirm that we don't have any extra name parts.
     return !iter.hasNext();
   }
-  
-  
-  
+
+
+
   @Override
   public int hashCode() {
     final int prime = 31;

@@ -41,7 +41,7 @@ public class QueryContext {
   private final DrillbitContext drillbitContext;
   private final WorkEventBus workBus;
   private UserSession session;
-
+  public final Multitimer<QuerySetup> timer;
 
   public QueryContext(UserSession session, QueryId queryId, DrillbitContext drllbitContext) {
     super();
@@ -49,6 +49,11 @@ public class QueryContext {
     this.drillbitContext = drllbitContext;
     this.workBus = drllbitContext.getWorkBus();
     this.session = session;
+    this.timer = new Multitimer<>(QuerySetup.class);
+  }
+
+  public UserSession getSession(){
+    return session;
   }
 
   public SchemaPlus getNewDefaultSchema(){
@@ -61,6 +66,7 @@ public class QueryContext {
       return defaultSchema;
     }
   }
+
 
   public DrillbitEndpoint getCurrentEndpoint(){
     return drillbitContext.getEndpoint();

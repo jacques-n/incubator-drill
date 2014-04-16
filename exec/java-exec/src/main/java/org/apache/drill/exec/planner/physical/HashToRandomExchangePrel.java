@@ -28,6 +28,7 @@ import org.apache.drill.exec.physical.config.SelectionVectorRemover;
 import org.apache.drill.exec.planner.physical.DrillDistributionTrait.DistributionField;
 import org.apache.drill.exec.record.BatchSchema.SelectionVectorMode;
 import org.eigenbase.rel.RelNode;
+import org.eigenbase.rel.RelWriter;
 import org.eigenbase.rel.SingleRel;
 import org.eigenbase.relopt.RelOptCluster;
 import org.eigenbase.relopt.RelOptCost;
@@ -61,7 +62,7 @@ public class HashToRandomExchangePrel extends SingleRel implements Prel {
 
     PhysicalOperator childPOP = child.getPhysicalOperator(creator);
 
-    if(PlanningSettings.get().isSingleMode()) return childPOP;
+    if(PlanningSettings.get(getCluster()).isSingleMode()) return childPOP;
 
     //Currently, only accepts "NONE". For other, requires SelectionVectorRemover
     if (!childPOP.getSVMode().equals(SelectionVectorMode.NONE)) {
@@ -77,7 +78,7 @@ public class HashToRandomExchangePrel extends SingleRel implements Prel {
   public List<DistributionField> getFields() {
     return this.fields;
   }
-  
+
   @Override
   public RelWriter explainTerms(RelWriter pw) {
     super.explainTerms(pw);
@@ -85,6 +86,6 @@ public class HashToRandomExchangePrel extends SingleRel implements Prel {
         pw.item("dist" + ord.i, ord.e);
       }
     return pw;
-  }  
-  
+  }
+
 }

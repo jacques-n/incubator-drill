@@ -58,11 +58,11 @@ public class ProjectRecordBatch extends AbstractSingleRecordBatch<Project>{
 
   private Projector projector;
   private List<ValueVector> allocationVectors;
-  
+
   public ProjectRecordBatch(Project pop, RecordBatch incoming, FragmentContext context){
     super(pop, context, incoming);
   }
-  
+
   @Override
   public int getRecordCount() {
     return incoming.getRecordCount();
@@ -90,14 +90,14 @@ public class ProjectRecordBatch extends AbstractSingleRecordBatch<Project>{
     }
     return ref;
   }
-  
+
   private boolean isAnyWildcard(List<NamedExpression> exprs){
     for(NamedExpression e : exprs){
       if(isWildcard(e)) return true;
     }
     return false;
   }
-  
+
   private boolean isWildcard(NamedExpression ex){
     LogicalExpression expr = ex.getExpr();
     LogicalExpression ref = ex.getRef();
@@ -110,7 +110,7 @@ public class ProjectRecordBatch extends AbstractSingleRecordBatch<Project>{
     }
     return false;
   }
-  
+
   @Override
   protected void setupNewSchema() throws SchemaChangeException{
     this.allocationVectors = Lists.newArrayList();
@@ -118,7 +118,7 @@ public class ProjectRecordBatch extends AbstractSingleRecordBatch<Project>{
     final List<NamedExpression> exprs = popConfig.getExprs();
     final ErrorCollector collector = new ErrorCollectorImpl();
     final List<TransferPair> transfers = Lists.newArrayList();
-    
+
     final ClassGenerator<Projector> cg = CodeGenerator.getRoot(Projector.TEMPLATE_DEFINITION, context.getFunctionRegistry());
 
     Set<Integer> transferFieldIds = new HashSet();
@@ -154,7 +154,7 @@ public class ProjectRecordBatch extends AbstractSingleRecordBatch<Project>{
           transfers.add(tp);
           container.add(tp.getTo());
           transferFieldIds.add(vectorRead.getFieldId().getFieldId());
-          logger.debug("Added transfer.");
+//          logger.debug("Added transfer.");
         }else{
           // need to do evaluation.
           ValueVector vector = TypeHelper.getNewVector(outputField, context.getAllocator());
@@ -162,15 +162,15 @@ public class ProjectRecordBatch extends AbstractSingleRecordBatch<Project>{
           TypedFieldId fid = container.add(vector);
           ValueVectorWriteExpression write = new ValueVectorWriteExpression(fid, expr);
           cg.addExpr(write);
-          logger.debug("Added eval.");
+//          logger.debug("Added eval.");
         }
     }
 
-      
+
     }
-    
+
     container.buildSchema(incoming.getSchema().getSelectionVectorMode());
-    
+
     try {
       this.projector = context.getImplementationClass(cg.getCodeGenerator());
       projector.setup(context, incoming, this, transfers);
@@ -178,6 +178,6 @@ public class ProjectRecordBatch extends AbstractSingleRecordBatch<Project>{
       throw new SchemaChangeException("Failure while attempting to load generated class", e);
     }
   }
-  
-  
+
+
 }

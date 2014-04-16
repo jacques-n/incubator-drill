@@ -19,78 +19,93 @@ package org.apache.drill;
 
 import java.io.IOException;
 import java.net.URL;
-import java.util.Collections;
-
-import mockit.Mocked;
-import mockit.NonStrictExpectations;
-import net.hydromatic.optiq.SchemaPlus;
-import net.hydromatic.optiq.tools.Frameworks;
 
 import org.apache.drill.common.config.DrillConfig;
 import org.apache.drill.common.util.TestTools;
+import org.apache.drill.common.util.TestTools.TestLogReporter;
+import org.apache.drill.exec.client.DrillClient;
 import org.apache.drill.exec.client.QuerySubmitter;
-import org.apache.drill.exec.expr.fn.FunctionImplementationRegistry;
-import org.apache.drill.exec.memory.TopLevelAllocator;
-import org.apache.drill.exec.ops.QueryContext;
-import org.apache.drill.exec.physical.PhysicalPlan;
-import org.apache.drill.exec.planner.sql.DrillSqlWorker;
-import org.apache.drill.exec.proto.CoordinationProtos.DrillbitEndpoint;
-import org.apache.drill.exec.server.DrillbitContext;
-import org.apache.drill.exec.store.StoragePluginRegistry;
+import org.apache.drill.exec.server.Drillbit;
+import org.apache.drill.exec.server.RemoteServiceSet;
+import org.apache.drill.exec.util.VectorUtil;
+import org.junit.AfterClass;
+import org.junit.BeforeClass;
 import org.junit.Rule;
 import org.junit.rules.TestRule;
+import org.junit.rules.TestWatcher;
+import org.junit.runner.Description;
 
-import com.codahale.metrics.MetricRegistry;
 import com.google.common.base.Charsets;
 import com.google.common.io.Resources;
-import com.google.hive12.common.collect.ImmutableList;
 
 public class BaseTestQuery {
   static final org.slf4j.Logger logger = org.slf4j.LoggerFactory.getLogger(BaseTestQuery.class);
 
-  @Rule public final TestRule TIMEOUT = TestTools.getTimeoutRule(20000);
+  // make it static so we can use after class
+  static final TestLogReporter LOG_OUTCOME = TestTools.getTestLogReporter(logger);
 
-  @Mocked DrillbitContext dbContext;
-  @Mocked QueryContext context;
-  private final DrillConfig config = DrillConfig.create();
+  @Rule public final TestRule TIMEOUT = TestTools.getTimeoutRule(30000);
+  @Rule public final TestLogReporter logOutcome = LOG_OUTCOME;
+
+  @AfterClass
+  public static void letLogsCatchUp() throws InterruptedException{
+    LOG_OUTCOME.sleepIfFailure();
+  }
+
+  public final TestRule resetWatcher = new TestWatcher() {
+    @Override
+    protected void failed(Throwable e, Description description) {
+      try {
+        resetClientAndBit();
+      } catch (Exception e1) {
+        throw new RuntimeException("Failure while resetting client.", e1);
+      }
+    }
+  };
+
+  static DrillClient client;
+  static Drillbit bit;
+  static RemoteServiceSet serviceSet;
+  static DrillConfig config;
+  static QuerySubmitter submitter = new QuerySubmitter();
+
+  static void resetClientAndBit() throws Exception{
+    closeClient();
+    openClient();
+  }
+
+  @BeforeClass
+  public static void openClient() throws Exception{
+    config = DrillConfig.create();
+    serviceSet = RemoteServiceSet.getLocalServiceSet();
+    bit = new Drillbit(config, serviceSet);
+    bit.run();
+    client = new DrillClient(config, serviceSet.getCoordinator());
+    client.connect();
+  }
+
+  @AfterClass
+  public static void closeClient() throws IOException{
+    if(client != null) client.close();
+    if(bit != null) bit.close();
+    if(serviceSet != null) serviceSet.close();
+  }
+
+
 
   protected void test(String sql) throws Exception{
-    boolean good = false;
     sql = sql.replace("[WORKING_PATH]", TestTools.getWorkingPath());
-
-    try{
-      QuerySubmitter s = new QuerySubmitter();
-      s.submitQuery(null, sql, "sql", null, true, 1, "tsv");
-      good = true;
-    }finally{
-      if(!good) Thread.sleep(2000);
-    }
+    submitter.submitQuery(client, sql, "sql", "tsv", VectorUtil.DEFAULT_COLUMN_WIDTH);
   }
 
   protected void testLogical(String logical) throws Exception{
-    boolean good = false;
     logical = logical.replace("[WORKING_PATH]", TestTools.getWorkingPath());
-
-    try{
-      QuerySubmitter s = new QuerySubmitter();
-      s.submitQuery(null, logical, "logical", null, true, 1, "tsv");
-      good = true;
-    }finally{
-      if(!good) Thread.sleep(2000);
-    }
+    submitter.submitQuery(client, logical, "logical", "tsv", VectorUtil.DEFAULT_COLUMN_WIDTH);
   }
 
   protected void testPhysical(String physical) throws Exception{
-    boolean good = false;
     physical = physical.replace("[WORKING_PATH]", TestTools.getWorkingPath());
-
-    try{
-      QuerySubmitter s = new QuerySubmitter();
-      s.submitQuery(null, physical, "physical", null, true, 1, "tsv");
-      good = true;
-    }finally{
-      if(!good) Thread.sleep(2000);
-    }
+    submitter.submitQuery(client, physical, "physical", "tsv", VectorUtil.DEFAULT_COLUMN_WIDTH);
   }
 
   protected void testPhysicalFromFile(String file) throws Exception{
@@ -103,52 +118,6 @@ public class BaseTestQuery {
     test(getFile(file));
   }
 
-  protected void testSqlPlanFromFile(String file) throws Exception{
-    testSqlPlan(getFile(file));
-  }
-
-  protected void testSqlPlan(String sqlCommands) throws Exception{
-    String[] sqlStrings = sqlCommands.split(";");
-
-    new NonStrictExpectations() {
-      {
-        dbContext.getMetrics();
-        result = new MetricRegistry();
-        dbContext.getAllocator();
-        result = new TopLevelAllocator();
-        dbContext.getConfig();
-        result = config;
-      }
-    };
-
-    StoragePluginRegistry registry = new StoragePluginRegistry(dbContext);
-    final FunctionImplementationRegistry functionRegistry = new FunctionImplementationRegistry(config);
-    final SchemaPlus root = Frameworks.createRootSchema();
-    registry.getSchemaFactory().registerSchemas(null, root);
-
-
-    new NonStrictExpectations() {
-      {
-        context.getNewDefaultSchema();
-        result = root;
-        context.getFunctionRegistry();
-        result = functionRegistry;
-        context.getCurrentEndpoint();
-        result = DrillbitEndpoint.getDefaultInstance();
-        context.getActiveEndpoints();
-        result = ImmutableList.of(DrillbitEndpoint.getDefaultInstance());
-        context.getConfig();
-        result = config;
-      }
-    };
-
-    for(String sql : sqlStrings){
-      if(sql.trim().isEmpty()) continue;
-      DrillSqlWorker worker = new DrillSqlWorker(context);
-      PhysicalPlan p = worker.getPhysicalPlan(sql, context);
-    }
-
-  }
 
   protected String getFile(String resource) throws IOException{
     URL url = Resources.getResource(resource);

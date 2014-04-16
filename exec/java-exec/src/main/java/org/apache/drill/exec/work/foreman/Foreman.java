@@ -34,7 +34,6 @@ import org.apache.drill.common.types.Types;
 import org.apache.drill.exec.ExecConstants;
 import org.apache.drill.exec.exception.FragmentSetupException;
 import org.apache.drill.exec.exception.OptimizerException;
-import org.apache.drill.exec.memory.BufferAllocator;
 import org.apache.drill.exec.ops.QueryContext;
 import org.apache.drill.exec.opt.BasicOptimizer;
 import org.apache.drill.exec.physical.PhysicalPlan;
@@ -47,7 +46,6 @@ import org.apache.drill.exec.planner.fragment.PlanningSet;
 import org.apache.drill.exec.planner.fragment.SimpleParallelizer;
 import org.apache.drill.exec.planner.fragment.StatsCollector;
 import org.apache.drill.exec.planner.sql.DrillSqlWorker;
-import org.apache.drill.exec.planner.sql.DrillSqlWorker.RelResult;
 import org.apache.drill.exec.proto.BitControl.PlanFragment;
 import org.apache.drill.exec.proto.GeneralRPCProtos.Ack;
 import org.apache.drill.exec.proto.UserBitShared.DrillPBError;
@@ -208,12 +206,6 @@ public class Foreman implements Runnable, Closeable, Comparable<Object>{
     }
   }
 
-
-  private void returnLogical(LogicalPlan plan){
-    String jsonPlan = plan.toJsonStringSafe(context.getConfig());
-    sendSingleString("logical", jsonPlan);
-  }
-
   private void returnPhysical(PhysicalPlan plan){
     String jsonPlan = plan.unparse(context.getConfig().getMapper().writer());
     sendSingleString("physical", jsonPlan);
@@ -301,9 +293,6 @@ public class Foreman implements Runnable, Closeable, Comparable<Object>{
       return;
     }
 
-
-
-
     PlanningSet planningSet = StatsCollector.collectStats(rootFragment);
     SimpleParallelizer parallelizer = new SimpleParallelizer();
 
@@ -347,29 +336,9 @@ public class Foreman implements Runnable, Closeable, Comparable<Object>{
 
   private void runSQL(String sql) {
     try{
-      DrillSqlWorker sqlWorker = new DrillSqlWorker(context.getFactory(), context.getFunctionRegistry());
-      
-      RelResult relResult = sqlWorker.getLogicalRel(sql);
-      
-      //EXPLAIN logical
-      if (relResult.getMode() == ResultMode.LOGICAL) {
-        returnLogical(sqlWorker.getLogicalPlan(relResult));
-        return;
-      }
-      
-      PhysicalPlan physical = sqlWorker.getPhysicalPlan(relResult, context);
-            
-      if(logger.isDebugEnabled()) {
-        logger.debug("Distributed Physical {}", context.getConfig().getMapper().writeValueAsString(physical));
-      }
-      
-      //EXPLAIN physical
-      if (relResult.getMode() == ResultMode.PHYSICAL) {
-        returnPhysical(physical);
-        return;
-      }
-      
-      runPhysicalPlan(physical);
+      DrillSqlWorker sqlWorker = new DrillSqlWorker(context);
+      PhysicalPlan plan = sqlWorker.getPlan(sql);
+      runPhysicalPlan(plan);
     }catch(Exception e){
       fail("Failure while parsing sql.", e);
     }

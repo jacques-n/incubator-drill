@@ -23,114 +23,130 @@ import org.junit.Test;
 public class TestTpchDistributed extends BaseTestQuery{
   static final org.slf4j.Logger logger = org.slf4j.LoggerFactory.getLogger(TestTpchDistributed.class);
 
-  @Test
-  public void tpch01() throws Exception{
-    testSqlPlanFromFile("queries/tpch/01.sql");
+  private void testDistributed(String fileName) throws Exception{
+    String query = getFile(fileName);
+    test(query);
   }
 
   @Test
+  public void tpch01() throws Exception{
+    testDistributed("queries/tpch/01.sql");
+  }
+
+  @Test
+  @Ignore // DRILL-512
   public void tpch02() throws Exception{
-    testSqlPlanFromFile("queries/tpch/02.sql");
+    testDistributed("queries/tpch/02.sql");
   }
 
   @Test
   public void tpch03() throws Exception{
-    testSqlPlanFromFile("queries/tpch/03.sql");
+    testDistributed("queries/tpch/03.sql");
   }
 
   @Test
   public void tpch04() throws Exception{
-    testSqlPlanFromFile("queries/tpch/04.sql");
+    testDistributed("queries/tpch/04.sql");
   }
 
   @Test
   public void tpch05() throws Exception{
-    testSqlPlanFromFile("queries/tpch/05.sql");
+    testDistributed("queries/tpch/05.sql");
   }
 
   @Test
   public void tpch06() throws Exception{
-    testSqlPlanFromFile("queries/tpch/06.sql");
+    testDistributed("queries/tpch/06.sql");
   }
 
   @Test
+  @Ignore // DRILL-516
   public void tpch07() throws Exception{
-    testSqlPlanFromFile("queries/tpch/07.sql");
+    testDistributed("queries/tpch/07.sql");
   }
 
   @Test
+  @Ignore // DRILL-516
   public void tpch08() throws Exception{
-    testSqlPlanFromFile("queries/tpch/08.sql");
+    testDistributed("queries/tpch/08.sql");
   }
 
   @Test
+  @Ignore // DRILL-516
   public void tpch09() throws Exception{
-    testSqlPlanFromFile("queries/tpch/09.sql");
+    testDistributed("queries/tpch/09.sql");
   }
 
   @Test
   public void tpch10() throws Exception{
-    testSqlPlanFromFile("queries/tpch/10.sql");
+    testDistributed("queries/tpch/10.sql");
   }
 
   @Test
+  @Ignore // cartesion problem
   public void tpch11() throws Exception{
-    testSqlPlanFromFile("queries/tpch/11.sql");
+    testDistributed("queries/tpch/11.sql");
   }
 
   @Test
   public void tpch12() throws Exception{
-    testSqlPlanFromFile("queries/tpch/12.sql");
+    testDistributed("queries/tpch/12.sql");
   }
 
   @Test
   public void tpch13() throws Exception{
-    testSqlPlanFromFile("queries/tpch/13.sql");
+    testDistributed("queries/tpch/13.sql");
   }
 
   @Test
   public void tpch14() throws Exception{
-    testSqlPlanFromFile("queries/tpch/14.sql");
+    testDistributed("queries/tpch/14.sql");
   }
 
   @Test
+  @Ignore // requires views.
   public void tpch15() throws Exception{
-    testSqlPlanFromFile("queries/tpch/15.sql");
+    testDistributed("queries/tpch/15.sql");
   }
 
   @Test
   public void tpch16() throws Exception{
-    testSqlPlanFromFile("queries/tpch/16.sql");
+    testDistributed("queries/tpch/16.sql");
   }
 
   @Test
+  @Ignore // DRILL-517
   public void tpch17() throws Exception{
-    testSqlPlanFromFile("queries/tpch/17.sql");
+    testDistributed("queries/tpch/17.sql");
   }
 
   @Test
   public void tpch18() throws Exception{
-    testSqlPlanFromFile("queries/tpch/18.sql");
+    testDistributed("queries/tpch/18.sql");
   }
 
   @Test
+  @Ignore // DRILL-519
   public void tpch19() throws Exception{
-    testSqlPlanFromFile("queries/tpch/19.sql");
+    testDistributed("queries/tpch/19.sql");
   }
 
   @Test
+  @Ignore // DRILL-517
   public void tpch20() throws Exception{
-    testSqlPlanFromFile("queries/tpch/20.sql");
+    testDistributed("queries/tpch/20.sql");
   }
 
   @Test
+  @Ignore // DRILL-519
   public void tpch21() throws Exception{
-    testSqlPlanFromFile("queries/tpch/21.sql");
+    testDistributed("queries/tpch/21.sql");
   }
 
   @Test
+  @Ignore // DRILL-518
   public void tpch22() throws Exception{
-    testSqlPlanFromFile("queries/tpch/22.sql");
+    testDistributed("queries/tpch/22.sql");
   }
 
 }

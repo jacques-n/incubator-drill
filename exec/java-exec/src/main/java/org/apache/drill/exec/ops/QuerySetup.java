@@ -1,0 +1,9 @@
+package org.apache.drill.exec.ops;
+
+public enum QuerySetup {
+  START_SQL_PARSING,
+  START_SQL_VALIDATION,
+  START_SQL_TO_REL,
+  START_OPTIQ_REL_TO_DRILL_LOGICAL,
+  START_DRILL_LOGICAL_TO_PHYSICAL;
+}

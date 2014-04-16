@@ -109,7 +109,7 @@ public class UserServer extends BasicServer<RpcType, UserServer.UserClientConnec
     }
 
     void setUser(UserCredentials credentials) throws IOException{
-      session = new UserSession(credentials, worker.getSchemaFactory());
+      session = new UserSession(this, credentials, worker.getSchemaFactory());
     }
 
     public UserSession getSession(){

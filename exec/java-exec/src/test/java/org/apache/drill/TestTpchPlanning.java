@@ -20,8 +20,11 @@ package org.apache.drill;
 import org.junit.Ignore;
 import org.junit.Test;
 
-public class TestTpchPlanning extends BaseTestQuery{
+
+public class TestTpchPlanning extends PlanningBase{
   static final org.slf4j.Logger logger = org.slf4j.LoggerFactory.getLogger(TestTpchPlanning.class);
+
+
 
   @Test
   public void tpch01() throws Exception{
@@ -78,6 +81,7 @@ public class TestTpchPlanning extends BaseTestQuery{
   }
 
   @Test
+  @Ignore // cartesion problem
   public void tpch11() throws Exception{
     testSqlPlanFromFile("queries/tpch/11.sql");
   }
@@ -109,6 +113,7 @@ public class TestTpchPlanning extends BaseTestQuery{
   }
 
   @Test
+  @Ignore // DRILL-517
   public void tpch17() throws Exception{
     testSqlPlanFromFile("queries/tpch/17.sql");
   }
@@ -119,21 +124,25 @@ public class TestTpchPlanning extends BaseTestQuery{
   }
 
   @Test
+  @Ignore // DRILL-519
   public void tpch19() throws Exception{
     testSqlPlanFromFile("queries/tpch/19.sql");
   }
 
   @Test
+  @Ignore // DRILL-517
   public void tpch20() throws Exception{
     testSqlPlanFromFile("queries/tpch/20.sql");
   }
 
   @Test
+  @Ignore // DRILL-519
   public void tpch21() throws Exception{
     testSqlPlanFromFile("queries/tpch/21.sql");
   }
 
   @Test
+  @Ignore // DRILL-518
   public void tpch22() throws Exception{
     testSqlPlanFromFile("queries/tpch/22.sql");
   }

@@ -92,6 +92,11 @@ public class JSONRecordReaderTest {
     List<ValueVector> getAddFields() {
       return addFields;
     }
+
+    @Override
+    public <T extends ValueVector> T addField(MaterializedField field, Class<T> clazz) throws SchemaChangeException {
+      return null;
+    }
   }
 
   private <T> void assertField(ValueVector valueVector, int index, MinorType expectedMinorType, T value, String name) {
@@ -387,7 +392,7 @@ public class JSONRecordReaderTest {
     assertEquals(0, jr.next());
     assertTrue(mutator.getRemovedFields().isEmpty());
   }
-  
+
   @Test
   public void testJsonArrayandNormalFields(@Injectable final FragmentContext context) throws ExecutionSetupException, IOException {
     new Expectations() {
@@ -406,7 +411,7 @@ public class JSONRecordReaderTest {
     jr.setup(mutator);
     assertEquals(2, jr.next());
     assertEquals(3, addFields.size());
-    
+
     assertField(addFields.get(0), 0, MinorType.VARCHAR, "ABC", "test");
     assertField(addFields.get(2), 0, MinorType.VARCHAR, "drill", "a");
     assertField(addFields.get(0), 1, MinorType.VARCHAR, "abc", "test");

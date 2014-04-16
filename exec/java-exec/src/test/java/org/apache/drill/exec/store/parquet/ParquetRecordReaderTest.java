@@ -30,15 +30,16 @@ import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
 import mockit.Injectable;
+
 import org.apache.drill.common.config.DrillConfig;
 import org.apache.drill.common.expression.ExpressionPosition;
-import org.apache.drill.common.expression.FieldReference;
 import org.apache.drill.common.expression.SchemaPath;
 import org.apache.drill.common.types.TypeProtos;
 import org.apache.drill.common.util.FileUtils;
 import org.apache.drill.exec.client.DrillClient;
 import org.apache.drill.exec.exception.SchemaChangeException;
 import org.apache.drill.exec.expr.fn.FunctionImplementationRegistry;
+import org.apache.drill.exec.memory.TopLevelAllocator;
 import org.apache.drill.exec.ops.FragmentContext;
 import org.apache.drill.exec.physical.impl.OutputMutator;
 import org.apache.drill.exec.proto.BitControl;
@@ -127,14 +128,14 @@ public class ParquetRecordReaderTest {
     testParquetFullEngineRemote(planName, fileName, 1, numberRowGroups, recordsPerRowGroup);
   }
 
-  
+
   public void testParquetFullEngineLocalPath(String planFileName, String filename, int numberOfTimesRead /* specified in json plan */, int numberOfRowGroups, int recordsPerRowGroup) throws Exception{
     testParquetFullEngineLocalText(Files.toString(FileUtils.getResourceAsFile(planFileName), Charsets.UTF_8), filename, numberOfTimesRead, numberOfRowGroups, recordsPerRowGroup);
   }
-  
+
   //specific tests should call this method, but it is not marked as a test itself intentionally
   public void testParquetFullEngineLocalText(String planText, String filename, int numberOfTimesRead /* specified in json plan */, int numberOfRowGroups, int recordsPerRowGroup) throws Exception{
-    
+
     RemoteServiceSet serviceSet = RemoteServiceSet.getLocalServiceSet();
 
     DrillConfig config = DrillConfig.create();
@@ -242,6 +243,11 @@ public class ParquetRecordReaderTest {
 
     List<ValueVector> getAddFields() {
       return addFields;
+    }
+
+    @Override
+    public <T extends ValueVector> T addField(MaterializedField field, Class<T> clazz) throws SchemaChangeException {
+      return null;
     }
   }
 
@@ -430,7 +436,7 @@ public class ParquetRecordReaderTest {
     for(int i = 0; i < 25; i++){
       ParquetRecordReader rr = new ParquetRecordReader(context, 256000, fileName, 0, fs,
           new CodecFactoryExposer(dfsConfig), f.getParquetMetadata(), columns);
-      TestOutputMutator mutator = new TestOutputMutator();
+      TestOutputMutator mutator = new TestOutputMutator(new TopLevelAllocator());
       rr.setup(mutator);
       Stopwatch watch = new Stopwatch();
       watch.start();
