@@ -68,16 +68,13 @@ public class SingleMergeExchangePrel extends SingleRel implements Prel {
     Prel child = (Prel) this.getChild();
 
     PhysicalOperator childPOP = child.getPhysicalOperator(creator);
+
     if(PlanningSettings.get(getCluster()).isSingleMode()) return childPOP;
 
     //Currently, only accepts "NONE". For other, requires SelectionVectorRemover
-    if (!childPOP.getSVMode().equals(SelectionVectorMode.NONE)) {
-      childPOP = new SelectionVectorRemover(childPOP);
-      creator.addPhysicalOperator(childPOP);
-    }
+    childPOP = PrelUtil.removeSvIfRequired(childPOP, SelectionVectorMode.NONE);
 
     SingleMergeExchange g = new SingleMergeExchange(childPOP, PrelUtil.getOrdering(this.collation, getChild().getRowType()));
-    creator.addPhysicalOperator(g);
     return g;
   }
 

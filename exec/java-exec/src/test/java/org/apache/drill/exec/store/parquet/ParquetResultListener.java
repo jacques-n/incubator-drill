@@ -185,7 +185,10 @@ public class ParquetResultListener implements UserResultsListener {
       }
 
       assert valuesChecked.keySet().size() > 0;
+      result.release();
       future.set(null);
+    }else{
+      result.release();
     }
   }
 

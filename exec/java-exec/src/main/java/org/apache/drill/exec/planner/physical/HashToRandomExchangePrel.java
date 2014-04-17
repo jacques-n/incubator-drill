@@ -65,13 +65,9 @@ public class HashToRandomExchangePrel extends SingleRel implements Prel {
     if(PlanningSettings.get(getCluster()).isSingleMode()) return childPOP;
 
     //Currently, only accepts "NONE". For other, requires SelectionVectorRemover
-    if (!childPOP.getSVMode().equals(SelectionVectorMode.NONE)) {
-      childPOP = new SelectionVectorRemover(childPOP);
-      creator.addPhysicalOperator(childPOP);
-    }
+    childPOP = PrelUtil.removeSvIfRequired(childPOP, SelectionVectorMode.NONE);
 
     HashToRandomExchange g = new HashToRandomExchange(childPOP, PrelUtil.getHashExpression(this.fields, getChild().getRowType()));
-    creator.addPhysicalOperator(g);
     return g;
   }
 

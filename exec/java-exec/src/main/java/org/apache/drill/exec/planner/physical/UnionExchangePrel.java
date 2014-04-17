@@ -54,16 +54,13 @@ public class UnionExchangePrel extends SingleRel implements Prel {
     Prel child = (Prel) this.getChild();
 
     PhysicalOperator childPOP = child.getPhysicalOperator(creator);
+
     if(PlanningSettings.get(getCluster()).isSingleMode()) return childPOP;
 
     //Currently, only accepts "NONE". For other, requires SelectionVectorRemover
-    if (!childPOP.getSVMode().equals(SelectionVectorMode.NONE)) {
-      childPOP = new SelectionVectorRemover(childPOP);
-      creator.addPhysicalOperator(childPOP);
-    }
+    childPOP = PrelUtil.removeSvIfRequired(childPOP, SelectionVectorMode.NONE, SelectionVectorMode.TWO_BYTE);
 
     UnionExchange g = new UnionExchange(childPOP);
-    creator.addPhysicalOperator(g);
     return g;
   }
 

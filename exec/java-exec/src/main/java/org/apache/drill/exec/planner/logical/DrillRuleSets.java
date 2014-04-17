@@ -115,9 +115,9 @@ public class DrillRuleSets {
       StreamAggPrule.INSTANCE,
       MergeJoinPrule.INSTANCE,
       FilterPrule.INSTANCE,
-      LimitPrule.INSTANCE
+      LimitPrule.INSTANCE,
 
-//      PushLimitToTopN.INSTANCE
+      PushLimitToTopN.INSTANCE
 
 //    ExpandConversionRule.INSTANCE,
 //    SwapJoinRule.INSTANCE,

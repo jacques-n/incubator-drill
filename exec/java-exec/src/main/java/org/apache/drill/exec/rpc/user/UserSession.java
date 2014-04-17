@@ -30,7 +30,7 @@ public class UserSession {
 
   private DrillUser user;
   private String defaultSchema = "";
-  private boolean enableExchanges;
+  private boolean enableExchanges = true;
   private UserClientConnection connection;
 
   public UserSession(UserClientConnection connection, UserCredentials credentials, SchemaFactory factory) throws IOException{

@@ -52,10 +52,10 @@ public class TestSimpleFragmentRun extends PopUnitTestBase {
 
   @Test
   public void runNoExchangeFragment() throws Exception {
-    try(RemoteServiceSet serviceSet = RemoteServiceSet.getLocalServiceSet(); 
-        Drillbit bit = new Drillbit(CONFIG, serviceSet); 
+    try(RemoteServiceSet serviceSet = RemoteServiceSet.getLocalServiceSet();
+        Drillbit bit = new Drillbit(CONFIG, serviceSet);
         DrillClient client = new DrillClient(CONFIG, serviceSet.getCoordinator());){
-    
+
     // run query.
     bit.run();
     client.connect();
@@ -102,6 +102,7 @@ public class TestSimpleFragmentRun extends PopUnitTestBase {
         }
         if(!first) System.out.println();
       }
+      batch.release();
     }
     logger.debug("Received results {}", results);
     assertEquals(recordCount, 200);
@@ -175,6 +176,8 @@ public class TestSimpleFragmentRun extends PopUnitTestBase {
           }
           if (!first) System.out.println();
         }
+        batchLoader.clear();
+        batch.release();
       }
 
       assertEquals(2, recordCount);

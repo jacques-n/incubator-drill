@@ -39,6 +39,7 @@ import org.apache.drill.common.util.FileUtils;
 import org.apache.drill.exec.client.DrillClient;
 import org.apache.drill.exec.exception.SchemaChangeException;
 import org.apache.drill.exec.expr.fn.FunctionImplementationRegistry;
+import org.apache.drill.exec.memory.BufferAllocator;
 import org.apache.drill.exec.memory.TopLevelAllocator;
 import org.apache.drill.exec.ops.FragmentContext;
 import org.apache.drill.exec.physical.impl.OutputMutator;
@@ -151,6 +152,7 @@ public class ParquetRecordReaderTest {
       Stopwatch watch = new Stopwatch().start();
       client.runQuery(UserProtos.QueryType.LOGICAL, planText, resultListener);
       resultListener.getResults();
+      batchLoader.clear();
       System.out.println(String.format("Took %d ms to run query", watch.elapsed(TimeUnit.MILLISECONDS)));
 
     }
@@ -176,6 +178,7 @@ public class ParquetRecordReaderTest {
       Stopwatch watch = new Stopwatch().start();
       client.runQuery(UserProtos.QueryType.PHYSICAL, Files.toString(FileUtils.getResourceAsFile(planName), Charsets.UTF_8), resultListener);
       resultListener.getResults();
+      batchLoader.clear();
       System.out.println(String.format("Took %d ms to run query", watch.elapsed(TimeUnit.MILLISECONDS)));
 
     }
@@ -210,6 +213,7 @@ public class ParquetRecordReaderTest {
       ParquetResultListener resultListener = new ParquetResultListener(batchLoader, props, numberOfTimesRead, true);
       client.runQuery(UserProtos.QueryType.PHYSICAL, Files.toString(FileUtils.getResourceAsFile(plan), Charsets.UTF_8), resultListener);
       resultListener.getResults();
+      batchLoader.clear();
     }
 
   }
@@ -433,10 +437,11 @@ public class ParquetRecordReaderTest {
     int totalRowCount = 0;
 
     FileSystem fs = new CachedSingleFileSystem(fileName);
+    BufferAllocator allocator = new TopLevelAllocator();
     for(int i = 0; i < 25; i++){
       ParquetRecordReader rr = new ParquetRecordReader(context, 256000, fileName, 0, fs,
           new CodecFactoryExposer(dfsConfig), f.getParquetMetadata(), columns);
-      TestOutputMutator mutator = new TestOutputMutator(new TopLevelAllocator());
+      TestOutputMutator mutator = new TestOutputMutator(allocator);
       rr.setup(mutator);
       Stopwatch watch = new Stopwatch();
       watch.start();
@@ -448,6 +453,8 @@ public class ParquetRecordReaderTest {
       System.out.println(String.format("Time completed: %s. ", watch.elapsed(TimeUnit.MILLISECONDS)));
       rr.cleanup();
     }
+
+    allocator.close();
     System.out.println(String.format("Total row count %s", totalRowCount));
   }
 
@@ -482,11 +489,13 @@ public class ParquetRecordReaderTest {
       if (readEntries != null) {
         planText = planText.replaceFirst( "&REPLACED_IN_PARQUET_TEST&", readEntries);
       }
-      if (runAsLogicalPlan)
+      if (runAsLogicalPlan){
         client.runQuery(UserProtos.QueryType.LOGICAL, planText, resultListener);
-      else
+      }else{
         client.runQuery(UserProtos.QueryType.PHYSICAL, planText, resultListener);
+      }
       resultListener.getResults();
+      batchLoader.clear();
       long D = System.nanoTime();
       System.out.println(String.format("Took %f s to run query", (float)(D-C) / 1E9));
     }

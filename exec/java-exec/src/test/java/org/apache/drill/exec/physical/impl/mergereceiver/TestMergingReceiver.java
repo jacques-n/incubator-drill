@@ -79,6 +79,8 @@ public class TestMergingReceiver extends PopUnitTestBase {
           }
           System.out.println();
         }
+        b.release();
+        batchLoader.clear();
       }
       assertEquals(200, count);
     }
@@ -125,6 +127,8 @@ public class TestMergingReceiver extends PopUnitTestBase {
           }
           System.out.println();
         }
+        b.release();
+        batchLoader.clear();
       }
       assertEquals(400, count);
     }
@@ -166,6 +170,8 @@ public class TestMergingReceiver extends PopUnitTestBase {
           }
           System.out.println();
         }
+        b.release();
+        batchLoader.clear();
       }
       assertEquals(100, count);
     }
