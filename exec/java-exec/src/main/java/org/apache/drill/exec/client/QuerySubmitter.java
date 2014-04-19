@@ -20,22 +20,11 @@ package org.apache.drill.exec.client;
 import java.nio.ByteBuffer;
 import java.nio.file.Files;
 import java.nio.file.Paths;
-import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicInteger;
 
 import org.apache.drill.common.config.DrillConfig;
 import org.apache.drill.exec.coord.ZKClusterCoordinator;
-import org.apache.drill.exec.exception.SchemaChangeException;
-import org.apache.drill.exec.memory.BufferAllocator;
-import org.apache.drill.exec.memory.TopLevelAllocator;
-import org.apache.drill.exec.proto.UserBitShared.QueryId;
 import org.apache.drill.exec.proto.UserProtos;
-import org.apache.drill.exec.record.RecordBatchLoader;
-import org.apache.drill.exec.rpc.RpcException;
-import org.apache.drill.exec.rpc.user.ConnectionThrottle;
-import org.apache.drill.exec.rpc.user.QueryResultBatch;
-import org.apache.drill.exec.rpc.user.UserResultsListener;
 import org.apache.drill.exec.server.Drillbit;
 import org.apache.drill.exec.server.RemoteServiceSet;
 import org.apache.drill.exec.util.VectorUtil;
@@ -154,7 +143,7 @@ public class QuerySubmitter {
 
   public int submitQuery(DrillClient client, String plan, String type, String format, int width) throws Exception {
 
-    QueryResultsListener listener;
+    PrintingResultsListener listener;
 
     String[] queries;
     UserProtos.QueryType queryType;
@@ -195,7 +184,7 @@ public class QuerySubmitter {
     }
     Stopwatch watch = new Stopwatch();
     for (String query : queries) {
-      listener = new QueryResultsListener(outputFormat, width);
+      listener = new PrintingResultsListener(outputFormat, width);
       watch.start();
       client.runQuery(queryType, query, listener);
       int rows = listener.await();
@@ -208,72 +197,5 @@ public class QuerySubmitter {
     }
     return 0;
 
-  }
-
-  private class QueryResultsListener implements UserResultsListener {
-    AtomicInteger count = new AtomicInteger();
-    private CountDownLatch latch = new CountDownLatch(1);
-    RecordBatchLoader loader;
-    Format format;
-    int    columnWidth;
-    BufferAllocator allocator = new TopLevelAllocator();
-    volatile Exception exception;
-
-    public QueryResultsListener(Format format, int columnWidth) {
-      loader = new RecordBatchLoader(allocator);
-      this.format = format;
-      this.columnWidth = columnWidth;
-    }
-
-    @Override
-    public void submissionFailed(RpcException ex) {
-      exception = ex;
-      latch.countDown();
-    }
-
-    @Override
-    public void resultArrived(QueryResultBatch result, ConnectionThrottle throttle) {
-      int rows = result.getHeader().getRowCount();
-      if (result.getData() != null) {
-        count.addAndGet(rows);
-        try {
-          loader.load(result.getHeader().getDef(), result.getData());
-        } catch (SchemaChangeException e) {
-          submissionFailed(new RpcException(e));
-        }
-
-        switch(format) {
-          case TABLE:
-            VectorUtil.showVectorAccessibleContent(loader, columnWidth);
-            break;
-          case TSV:
-            VectorUtil.showVectorAccessibleContent(loader, "\t");
-            break;
-          case CSV:
-            VectorUtil.showVectorAccessibleContent(loader, ",");
-            break;
-        }
-
-      }
-
-      boolean isLastChunk = result.getHeader().getIsLastChunk();
-      result.release();
-
-      if (isLastChunk) {
-        allocator.close();
-        latch.countDown();
-      }
-
-    }
-
-    public int await() throws Exception {
-      latch.await();
-      if(exception != null) throw exception;
-      return count.get();
-    }
-
-    @Override
-    public void queryIdArrived(QueryId queryId) {
-    }
   }
 }

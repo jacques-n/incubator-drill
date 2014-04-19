@@ -255,9 +255,9 @@
           <artifactId>maven-surefire-plugin</artifactId>
           <version>2.17</version>
           <configuration>
-            <argLine>-Xms1g -Xmx2g -XX:MaxDirectMemorySize=4096M </argLine>
-            <forkCount>3</forkCount>
-            <reuseForks>false</reuseForks>
+            <argLine>-Xms1g -Xmx2g -XX:MaxDirectMemorySize=6096M </argLine>
+            <forkCount>8</forkCount>
+            <reuseForks>true</reuseForks>
             <additionalClasspathElements>
               <additionalClasspathElement>./sqlparser/src/test/resources/storage-engines.json</additionalClasspathElement>
             </additionalClasspathElements>

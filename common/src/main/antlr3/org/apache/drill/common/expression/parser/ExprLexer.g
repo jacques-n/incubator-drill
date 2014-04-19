@@ -134,3 +134,14 @@ fragment Int
 fragment Digit 
   :  '0'..'9'
   ;
+
+FallThrough
+	@after{
+	  throw new RuntimeException(java.lang.String.format(
+	      "Encountered an illegal char on line \%d, column \%d: '\%s'", 
+	      getLine(), getCharPositionInLine(), getText()
+	    )
+	  );
+	}
+  :
+  ;

@@ -68,7 +68,7 @@ public class JSONRecordReader implements RecordReader {
   private static final int DEFAULT_LENGTH = 256 * 1024; // 256kb
   public static final Charset UTF_8 = Charset.forName("UTF-8");
 
-  private final Map<SchemaPath, VectorHolder> valueVectorMap;
+  private final Map<String, VectorHolder> valueVectorMap;
   private final FileSystem fileSystem;
   private final Path hadoopPath;
 
@@ -204,7 +204,8 @@ public class JSONRecordReader implements RecordReader {
   }
 
   private boolean fieldSelected(String field){
-    SchemaPath sp = SchemaPath.getSimplePath(field);
+
+    SchemaPath sp = SchemaPath.getCompoundPath(field.split("\\."));
     if (this.columns != null && this.columns.size() > 0){
       for (SchemaPath expr : this.columns){
         if ( sp.equals(expr)){
@@ -231,7 +232,7 @@ public class JSONRecordReader implements RecordReader {
     OBJECT(END_OBJECT) {
       @Override
       public Field createField(RecordSchema parentSchema,
-                               SchemaPath parentSchema,
+                               String prefixFieldName,
                                String fieldName,
                                MajorType fieldType,
                                int index) {
@@ -256,7 +257,7 @@ public class JSONRecordReader implements RecordReader {
 
     @SuppressWarnings("ConstantConditions")
     public boolean readRecord(JSONRecordReader reader,
-                              SchemaPath path,
+                              String prefixFieldName,
                               int rowIndex,
                               int groupCount) throws IOException, SchemaChangeException {
       JsonParser parser = reader.getParser();
@@ -295,7 +296,7 @@ public class JSONRecordReader implements RecordReader {
               readType,
               reader,
               fieldType,
-              path,
+              prefixFieldName,
               fieldName,
               rowIndex,
               colIndex,
@@ -327,7 +328,7 @@ public class JSONRecordReader implements RecordReader {
     private boolean recordData(JSONRecordReader.ReadType readType,
                                JSONRecordReader reader,
                                MajorType fieldType,
-                               SchemaPath prefixFieldName,
+                               String prefixFieldName,
                                String fieldName,
                                int rowIndex,
                                int colIndex,
@@ -497,7 +498,7 @@ public class JSONRecordReader implements RecordReader {
     public abstract RecordSchema createSchema() throws IOException;
 
     public abstract Field createField(RecordSchema parentSchema,
-                                      SchemaPath parent,
+                                      String prefixFieldName,
                                       String fieldName,
                                       MajorType fieldType,
                                       int index);
@@ -508,7 +509,7 @@ public class JSONRecordReader implements RecordReader {
   }
 
   private VectorHolder getOrCreateVectorHolder(Field field) throws SchemaChangeException {
-    SchemaPath fullFieldName = field.getFullFieldName();
+    String fullFieldName = field.getFullFieldName();
     VectorHolder holder = valueVectorMap.get(fullFieldName);
 
     if (holder == null) {
@@ -519,7 +520,7 @@ public class JSONRecordReader implements RecordReader {
         return null;
       }
 
-      MaterializedField f = MaterializedField.create(fullFieldName, type);
+      MaterializedField f = MaterializedField.create(SchemaPath.getCompoundPath(fullFieldName.split("\\.")), type);
 
       ValueVector v = TypeHelper.getNewVector(f, allocator);
       AllocationHelper.allocate(v, batchSize, 50);

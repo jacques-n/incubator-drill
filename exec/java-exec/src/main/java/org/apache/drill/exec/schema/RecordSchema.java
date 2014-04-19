@@ -17,11 +17,9 @@
  */
 package org.apache.drill.exec.schema;
 
-import org.apache.drill.common.expression.SchemaPath;
-
 public interface RecordSchema {
     public void addField(Field field);
-    public Field getField(SchemaPath path, int index);
+    public Field getField(String fieldName, int index);
     public void removeField(Field field, int index);
     public Iterable<? extends Field> getFields();
     public String toSchemaString();

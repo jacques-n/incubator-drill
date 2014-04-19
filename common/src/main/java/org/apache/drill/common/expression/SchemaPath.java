@@ -17,16 +17,32 @@
  */
 package org.apache.drill.common.expression;
 
+import java.io.IOException;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
 
+import org.antlr.runtime.ANTLRStringStream;
+import org.antlr.runtime.CommonTokenStream;
+import org.antlr.runtime.RecognitionException;
+import org.apache.drill.common.config.DrillConfig;
 import org.apache.drill.common.expression.PathSegment.NameSegment;
+import org.apache.drill.common.expression.parser.ExprLexer;
+import org.apache.drill.common.expression.parser.ExprParser;
+import org.apache.drill.common.expression.parser.ExprParser.parse_return;
 import org.apache.drill.common.expression.visitors.ExprVisitor;
 import org.apache.drill.common.types.TypeProtos.MajorType;
 import org.apache.drill.common.types.Types;
 
+import com.fasterxml.jackson.core.JsonGenerationException;
+import com.fasterxml.jackson.core.JsonGenerator;
+import com.fasterxml.jackson.core.JsonParser;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.DeserializationContext;
+import com.fasterxml.jackson.databind.SerializerProvider;
+import com.fasterxml.jackson.databind.deser.std.StdDeserializer;
+import com.fasterxml.jackson.databind.ser.std.StdSerializer;
 import com.google.common.collect.Iterators;
 
 public class SchemaPath extends LogicalExpressionBase {
@@ -58,7 +74,7 @@ public class SchemaPath extends LogicalExpressionBase {
   public SchemaPath(String simpleName, ExpressionPosition pos){
     super(pos);
     this.rootSegment = new NameSegment(simpleName);
-    if(simpleName.contains("\\.")) throw new IllegalStateException("This is deprecated and only supports simpe paths.");
+    if(simpleName.contains(".")) throw new IllegalStateException("This is deprecated and only supports simpe paths.");
   }
 
   public SchemaPath(SchemaPath path){
@@ -134,6 +150,45 @@ public class SchemaPath extends LogicalExpressionBase {
 
   public String toExpr(){
     return ExpressionStringBuilder.toString(this);
+  }
+
+
+  public static class De extends StdDeserializer<SchemaPath> {
+    DrillConfig config;
+
+    public De(DrillConfig config) {
+      super(LogicalExpression.class);
+      this.config = config;
+    }
+
+    @Override
+    public SchemaPath deserialize(JsonParser jp, DeserializationContext ctxt) throws IOException,
+        JsonProcessingException {
+      String expr = jp.getText();
+
+      if (expr == null || expr.isEmpty())
+        return null;
+      try {
+        // logger.debug("Parsing expression string '{}'", expr);
+        ExprLexer lexer = new ExprLexer(new ANTLRStringStream(expr));
+        CommonTokenStream tokens = new CommonTokenStream(lexer);
+        ExprParser parser = new ExprParser(tokens);
+
+        //TODO: move functionregistry and error collector to injectables.
+        //ctxt.findInjectableValue(valueId, forProperty, beanInstance)
+        parse_return ret = parser.parse();
+
+        // ret.e.resolveAndValidate(expr, errorCollector);
+        if(ret.e instanceof SchemaPath){
+          return (SchemaPath) ret.e;
+        }else{
+          throw new IllegalStateException("Schema path is not a valid format.");
+        }
+      } catch (RecognitionException e) {
+        throw new RuntimeException(e);
+      }
+    }
+
   }
 
 }

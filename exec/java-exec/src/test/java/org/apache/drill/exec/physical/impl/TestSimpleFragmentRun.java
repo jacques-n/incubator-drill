@@ -81,7 +81,7 @@ public class TestSimpleFragmentRun extends PopUnitTestBase {
           } else {
             System.out.print("\t");
           }
-          System.out.print(value.getField().getName());
+          System.out.print(value.getField().toExpr());
           System.out.print("[");
           System.out.print(value.getField().getType().getMinorType());
           System.out.print("]");
@@ -152,7 +152,7 @@ public class TestSimpleFragmentRun extends PopUnitTestBase {
           } else {
             System.out.print("\t");
           }
-          System.out.print(v.getField().getName());
+          System.out.print(v.getField().toExpr());
           System.out.print("[");
           System.out.print(v.getField().getType().getMinorType());
           System.out.print("]");

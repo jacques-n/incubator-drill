@@ -67,6 +67,7 @@ public class DrillClient implements Closeable, ConnectionThrottle{
   private final TopLevelAllocator allocator = new TopLevelAllocator(Long.MAX_VALUE);
   private int reconnectTimes;
   private int reconnectDelay;
+  private final boolean ownsZkConnection;
 
   public DrillClient() {
     this(DrillConfig.create());
@@ -81,6 +82,7 @@ public class DrillClient implements Closeable, ConnectionThrottle{
   }
 
   public DrillClient(DrillConfig config, ClusterCoordinator coordinator){
+    this.ownsZkConnection = coordinator == null;
     this.config = config;
     this.clusterCoordinator = coordinator;
     this.reconnectTimes = config.getInt(ExecConstants.BIT_RETRY_TIMES);
@@ -110,7 +112,7 @@ public class DrillClient implements Closeable, ConnectionThrottle{
   public synchronized void connect(String connect) throws RpcException {
     if (connected) return;
 
-    if (clusterCoordinator == null) {
+    if (ownsZkConnection) {
       try {
         this.clusterCoordinator = new ZKClusterCoordinator(this.config, connect);
         this.clusterCoordinator.start(10000);
@@ -171,7 +173,16 @@ public class DrillClient implements Closeable, ConnectionThrottle{
    */
   public void close(){
     this.client.close();
-// TODO: fix tests that fail when this is called.   allocator.close();
+    if(ownsZkConnection){
+      try {
+        this.clusterCoordinator.close();
+      } catch (IOException e) {
+        logger.warn("Error while closing Cluster Coordinator.", e);
+      }
+    }
+
+    // TODO: fix tests that fail when this is called.
+    //allocator.close();
     connected = false;
   }
 

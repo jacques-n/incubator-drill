@@ -32,6 +32,8 @@ import org.apache.drill.exec.proto.SchemaDefProtos.FieldDef;
 import org.apache.drill.exec.proto.SchemaDefProtos.NamePart;
 import org.apache.drill.exec.proto.SchemaDefProtos.NamePart.Type;
 
+import com.beust.jcommander.internal.Lists;
+
 public class MaterializedField{
   private final FieldDef def;
 
@@ -79,7 +81,7 @@ public class MaterializedField{
 
   public SchemaPath getAsSchemaPath(){
     List<NamePart> nameList = def.getNameList();
-    Collections.reverse(nameList);
+    Collections.reverse(Lists.newArrayList(nameList));
     PathSegment seg = null;
     for(NamePart p : nameList){
       if(p.getType() == NamePart.Type.ARRAY){

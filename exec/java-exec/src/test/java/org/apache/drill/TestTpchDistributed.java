@@ -95,6 +95,7 @@ public class TestTpchDistributed extends BaseTestQuery{
   }
 
   @Test
+  @Ignore // DRILL-548 flapping test: issues with writerIndex.
   public void tpch13() throws Exception{
     testDistributed("queries/tpch/13.sql");
   }

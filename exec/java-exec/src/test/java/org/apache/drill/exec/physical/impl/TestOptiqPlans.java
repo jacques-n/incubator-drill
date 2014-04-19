@@ -138,7 +138,7 @@ public class TestOptiqPlans {
         System.out.println(String.format("Got %d results", b.getHeader().getRowCount()));
         loader.load(b.getHeader().getDef(), b.getData());
         for (VectorWrapper<?> vw : loader) {
-          System.out.println(vw.getValueVector().getField().getName());
+          System.out.println(vw.getValueVector().getField().toExpr());
           ValueVector vv = vw.getValueVector();
           for (int i = 0; i < vv.getAccessor().getValueCount(); i++) {
             Object o = vv.getAccessor().getObject(i);
@@ -166,7 +166,7 @@ public class TestOptiqPlans {
         System.out.println(String.format("Got %d results", b.getHeader().getRowCount()));
         loader.load(b.getHeader().getDef(), b.getData());
         for (VectorWrapper<?> vw : loader) {
-          System.out.println(vw.getValueVector().getField().getName());
+          System.out.println(vw.getValueVector().getField().toExpr());
           ValueVector vv = vw.getValueVector();
           for (int i = 0; i < vv.getAccessor().getValueCount(); i++) {
             Object o = vv.getAccessor().getObject(i);
@@ -194,7 +194,7 @@ public class TestOptiqPlans {
         System.out.println(String.format("Got %d results", b.getHeader().getRowCount()));
         loader.load(b.getHeader().getDef(), b.getData());
         for (VectorWrapper<?> vw : loader) {
-          System.out.println(vw.getValueVector().getField().getName());
+          System.out.println(vw.getValueVector().getField().toExpr());
           ValueVector vv = vw.getValueVector();
           for (int i = 0; i < vv.getAccessor().getValueCount(); i++) {
             Object o = vv.getAccessor().getObject(i);
@@ -232,7 +232,7 @@ public class TestOptiqPlans {
         System.out.println(String.format("Got %d results", b.getHeader().getRowCount()));
         loader.load(b.getHeader().getDef(), b.getData());
         for (VectorWrapper vw : loader) {
-          System.out.println(vw.getValueVector().getField().getName());
+          System.out.println(vw.getValueVector().getField().toExpr());
           ValueVector vv = vw.getValueVector();
           for (int i = 0; i < vv.getAccessor().getValueCount(); i++) {
             Object o = vv.getAccessor().getObject(i);
@@ -270,7 +270,7 @@ public class TestOptiqPlans {
         System.out.println(String.format("Got %d results", b.getHeader().getRowCount()));
         loader.load(b.getHeader().getDef(), b.getData());
         for (VectorWrapper vw : loader) {
-          System.out.println(vw.getValueVector().getField().getName());
+          System.out.println(vw.getValueVector().getField().toExpr());
           ValueVector vv = vw.getValueVector();
           for (int i = 0; i < vv.getAccessor().getValueCount(); i++) {
             Object o = vv.getAccessor().getObject(i);

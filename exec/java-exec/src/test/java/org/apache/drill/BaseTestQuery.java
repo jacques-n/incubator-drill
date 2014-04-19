@@ -19,12 +19,19 @@ package org.apache.drill;
 
 import java.io.IOException;
 import java.net.URL;
+import java.util.List;
 
 import org.apache.drill.common.config.DrillConfig;
 import org.apache.drill.common.util.TestTools;
 import org.apache.drill.common.util.TestTools.TestLogReporter;
 import org.apache.drill.exec.client.DrillClient;
+import org.apache.drill.exec.client.PrintingResultsListener;
 import org.apache.drill.exec.client.QuerySubmitter;
+import org.apache.drill.exec.client.QuerySubmitter.Format;
+import org.apache.drill.exec.memory.BufferAllocator;
+import org.apache.drill.exec.proto.UserProtos.QueryType;
+import org.apache.drill.exec.rpc.user.QueryResultBatch;
+import org.apache.drill.exec.rpc.user.UserResultsListener;
 import org.apache.drill.exec.server.Drillbit;
 import org.apache.drill.exec.server.RemoteServiceSet;
 import org.apache.drill.exec.util.VectorUtil;
@@ -84,6 +91,10 @@ public class BaseTestQuery {
     client.connect();
   }
 
+  protected BufferAllocator getAllocator(){
+    return client.getAllocator();
+  }
+
   @AfterClass
   public static void closeClient() throws IOException{
     if(client != null) client.close();
@@ -92,20 +103,49 @@ public class BaseTestQuery {
   }
 
 
-
-  protected void test(String sql) throws Exception{
-    sql = sql.replace("[WORKING_PATH]", TestTools.getWorkingPath());
-    submitter.submitQuery(client, sql, "sql", "tsv", VectorUtil.DEFAULT_COLUMN_WIDTH);
+  protected List<QueryResultBatch> testSqlWithResults(String sql) throws Exception{
+    return testRunAndReturn(QueryType.SQL, sql);
   }
 
-  protected void testLogical(String logical) throws Exception{
-    logical = logical.replace("[WORKING_PATH]", TestTools.getWorkingPath());
-    submitter.submitQuery(client, logical, "logical", "tsv", VectorUtil.DEFAULT_COLUMN_WIDTH);
+  protected List<QueryResultBatch> testLogicalWithResults(String logical) throws Exception{
+    return testRunAndReturn(QueryType.LOGICAL, logical);
   }
 
-  protected void testPhysical(String physical) throws Exception{
-    physical = physical.replace("[WORKING_PATH]", TestTools.getWorkingPath());
-    submitter.submitQuery(client, physical, "physical", "tsv", VectorUtil.DEFAULT_COLUMN_WIDTH);
+  protected List<QueryResultBatch> testPhysicalWithResults(String physical) throws Exception{
+    return testRunAndReturn(QueryType.PHYSICAL, physical);
+  }
+
+  private List<QueryResultBatch>  testRunAndReturn(QueryType type, String query) throws Exception{
+    query = query.replace("[WORKING_PATH]", TestTools.getWorkingPath());
+    return client.runQuery(type, query);
+  }
+
+  private int testRunAndPrint(QueryType type, String query) throws Exception{
+    query = query.replace("[WORKING_PATH]", TestTools.getWorkingPath());
+    PrintingResultsListener resultListener = new PrintingResultsListener(Format.TSV, VectorUtil.DEFAULT_COLUMN_WIDTH);
+    client.runQuery(type, query, resultListener);
+    return resultListener.await();
+  }
+
+  protected void testWithListener(QueryType type, String query, UserResultsListener resultListener){
+    query = query.replace("[WORKING_PATH]", TestTools.getWorkingPath());
+    client.runQuery(type, query, resultListener);
+  }
+
+  protected void test(String query) throws Exception{
+    String[] queries = query.split(";");
+    for(String q : queries){
+      if(q.trim().isEmpty()) continue;
+      testRunAndPrint(QueryType.SQL, q);
+    }
+  }
+
+  protected int testLogical(String query) throws Exception{
+    return testRunAndPrint(QueryType.LOGICAL, query);
+  }
+
+  protected int testPhysical(String query) throws Exception{
+    return testRunAndPrint(QueryType.PHYSICAL, query);
   }
 
   protected void testPhysicalFromFile(String file) throws Exception{

@@ -88,7 +88,7 @@ public class TestTpchSingleMode extends BaseTestQuery{
   }
 
   @Test
-  @Ignore // cartesion problem
+  @Ignore // Cartesian problem
   public void tpch11() throws Exception{
     testSingleMode("queries/tpch/11.sql");
   }
@@ -99,6 +99,7 @@ public class TestTpchSingleMode extends BaseTestQuery{
   }
 
   @Test
+  @Ignore // DRILL-548 flapping test: issues with writerIndex.
   public void tpch13() throws Exception{
     testSingleMode("queries/tpch/13.sql");
   }

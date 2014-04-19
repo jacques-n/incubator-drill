@@ -132,7 +132,8 @@ public class HBaseRecordReader implements RecordReader {
           MaterializedField field = MaterializedField.create(column, Types.optional(TypeProtos.MinorType.VARBINARY));
           NullableVarBinaryVector v = new NullableVarBinaryVector(field, context.getAllocator());
           output.addField(v);
-          vvMap.put(new FamilyQualifierWrapper(column.getRootSegment().getPath()), v);
+          String fullyQualified = column.getRootSegment().getPath() + "." + column.getRootSegment().getChild().getNameSegment().getPath();
+          vvMap.put(new FamilyQualifierWrapper(fullyQualified), v);
         }
       } catch (SchemaChangeException e) {
         throw new ExecutionSetupException(e);
@@ -211,7 +212,7 @@ public class HBaseRecordReader implements RecordReader {
   }
 
   private NullableVarBinaryVector addNewVector(String column) {
-    MaterializedField field = MaterializedField.create(SchemaPath.getSimplePath(column), Types.optional(TypeProtos.MinorType.VARBINARY));
+    MaterializedField field = MaterializedField.create(SchemaPath.getCompoundPath(column.split("\\.")), Types.optional(TypeProtos.MinorType.VARBINARY));
     NullableVarBinaryVector v = new NullableVarBinaryVector(field, context.getAllocator());
     VectorAllocator.getAllocator(v, 100).alloc(TARGET_RECORD_COUNT);
     vvMap.put(new FamilyQualifierWrapper(column), v);
