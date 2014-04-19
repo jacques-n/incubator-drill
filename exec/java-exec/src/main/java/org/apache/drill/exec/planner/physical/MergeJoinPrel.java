@@ -139,7 +139,7 @@ public class MergeJoinPrel  extends DrillJoinRelBase implements Prel {
     inputOp = PrelUtil.removeSvIfRequired(inputOp, SelectionVectorMode.NONE);
 
     for (Pair<String, String> pair : Pair.zip(inputFields, outputFields)) {
-      exprs.add(new NamedExpression(new FieldReference(pair.left), new FieldReference("output." + pair.right)));
+      exprs.add(new NamedExpression(new FieldReference(pair.left), new FieldReference(pair.right)));
     }
 
     Project proj = new Project(exprs, inputOp);

@@ -45,6 +45,7 @@ import org.apache.drill.exec.planner.fragment.MakeFragmentsVisitor;
 import org.apache.drill.exec.planner.fragment.PlanningSet;
 import org.apache.drill.exec.planner.fragment.SimpleParallelizer;
 import org.apache.drill.exec.planner.fragment.StatsCollector;
+import org.apache.drill.exec.planner.sql.DirectPlan;
 import org.apache.drill.exec.planner.sql.DrillSqlWorker;
 import org.apache.drill.exec.proto.BitControl.PlanFragment;
 import org.apache.drill.exec.proto.GeneralRPCProtos.Ack;
@@ -208,40 +209,18 @@ public class Foreman implements Runnable, Closeable, Comparable<Object>{
 
   private void returnPhysical(PhysicalPlan plan){
     String jsonPlan = plan.unparse(context.getConfig().getMapper().writer());
-    sendSingleString("physical", jsonPlan);
+    runPhysicalPlan(DirectPlan.createDirectPlan(context, new PhysicalFromLogicalExplain(jsonPlan)));
   }
 
-  private void sendSingleString(String columnName, String value){
-    MaterializedField f = MaterializedField.create(new SchemaPath(columnName, ExpressionPosition.UNKNOWN), Types.required(MinorType.VARCHAR));
-    VarCharVector vector = new VarCharVector(f, bee.getContext().getAllocator());
-    byte[] bytes = value.getBytes(Charsets.UTF_8);
-    vector.allocateNew(bytes.length, 1);
-    vector.getMutator().set(0, bytes);
-    vector.getMutator().setValueCount(1);
-    QueryResult header = QueryResult.newBuilder() //
-        .setQueryId(context.getQueryId()) //
-        .setRowCount(1) //
-        .setDef(RecordBatchDef.newBuilder().addField(vector.getMetadata()).setRecordCount(1).build()) //
-        .setIsLastChunk(false) //
-        .build();
-    QueryWritableBatch b1 = new QueryWritableBatch(header, vector.getBuffers());
-    vector.close();
+  private class PhysicalFromLogicalExplain{
+    public String json;
 
-    QueryResult header2 = QueryResult.newBuilder() //
-        .setQueryId(context.getQueryId()) //
-        .setRowCount(0) //
-        .setDef(RecordBatchDef.getDefaultInstance()) //
-        .setIsLastChunk(true) //
-        .build();
-    QueryWritableBatch b2 = new QueryWritableBatch(header2);
-
-    SingleListener l = new SingleListener();
-    this.initiatingClient.sendResult(l, b1);
-    this.initiatingClient.sendResult(l, b2);
-    l.acct.waitForSendComplete();
+    public PhysicalFromLogicalExplain(String json) {
+      super();
+      this.json = json;
+    }
 
   }
-
 
   class SingleListener implements RpcOutcomeListener<Ack>{
 

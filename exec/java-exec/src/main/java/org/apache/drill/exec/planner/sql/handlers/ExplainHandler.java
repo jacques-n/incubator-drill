@@ -55,12 +55,13 @@ public class ExplainHandler extends DefaultSqlHandler{
     SqlNode sqlNode = rewrite(explain);
     SqlNode validated = validateNode(sqlNode);
     RelNode rel = convertToRel(validated);
+    DrillRel drel = convertToDrel(rel);
+
     if(mode == ResultMode.LOGICAL){
-      LogicalExplain logicalResult = new LogicalExplain(rel);
+      LogicalExplain logicalResult = new LogicalExplain(drel);
       return DirectPlan.createDirectPlan(context, logicalResult);
     }
 
-    DrillRel drel = convertToDrel(rel);
     Prel prel = convertToPrel(drel);
     PhysicalOperator pop = convertToPop(prel);
     PhysicalPlan plan = convertToPlan(pop);

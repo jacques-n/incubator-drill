@@ -18,10 +18,10 @@
 package org.apache.drill.exec.schema;
 
 import static com.google.common.base.Preconditions.checkArgument;
-import static com.google.common.base.Preconditions.checkNotNull;
 
 import java.util.List;
 
+import org.apache.drill.common.expression.SchemaPath;
 import org.apache.drill.common.types.TypeProtos.DataMode;
 
 import com.google.common.base.Predicate;
@@ -44,7 +44,7 @@ public class ListSchema implements RecordSchema {
     }
 
     @Override
-    public Field getField(String fieldName, int index) {
+    public Field getField(SchemaPath fieldName, int index) {
         Field field;
         if (isSingleTyped()) {
             field = Iterables.getOnlyElement(fields, null);

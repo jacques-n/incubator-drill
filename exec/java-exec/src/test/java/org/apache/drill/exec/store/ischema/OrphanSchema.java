@@ -29,12 +29,7 @@ import org.apache.drill.exec.store.StoragePluginRegistry;
 import org.junit.Test;
 
 import com.codahale.metrics.MetricRegistry;
-/**
- * OrphanSchema is a stand alone schema tree which is not connected to Optiq.
- * This class is a refactoring of exec.store.TestOrphanSchema.java. The primary
- * change is to package a "create()" method for providing a test schema.
- * For convenient testing, it mocks up the Drillbit context.
- */
+
 public class OrphanSchema {
   static final org.slf4j.Logger logger = org.slf4j.LoggerFactory.getLogger(OrphanSchema.class);
 

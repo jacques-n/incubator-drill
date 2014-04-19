@@ -54,7 +54,7 @@ INTERVAL : 'interval' | 'INTERVAL';
 INTERVALYEAR : 'intervalyear' | 'INTERVALYEAR';
 INTERVALDAY : 'intervalday' | 'INTERVALDAY';
 
-
+Period : '.';
 Or       : '||' | 'or' | 'OR' | 'Or';
 And      : '&&' | 'and' | 'AND' ;
 Equals   : '==' | '=';
@@ -100,15 +100,21 @@ Number
 //  ;
   
 Identifier
-  :  ('a'..'z' | 'A'..'Z' | '_' | '$') ('a'..'z' | 'A'..'Z' | '_' | '$' | Digit)* ('.' ('a'..'z' | 'A'..'Z' | '_' | '$' ) ('a'..'z' | 'A'..'Z' | '_' | '$' | Digit)*)*
+  : ('a'..'z' | 'A'..'Z' | '_' | '$') ('a'..'z' | 'A'..'Z' | '_' | '$' | Digit)*
+  ;
+
+QuotedIdentifier
+@after {
+  setText(getText().substring(1, getText().length()-1).replaceAll("\\\\(.)", "$1"));
+}
+  :  '`'  (~('`' | '\\')  | '\\' ('\\' | '`'))* '`' 
   ;
 
 String
 @after {
   setText(getText().substring(1, getText().length()-1).replaceAll("\\\\(.)", "$1"));
 }
-  :  '"'  (~('"' | '\\')  | '\\' ('\\' | '"'))* '"' 
-  |  '\'' (~('\'' | '\\') | '\\' ('\\' | '\''))* '\''
+  :  '\'' (~('\'' | '\\') | '\\' ('\\' | '\''))* '\''
   ;
 
 Comment

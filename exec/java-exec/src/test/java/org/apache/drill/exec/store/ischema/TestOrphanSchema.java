@@ -93,7 +93,7 @@ public class TestOrphanSchema {
     System.out.printf("\n%20s\n", table.getName());
     System.out.printf("%10s", "RowNumber");
     for (ValueVector v: table.getValueVectors()) {
-      System.out.printf(" | %16s", v.getField().getName());
+      System.out.printf(" | %16s", v.getField().toExpr());
     }
     System.out.println();
 

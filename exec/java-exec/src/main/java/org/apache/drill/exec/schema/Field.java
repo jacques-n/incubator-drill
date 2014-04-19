@@ -27,37 +27,34 @@ import com.google.common.base.Objects;
 import com.google.common.base.Strings;
 
 public abstract class Field {
-  final String prefixFieldName;
+  final SchemaPath parent;
   MajorType fieldType;
   RecordSchema schema;
   RecordSchema parentSchema;
   boolean read;
 
-  public Field(RecordSchema parentSchema, MajorType type, String prefixFieldName) {
+  public Field(RecordSchema parentSchema, MajorType type, SchemaPath parent) {
     fieldType = type;
-    this.prefixFieldName = prefixFieldName;
+    this.parent = parent;
     this.parentSchema = parentSchema;
   }
 
-  public MaterializedField getAsMaterializedField(FieldReference ref) {
-    assert (ref!=null);
-    return MaterializedField.create(new SchemaPath(ref.getPath() + "." + getFieldName(), ExpressionPosition.UNKNOWN), fieldType);  
-  }
 
   public MaterializedField getAsMaterializedField() {
-      return MaterializedField.create(new SchemaPath(getFieldName(), ExpressionPosition.UNKNOWN), fieldType);    
+      return MaterializedField.create(SchemaPath.getSimplePath(getFieldName()), fieldType);
   }
 
   public abstract String getFieldName();
 
-  public String getFullFieldName() {
+  public SchemaPath getFullFieldName() {
+
     String fieldName = getFieldName();
-    if(Strings.isNullOrEmpty(prefixFieldName)) {
-      return fieldName;
+    if(parent == null) {
+      return SchemaPath.getSimplePath(fieldName);
     } else if(Strings.isNullOrEmpty(fieldName)) {
-      return prefixFieldName;
+      return parent;
     } else {
-      return prefixFieldName + "." + getFieldName();
+      return parent.getChild(fieldName);
     }
   }
 

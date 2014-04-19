@@ -105,15 +105,15 @@ public class ParquetResultListener implements UserResultsListener {
 
     for (VectorWrapper vw : batchLoader) {
       ValueVector vv = vw.getValueVector();
-      currentField = props.fields.get(vv.getField().getName());
+      currentField = props.fields.get(vv.getField().toExpr());
       if (ParquetRecordReaderTest.VERBOSE_DEBUG){
         System.out.println("\n" + (String) currentField.name);
       }
-      if ( ! valuesChecked.containsKey(vv.getField().getName())){
-        valuesChecked.put(vv.getField().getName(), 0);
+      if ( ! valuesChecked.containsKey(vv.getField().toExpr())){
+        valuesChecked.put(vv.getField().toExpr(), 0);
         columnValCounter = 0;
       } else {
-        columnValCounter = valuesChecked.get(vv.getField().getName());
+        columnValCounter = valuesChecked.get(vv.getField().toExpr());
       }
       for (int j = 0; j < vv.getAccessor().getValueCount(); j++) {
         if (ParquetRecordReaderTest.VERBOSE_DEBUG){
@@ -138,8 +138,8 @@ public class ParquetResultListener implements UserResultsListener {
       if (ParquetRecordReaderTest.VERBOSE_DEBUG){
         System.out.println("\n" + vv.getAccessor().getValueCount());
       }
-      valuesChecked.remove(vv.getField().getName());
-      valuesChecked.put(vv.getField().getName(), columnValCounter);
+      valuesChecked.remove(vv.getField().toExpr());
+      valuesChecked.put(vv.getField().toExpr(), columnValCounter);
     }
 
     if (ParquetRecordReaderTest.VERBOSE_DEBUG){
@@ -149,7 +149,7 @@ public class ParquetResultListener implements UserResultsListener {
           System.out.println();
           for (VectorWrapper vw : batchLoader) {
             ValueVector v = vw.getValueVector();
-            System.out.print(Strings.padStart(v.getField().getName(), 20, ' ') + " ");
+            System.out.print(Strings.padStart(v.getField().toExpr(), 20, ' ') + " ");
 
           }
           System.out.println();

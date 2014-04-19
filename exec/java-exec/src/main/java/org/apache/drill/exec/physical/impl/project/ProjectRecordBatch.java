@@ -85,9 +85,10 @@ public class ProjectRecordBatch extends AbstractSingleRecordBatch<Project>{
   private FieldReference getRef(NamedExpression e){
     FieldReference ref = e.getRef();
     PathSegment seg = ref.getRootSegment();
-    if(seg.isNamed() && "output".contentEquals(seg.getNameSegment().getPath())){
-      return new FieldReference(ref.getPath().toString().subSequence(7, ref.getPath().length()), ref.getPosition());
-    }
+
+//    if(seg.isNamed() && "output".contentEquals(seg.getNameSegment().getPath())){
+//      return new FieldReference(ref.getPath().toString().subSequence(7, ref.getPath().length()), ref.getPosition());
+//    }
     return ref;
   }
 
@@ -128,7 +129,9 @@ public class ProjectRecordBatch extends AbstractSingleRecordBatch<Project>{
     if(isAnyWildcard){
       for(VectorWrapper<?> wrapper : incoming){
         ValueVector vvIn = wrapper.getValueVector();
-        TransferPair tp = wrapper.getValueVector().getTransferPair(new FieldReference(vvIn.getField().getName()));
+        String name = vvIn.getField().getDef().getName(vvIn.getField().getDef().getNameCount() - 1).getName();
+        FieldReference ref = new FieldReference(name);
+        TransferPair tp = wrapper.getValueVector().getTransferPair(ref);
         transfers.add(tp);
         container.add(tp.getTo());
       }

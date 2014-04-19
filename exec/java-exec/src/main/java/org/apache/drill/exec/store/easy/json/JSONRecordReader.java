@@ -68,7 +68,7 @@ public class JSONRecordReader implements RecordReader {
   private static final int DEFAULT_LENGTH = 256 * 1024; // 256kb
   public static final Charset UTF_8 = Charset.forName("UTF-8");
 
-  private final Map<String, VectorHolder> valueVectorMap;
+  private final Map<SchemaPath, VectorHolder> valueVectorMap;
   private final FileSystem fileSystem;
   private final Path hadoopPath;
 
@@ -92,7 +92,7 @@ public class JSONRecordReader implements RecordReader {
     this.columns = columns;
   }
 
-  public JSONRecordReader(FragmentContext fragmentContext, String inputPath, FileSystem fileSystem, 
+  public JSONRecordReader(FragmentContext fragmentContext, String inputPath, FileSystem fileSystem,
                           List<SchemaPath> columns) {
     this(fragmentContext, inputPath, fileSystem, DEFAULT_LENGTH, columns);
   }
@@ -204,7 +204,7 @@ public class JSONRecordReader implements RecordReader {
   }
 
   private boolean fieldSelected(String field){
-    SchemaPath sp = new SchemaPath(field, ExpressionPosition.UNKNOWN);
+    SchemaPath sp = SchemaPath.getSimplePath(field);
     if (this.columns != null && this.columns.size() > 0){
       for (SchemaPath expr : this.columns){
         if ( sp.equals(expr)){
@@ -231,7 +231,7 @@ public class JSONRecordReader implements RecordReader {
     OBJECT(END_OBJECT) {
       @Override
       public Field createField(RecordSchema parentSchema,
-                               String prefixFieldName,
+                               SchemaPath parentSchema,
                                String fieldName,
                                MajorType fieldType,
                                int index) {
@@ -256,7 +256,7 @@ public class JSONRecordReader implements RecordReader {
 
     @SuppressWarnings("ConstantConditions")
     public boolean readRecord(JSONRecordReader reader,
-                              String prefixFieldName,
+                              SchemaPath path,
                               int rowIndex,
                               int groupCount) throws IOException, SchemaChangeException {
       JsonParser parser = reader.getParser();
@@ -295,7 +295,7 @@ public class JSONRecordReader implements RecordReader {
               readType,
               reader,
               fieldType,
-              prefixFieldName,
+              path,
               fieldName,
               rowIndex,
               colIndex,
@@ -327,7 +327,7 @@ public class JSONRecordReader implements RecordReader {
     private boolean recordData(JSONRecordReader.ReadType readType,
                                JSONRecordReader reader,
                                MajorType fieldType,
-                               String prefixFieldName,
+                               SchemaPath prefixFieldName,
                                String fieldName,
                                int rowIndex,
                                int colIndex,
@@ -497,7 +497,7 @@ public class JSONRecordReader implements RecordReader {
     public abstract RecordSchema createSchema() throws IOException;
 
     public abstract Field createField(RecordSchema parentSchema,
-                                      String prefixFieldName,
+                                      SchemaPath parent,
                                       String fieldName,
                                       MajorType fieldType,
                                       int index);
@@ -508,7 +508,7 @@ public class JSONRecordReader implements RecordReader {
   }
 
   private VectorHolder getOrCreateVectorHolder(Field field) throws SchemaChangeException {
-    String fullFieldName = field.getFullFieldName();
+    SchemaPath fullFieldName = field.getFullFieldName();
     VectorHolder holder = valueVectorMap.get(fullFieldName);
 
     if (holder == null) {
@@ -519,7 +519,7 @@ public class JSONRecordReader implements RecordReader {
         return null;
       }
 
-      MaterializedField f = MaterializedField.create(new SchemaPath(fullFieldName, ExpressionPosition.UNKNOWN), type);
+      MaterializedField f = MaterializedField.create(fullFieldName, type);
 
       ValueVector v = TypeHelper.getNewVector(f, allocator);
       AllocationHelper.allocate(v, batchSize, 50);

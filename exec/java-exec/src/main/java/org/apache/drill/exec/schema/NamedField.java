@@ -17,6 +17,7 @@
  */
 package org.apache.drill.exec.schema;
 
+import org.apache.drill.common.expression.SchemaPath;
 import org.apache.drill.common.types.TypeProtos.MajorType;
 import org.apache.drill.exec.schema.json.jackson.JacksonHelper;
 
@@ -26,12 +27,12 @@ public class NamedField extends Field {
     final MajorType keyType;
     String fieldName;
 
-    public NamedField(RecordSchema parentSchema, String prefixFieldName, String fieldName, MajorType fieldType) {
+    public NamedField(RecordSchema parentSchema, SchemaPath prefixFieldName, String fieldName, MajorType fieldType) {
         this(parentSchema, prefixFieldName, fieldName, fieldType, JacksonHelper.STRING_TYPE);
     }
 
     public NamedField(RecordSchema parentSchema,
-                      String prefixFieldName,
+                      SchemaPath prefixFieldName,
                       String fieldName,
                       MajorType fieldType,
                       MajorType keyType) {

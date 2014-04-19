@@ -17,10 +17,13 @@
  */
 package org.apache.drill.exec.record;
 
+import java.util.Collections;
 import java.util.Iterator;
+import java.util.List;
 
 import org.apache.drill.common.expression.FieldReference;
 import org.apache.drill.common.expression.PathSegment;
+import org.apache.drill.common.expression.PathSegment.NameSegment;
 import org.apache.drill.common.expression.SchemaPath;
 import org.apache.drill.common.types.TypeProtos.DataMode;
 import org.apache.drill.common.types.TypeProtos.MajorType;
@@ -45,7 +48,7 @@ public class MaterializedField{
   }
 
   public static MaterializedField create(String path, MajorType type){
-    SchemaPath p = new SchemaPath(path);
+    SchemaPath p = SchemaPath.getSimplePath(path);
     return create(p, type);
   }
 
@@ -74,24 +77,41 @@ public class MaterializedField{
     return def;
   }
 
-  public String getName(){
-    StringBuilder sb = new StringBuilder();
-    boolean first = true;
-    for(NamePart np : def.getNameList()){
-      if(np.getType() == Type.ARRAY){
-        sb.append("[]");
+  public SchemaPath getAsSchemaPath(){
+    List<NamePart> nameList = def.getNameList();
+    Collections.reverse(nameList);
+    PathSegment seg = null;
+    for(NamePart p : nameList){
+      if(p.getType() == NamePart.Type.ARRAY){
+        throw new UnsupportedOperationException();
       }else{
-        if(first){
-          first = false;
-        }else{
-          sb.append(".");
-        }
-        sb.append(np.getName());
-
+        seg = new NameSegment(p.getName(), seg);
       }
     }
-    return sb.toString();
+    if( !(seg instanceof NameSegment) ) throw new UnsupportedOperationException();
+    return new SchemaPath( (NameSegment) seg);
   }
+
+//  public String getName(){
+//    StringBuilder sb = new StringBuilder();
+//    boolean first = true;
+//    for(NamePart np : def.getNameList()){
+//      if(np.getType() == Type.ARRAY){
+//        sb.append("[]");
+//      }else{
+//        if(first){
+//          first = false;
+//        }else{
+//          sb.append(".");
+//        }
+//        sb.append('`');
+//        sb.append(np.getName());
+//        sb.append('`');
+//
+//      }
+//    }
+//    return sb.toString();
+//  }
 
   public int getWidth() {
     return def.getMajorType().getWidth();
@@ -182,4 +202,7 @@ public class MaterializedField{
     return "MaterializedField [" + def.toString() + "]";
   }
 
+  public String toExpr(){
+    return this.getAsSchemaPath().toExpr();
+  }
 }
