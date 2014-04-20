@@ -177,8 +177,12 @@ public class Foreman implements Runnable, Closeable, Comparable<Object>{
       default:
         throw new UnsupportedOperationException();
       }
-    }catch(Exception ex){
+    }catch(AssertionError | Exception ex){
       fail("Failure while setting up Foreman.", ex);
+    }catch(OutOfMemoryError e){
+      System.out.println("Out of memory, exiting.");
+      System.out.flush();
+      System.exit(-1);
     }
   }
 

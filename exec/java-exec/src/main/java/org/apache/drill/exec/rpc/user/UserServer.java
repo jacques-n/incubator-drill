@@ -33,6 +33,7 @@ import org.apache.drill.exec.proto.UserProtos.RequestResults;
 import org.apache.drill.exec.proto.UserProtos.RpcType;
 import org.apache.drill.exec.proto.UserProtos.RunQuery;
 import org.apache.drill.exec.proto.UserProtos.UserToBitHandshake;
+import org.apache.drill.exec.rpc.Acks;
 import org.apache.drill.exec.rpc.BasicServer;
 import org.apache.drill.exec.rpc.ProtobufLengthDecoder;
 import org.apache.drill.exec.rpc.RemoteConnection;
@@ -93,6 +94,10 @@ public class UserServer extends BasicServer<RpcType, UserServer.UserClientConnec
       } catch (InvalidProtocolBufferException e) {
         throw new RpcException("Failure while decoding RequestResults body.", e);
       }
+
+    case RpcType.CANCEL_QUERY_VALUE:
+      logger.warn("Cancel requested but not supported yet.");
+      return new Response(RpcType.ACK, Acks.OK);
 
     default:
       throw new UnsupportedOperationException(String.format("UserServer received rpc of unknown type.  Type was %d.", rpcType));

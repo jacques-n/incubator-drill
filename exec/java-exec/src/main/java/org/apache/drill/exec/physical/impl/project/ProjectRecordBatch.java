@@ -24,10 +24,10 @@ import java.util.Set;
 
 import org.apache.drill.common.expression.ErrorCollector;
 import org.apache.drill.common.expression.ErrorCollectorImpl;
-import org.apache.drill.common.expression.ExpressionPosition;
 import org.apache.drill.common.expression.FieldReference;
 import org.apache.drill.common.expression.LogicalExpression;
 import org.apache.drill.common.expression.PathSegment;
+import org.apache.drill.common.expression.PathSegment.NameSegment;
 import org.apache.drill.common.expression.SchemaPath;
 import org.apache.drill.common.logical.data.NamedExpression;
 import org.apache.drill.exec.exception.ClassTransformationException;
@@ -100,16 +100,10 @@ public class ProjectRecordBatch extends AbstractSingleRecordBatch<Project>{
   }
 
   private boolean isWildcard(NamedExpression ex){
-    LogicalExpression expr = ex.getExpr();
-    LogicalExpression ref = ex.getRef();
-    if(expr instanceof SchemaPath && ref instanceof SchemaPath){
-      PathSegment e = ((SchemaPath) expr).getRootSegment();
-      PathSegment n = ((SchemaPath) ref).getRootSegment();
-      if(e.isNamed() && e.getNameSegment().getPath().equals("*") && n.isNamed() && n.getChild() != null && n.getChild().isNamed() && n.getChild().getNameSegment().getPath().equals("*")){
-        return true;
-      }
-    }
-    return false;
+    if( !(ex.getExpr() instanceof SchemaPath)) return false;
+    NameSegment expr = ((SchemaPath)ex.getExpr()).getRootSegment();
+    NameSegment ref = ex.getRef().getRootSegment();
+    return ref.getPath().equals("*") && expr.getPath().equals("*");
   }
 
   @Override
