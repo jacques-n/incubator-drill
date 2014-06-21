@@ -421,7 +421,6 @@ public class MergeJoinBatch extends AbstractRecordBatch<MergeJoinPOP> {
     //estimation of joinBatchSize : max of left/right size, expanded by a factor of 16, which is then bounded by MAX_BATCH_SIZE.
     int leftCount = worker == null ? left.getRecordCount() : (status.isLeftPositionAllowed() ? left.getRecordCount() : 0);
     int rightCount = worker == null ? left.getRecordCount() : (status.isRightPositionAllowed() ? right.getRecordCount() : 0);
-    int joinBatchSize = Math.min(Math.max(leftCount, rightCount) * 16, MAX_BATCH_SIZE);
 
     // add fields from both batches
     if (worker == null || leftCount > 0) {
@@ -435,7 +434,7 @@ public class MergeJoinBatch extends AbstractRecordBatch<MergeJoinPOP> {
           outputType = inputType;
         }
         ValueVector outgoingVector = TypeHelper.getNewVector(MaterializedField.create(w.getField().getPath(), outputType), oContext.getAllocator());
-        VectorAllocator.getAllocator(outgoingVector, (int) Math.ceil(w.getValueVector().getBufferSize() / Math.max(1, left.getRecordCount()))).alloc(joinBatchSize);
+        outgoingVector.allocateNew();
         container.add(outgoingVector);
       }
     }
@@ -450,7 +449,7 @@ public class MergeJoinBatch extends AbstractRecordBatch<MergeJoinPOP> {
           outputType = inputType;
         }
         ValueVector outgoingVector = TypeHelper.getNewVector(MaterializedField.create(w.getField().getPath(), outputType), oContext.getAllocator());
-        VectorAllocator.getAllocator(outgoingVector, (int) Math.ceil(w.getValueVector().getBufferSize() / Math.max(1, right.getRecordCount()))).alloc(joinBatchSize);
+        outgoingVector.allocateNew();
         container.add(outgoingVector);
       }
     }
