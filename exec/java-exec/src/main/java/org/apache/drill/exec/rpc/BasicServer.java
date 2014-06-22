@@ -25,10 +25,11 @@ import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelInitializer;
 import io.netty.channel.ChannelOption;
 import io.netty.channel.EventLoopGroup;
+import io.netty.channel.epoll.EpollChannelOption;
+import io.netty.channel.epoll.EpollServerSocketChannel;
+import io.netty.channel.socket.ServerSocketChannel;
 import io.netty.channel.socket.SocketChannel;
 import io.netty.channel.socket.nio.NioServerSocketChannel;
-import io.netty.handler.logging.LogLevel;
-import io.netty.handler.logging.LoggingHandler;
 
 import java.io.IOException;
 import java.net.BindException;
@@ -56,9 +57,8 @@ public abstract class BasicServer<T extends EnumLite, C extends RemoteConnection
   public BasicServer(RpcConfig rpcMapping, ByteBufAllocator alloc, EventLoopGroup eventLoopGroup) {
     super(rpcMapping);
     this.eventLoopGroup = eventLoopGroup;
-
     b = new ServerBootstrap() //
-        .channel(NioServerSocketChannel.class) //
+        .channel(PlatformChecker.getServerSocketChannel()) //
         .option(ChannelOption.SO_BACKLOG, 1000) //
         .option(ChannelOption.CONNECT_TIMEOUT_MILLIS, 4*60*1000)
         .option(ChannelOption.TCP_NODELAY, true)
@@ -86,6 +86,10 @@ public abstract class BasicServer<T extends EnumLite, C extends RemoteConnection
 //            logger.debug("Server connection initialization completed.");
           }
         });
+
+     if(PlatformChecker.SUPPORTS_EPOLL){
+       b.option(EpollChannelOption.SO_REUSEPORT, true); //
+     }
   }
 
   public OutOfMemoryHandler getOutOfMemoryHandler() {

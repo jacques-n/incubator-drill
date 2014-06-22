@@ -28,6 +28,7 @@ import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelInitializer;
 import io.netty.channel.ChannelOption;
 import io.netty.channel.EventLoopGroup;
+import io.netty.channel.epoll.EpollChannelOption;
 import io.netty.channel.socket.SocketChannel;
 import io.netty.channel.socket.nio.NioSocketChannel;
 import io.netty.util.concurrent.GenericFutureListener;
@@ -59,7 +60,7 @@ public abstract class BasicClient<T extends EnumLite, R extends RemoteConnection
 
     b = new Bootstrap() //
         .group(eventLoopGroup) //
-        .channel(NioSocketChannel.class) //
+        .channel(PlatformChecker.getClientSocketChannel()) //
         .option(ChannelOption.ALLOCATOR, alloc) //
         .option(ChannelOption.CONNECT_TIMEOUT_MILLIS, 4*60*1000)
         .option(ChannelOption.SO_REUSEADDR, true)
@@ -84,9 +85,11 @@ public abstract class BasicClient<T extends EnumLite, R extends RemoteConnection
                 );
             connect = true;
           }
-        }) //
+        }); //
 
-    ;
+    if(PlatformChecker.SUPPORTS_EPOLL){
+      b.option(EpollChannelOption.SO_REUSEPORT, true); //
+    }
   }
 
   public abstract ProtobufLengthDecoder getDecoder(BufferAllocator allocator);
