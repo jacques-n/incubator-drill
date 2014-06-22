@@ -62,6 +62,7 @@ public abstract class BasicClient<T extends EnumLite, R extends RemoteConnection
         .channel(NioSocketChannel.class) //
         .option(ChannelOption.ALLOCATOR, alloc) //
         .option(ChannelOption.CONNECT_TIMEOUT_MILLIS, 4*60*1000)
+        .option(ChannelOption.SO_REUSEADDR, true)
         .option(ChannelOption.SO_RCVBUF, 1 << 17) //
         .option(ChannelOption.SO_SNDBUF, 1 << 17) //
         .option(ChannelOption.TCP_NODELAY, true)
