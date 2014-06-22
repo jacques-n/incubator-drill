@@ -59,7 +59,8 @@ public abstract class BasicServer<T extends EnumLite, C extends RemoteConnection
 
     b = new ServerBootstrap() //
         .channel(NioServerSocketChannel.class) //
-        .option(ChannelOption.SO_BACKLOG, 100) //
+        .option(ChannelOption.SO_BACKLOG, 1000) //
+        .option(ChannelOption.CONNECT_TIMEOUT_MILLIS, 4*60*1000)
         .option(ChannelOption.TCP_NODELAY, true)
         .option(ChannelOption.SO_RCVBUF, 1 << 17) //
         .option(ChannelOption.SO_SNDBUF, 1 << 17) //
