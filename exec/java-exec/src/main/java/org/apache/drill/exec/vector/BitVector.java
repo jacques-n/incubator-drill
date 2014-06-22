@@ -17,12 +17,12 @@
  */
 package org.apache.drill.exec.vector;
 
+import io.netty.buffer.AccountingByteBuf;
 import io.netty.buffer.ByteBuf;
 
 import org.apache.drill.common.expression.FieldReference;
 import org.apache.drill.exec.expr.holders.BitHolder;
 import org.apache.drill.exec.expr.holders.NullableBitHolder;
-import org.apache.drill.exec.memory.AccountingByteBuf;
 import org.apache.drill.exec.memory.BufferAllocator;
 import org.apache.drill.exec.memory.OutOfMemoryRuntimeException;
 import org.apache.drill.exec.proto.UserBitShared.SerializedField;

@@ -17,6 +17,7 @@
  */
 package org.apache.drill.exec.memory;
 
+import io.netty.buffer.AccountingByteBuf;
 import io.netty.buffer.ByteBuf;
 
 import java.util.Arrays;

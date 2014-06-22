@@ -17,10 +17,10 @@
  */
 package org.apache.drill.exec.rpc.data;
 
+import io.netty.buffer.AccountingByteBuf;
 import io.netty.buffer.ByteBufAllocator;
 import io.netty.channel.Channel;
 
-import org.apache.drill.exec.memory.AccountingByteBuf;
 import org.apache.drill.exec.memory.BufferAllocator;
 import org.apache.drill.exec.memory.OutOfMemoryException;
 import org.apache.drill.exec.proto.ExecProtos.FragmentHandle;

@@ -166,11 +166,11 @@
       <artifactId>drill-common</artifactId>
       <version>${project.version}</version>
     </dependency>
-    <dependency>
-      <groupId>org.apache.drill.exec</groupId>
-      <version>${project.version}</version>
-      <artifactId>drill-buffers</artifactId>
-    </dependency>
+<!--     <dependency> -->
+<!--       <groupId>org.apache.drill.exec</groupId> -->
+<!--       <version>${project.version}</version> -->
+<!--       <artifactId>drill-buffers</artifactId> -->
+<!--     </dependency> -->
     <dependency>
       <groupId>org.apache.drill</groupId>
       <artifactId>drill-common</artifactId>
