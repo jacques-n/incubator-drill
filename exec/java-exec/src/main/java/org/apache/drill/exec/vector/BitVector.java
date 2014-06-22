@@ -366,11 +366,7 @@ public final class BitVector extends BaseDataValueVector implements FixedWidthVe
       } else if (allocationMonitor > 0) {
         allocationMonitor = 0;
       }
-      data.writerIndex(idx);
-      if (data instanceof AccountingByteBuf) {
-        data.capacity(idx);
-        data.writerIndex(idx);
-      }
+      VectorTrimmer.trim(data, idx);
     }
 
     @Override
