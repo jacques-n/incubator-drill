@@ -18,28 +18,28 @@
 package io.netty.buffer;
 
 
-/** 
- * A Chunk is a large, fixed size piece of memory allocated from the operating system. 
+/**
+ * A Chunk is a large, fixed size piece of memory allocated from the operating system.
  * This PoolChunk allocator divides a chunk into a run of pages using the buddy system.
- * The actual allocation will be the size requested, rounded up to the next 
+ * The actual allocation will be the size requested, rounded up to the next
  * power-of-2.
- * 
+ *
  * This allocator does "normal" allocations, where the requested size varies
  *    from page size to chunk size.
- * 
+ *
  * The allocator is based on buddy system. It views a chunk as a binary tree with
  *     1 run of chunksize, or
  *     2 runs of chunksize/2, or
  *     4 runs of chunksize/4, or
  *     ...
  *     2^maxOrder runs of pagesize
- *     
+ *
  * Each node in the binary tree is labeled:
  *     - unused.  The node and all its children are unallocated
  *     - allocated. The node (and all its children) are allocated
  *                  as a single request. The children remain marked "unused".
  *     - branch. At least one descendent is allocated.
- *     
+ *
  * The binary tree is represented in the "memoryMap",
  *   which saves the node status in a simple array without using links.
  *   The array indices indicate the position within the tree as follows:
@@ -48,9 +48,9 @@ package io.netty.buffer;
  *     2,3 - children of 1
  *     4,5  6,7  - children of 2 and 3
  *     8,9 10,11   12,13 14,15     - next level of children.
- *     
- * Thus, i/2 points to the parent of i,  
- *       i*2 points to left child, i*2+1 points to right child.    
+ *
+ * Thus, i/2 points to the parent of i,
+ *       i*2 points to left child, i*2+1 points to right child.
  *
  * Note the current code also deals with smaller subpage allocations.
  *    The overall memory manager only comes here when it wants a new page,
@@ -84,9 +84,9 @@ final class PoolChunkL<T> {
 
     private int freeBytes;
 
-    PoolChunkListL<T> parent;
-    PoolChunkL<T> prev;
-    PoolChunkL<T> next;
+    volatile PoolChunkListL<T> parent;
+    volatile PoolChunkL<T> prev;
+    volatile PoolChunkL<T> next;
 
     // TODO: Test if adding padding helps under contention
     //private long pad0, pad1, pad2, pad3, pad4, pad5, pad6, pad7;
@@ -147,7 +147,7 @@ final class PoolChunkL<T> {
         return new PoolSubpageL[size];
     }
 
-    
+
     /** returns the percentage of the chunk which has been allocated */
     int usage() {
         if (freeBytes == 0) {
@@ -161,8 +161,8 @@ final class PoolChunkL<T> {
         return 100 - freePercentage;
     }
 
-    
-    /** 
+
+    /**
      * Allocates a buffer of the given size from current chunk
      * @param capacity - requested capacity of the buffer
      * @return - handle to the buffer, -1 if failed
@@ -170,8 +170,8 @@ final class PoolChunkL<T> {
     long allocate(int capacity) {
     	return allocate(capacity, capacity);
     }
-    
-    
+
+
     /**
      * Allocates a buffer with size between minRequested and maxRequested
      * @param minRequested
@@ -179,12 +179,12 @@ final class PoolChunkL<T> {
      * @return
      */
     long allocate(int minRequested, int maxRequested) {
-    	
+
     	// CASE: allocating runs of pages, make use of maxCapacity since we can trim it later
     	if (maxRequested > pageSize/2)   {
     		return allocateRun(minRequested, maxRequested, 1, chunkSize);
     	}
-    	
+
     	// OTHERWISE: allocating subpage buffer. Special case: maxCapacity is normCapacity.
     	//   Note: this case should be moved to PoolArena.
     	else {
@@ -192,75 +192,75 @@ final class PoolChunkL<T> {
     	}
     }
 
-    
-    
+
+
     /**
      * Allocate a run of pages where the run size is within minCapacity thru maxCapacity.
      * @param minRequested - the minimum size of the buffer
      * @param maxRequested - the maximum size of the buffer to be allocated if convenient
      * @param node - the subtree of this chunk to search
      * @return handle to the allocated memory
-     * 
+     *
      * More specifically, this routine finds an unused node in the binary tree,
      *   s.t.  the node is big enough to contain minCapacity, and is not
      *         bigger than the size to contain maxCapacity.
-     *         
+     *
      * A node is the correct size to contain x bytes, if
      *      runlength(node) == roundup-power-of-2(x)
      *  equivalently, runlength(node) >= x  and   runlength(node.child) < x
-     *  equivalently, runlength(node) >= x  and   runlength(node)/2 < x  
-     *  
+     *  equivalently, runlength(node) >= x  and   runlength(node)/2 < x
+     *
      * Similarly, a node is the correct size to contain min...max bytes, if
      *    runlength(node) >= roundup-power-of-2(min)  &&  runlength(node) <= roundup-power-of-2(max)
-     *    or equivalently,    runlength(node) >= min  &&  runlength(node)/2 < max   
+     *    or equivalently,    runlength(node) >= min  &&  runlength(node)/2 < max
      */
     long allocateRun(int minRequested, int maxRequested, int node, int runLength) {
-    	
+
     	// Search through the subtrees until finding an unused node s.t. runlength >= min
     	for (; runLength >= minRequested; runLength /= 2) {
     		if ((memoryMap[node]&3) != ST_BRANCH) break;
-    		
+
             // Search one random subtree (recursively)
     		int child = node*2 + nextRandom();
     		long handle = allocateRun(minRequested, maxRequested, child, runLength/2);
     		if (handle != -1) return handle;
-    			
-    		// If not found, search the other subtree (tail recursion) 
+
+    		// If not found, search the other subtree (tail recursion)
     		node = child ^ 1;
     	}
-    		
+
     	// if we failed to find an unused node which is big enough, then failure.
     	if (runLength < minRequested || (memoryMap[node]&3) != ST_UNUSED) {
     		return -1;
     	}
-    	
+
     	// At this point, we have an unused node s.t.  runlength >= min.
     	//   In other words, it is larger than the minimum, but it may also be larger
-    	//   than the maximum. 
-    	
+    	//   than the maximum.
+
     	// Continue descending subtree looking for a node s.t. runlength/2 < max
         for (; runLength/2 >= maxRequested; runLength/=2) {
-        	
+
         	// We are about to allocate from one of our children, so we become BRANCH
         	memoryMap[node] = (memoryMap[node]&~3) | ST_BRANCH;
-        	
+
         	// Pick one of the children and continue descending its subtree.
         	node = node * 2 + nextRandom();
         }
-    	
+
     	// We are at an unused node which satisfies both conditions. Allocate it.
         memoryMap[node] = (memoryMap[node]&~3) | ST_ALLOCATED;
         freeBytes -= runLength;
         return node;
     }
-    
-    
-    
-    
-    
+
+
+
+
+
     /**
      * Allocate a new page for splitting into subpage items.
-     *   Note: this routine doesn't belong here. Instead, we should have a "subpage" allocator 
+     *   Note: this routine doesn't belong here. Instead, we should have a "subpage" allocator
      *   which is invoked instead of us and is responsible for the entire subpage allocation sizes.
      * @param normCapacity - the actual size of the buffer we will allocate
      * @param curIdxn - the node where our search stargs
@@ -296,8 +296,8 @@ final class PoolChunkL<T> {
         return -1;
     }
 
-    
-    
+
+
     /**
      * Allocate a page to be used for subpage buffers, knowing the subtree is UNUSED
      * @param normCapacity
@@ -343,7 +343,7 @@ final class PoolChunkL<T> {
         }
         return -1;
     }
-    
+
     /**
      * Free up memory to reduce the size of a run of pages.
      *     The resulting run starts on the same page, and
@@ -358,43 +358,43 @@ final class PoolChunkL<T> {
     	int memoryMapIdx = (int) handle;
     	int bitmapIx = (int)(handle >>> 32);
     	int originalRunLength = runLength(memoryMap[memoryMapIdx]);
-    	
+
     	// If the buffer was a HUGE allocation, then we leave it alone
     	if (this.unpooled || memoryMapIdx == 0 || handle < 0) {
     		return -1;
     	}
-    	
+
     	// If the buffer was a subpage, then we also leave it alone.
     	if (bitmapIx != 0 || (memoryMap[memoryMapIdx] & 3) == ST_ALLOCATED_SUBPAGE) {
     		return -1;
     	}
- 
+
     	// We can't trim if the result will become a subpage
     	if (smallerSize <= pageSize/2) {
     		return -1;
     	}
-       	
+
     	// If the buffer is growing, then we aren't really trimming.
     	if (smallerSize >= originalRunLength) {
     		return -1;
     	}
-    	
+
     	// Starting at current node, follow left hand children, until reaching node of desired size.
-    	//   Note that runLength and memoryMapIdx move in unison. 
+    	//   Note that runLength and memoryMapIdx move in unison.
     	int runLength;
     	for (runLength = originalRunLength;  smallerSize*2 <= runLength;  runLength /= 2, memoryMapIdx = memoryMapIdx<<1) {
-    		
+
     		// Current node is a parent of the desired node. It now becomes a "BRANCH".
     		memoryMap[memoryMapIdx] = (memoryMap[memoryMapIdx] & ~3) | ST_BRANCH;
-    		
+
     		// Right hand child is now an unused buddy. Mark it "UNUSED".
     		//  (done - should already be marked "UNUSED")
     	}
-    	
+
     	// We are now at the desired node. Mark it allocated.
     	memoryMap[memoryMapIdx] = (memoryMap[memoryMapIdx] & ~3) | ST_ALLOCATED;
     	freeBytes += (originalRunLength - runLength);
-    	
+
     	// return new handle to the reduced size buffer.
     	return memoryMapIdx;
     }
@@ -417,8 +417,8 @@ final class PoolChunkL<T> {
             if (subpage.free(bitmapIdx & 0x3FFFFFFF)) {
                 return;
             }
-            
-        // Otherwise, it should have been allocated from the chunk    
+
+        // Otherwise, it should have been allocated from the chunk
         } else {
             assert state == ST_ALLOCATED : "state: " + state;
             assert bitmapIdx == 0;
@@ -429,10 +429,10 @@ final class PoolChunkL<T> {
 
         // start at current node and work up the tree
         for (;;) {
-        	
+
             // Mark the node as "unused"
             memoryMap[memoryMapIdx] = val & ~3 | ST_UNUSED;
-            
+
             // If at top of tree, done
             if (memoryMapIdx == 1) {
                 assert freeBytes == chunkSize;
@@ -453,7 +453,7 @@ final class PoolChunkL<T> {
     void initBuf(PooledByteBufL<T> buf, long handle, int reqCapacity) {
     	initBuf(buf, handle, reqCapacity, reqCapacity);
     }
-    
+
     /**
      * Initialize a buffer given a handle that was allocated from this chunk.
      * @param buf       The buffer to be initialized.
@@ -464,20 +464,20 @@ final class PoolChunkL<T> {
     void initBuf(PooledByteBufL<T> buf, long handle, int minRequested, int maxRequested) {
         int memoryMapIdx = (int) handle;
         int bitmapIdx = (int) (handle >>> 32);
-        
+
         // If this is a normal allocation
         if (bitmapIdx == 0) {
-        	
+
         	// Verify the memory is allocated
             int val = memoryMap[memoryMapIdx];
             assert (val & 3) == ST_ALLOCATED : String.valueOf(val & 3);
-            
+
             // Initialize buffer with as large as possible capacity within the requested range
             //  (assert: we know the buffer is >= minCapacity)
-            int capacity = Math.min(runLength(val), maxRequested);         
+            int capacity = Math.min(runLength(val), maxRequested);
             buf.init(this, handle, runOffset(val), capacity, runLength(val));
-            
-        // Otherwise initialize buffer as a subpage allocation.  
+
+        // Otherwise initialize buffer as a subpage allocation.
         } else {
             initBufWithSubpage(buf, handle, bitmapIdx, minRequested);
         }
