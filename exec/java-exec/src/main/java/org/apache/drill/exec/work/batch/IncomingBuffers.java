@@ -28,6 +28,7 @@ import org.apache.drill.exec.physical.base.AbstractPhysicalVisitor;
 import org.apache.drill.exec.physical.base.PhysicalOperator;
 import org.apache.drill.exec.physical.base.Receiver;
 import org.apache.drill.exec.record.RawFragmentBatch;
+import org.apache.drill.exec.rpc.ResponseSender;
 
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Maps;
@@ -61,13 +62,13 @@ public class IncomingBuffers implements AutoCloseable {
     streamsRemaining.set(totalStreams);
   }
 
-  public boolean batchArrived(RawFragmentBatch batch) throws FragmentSetupException {
+  public boolean batchArrived(RawFragmentBatch batch, ResponseSender sender) throws FragmentSetupException {
     // no need to do anything if we've already enabled running.
     // logger.debug("New Batch Arrived {}", batch);
     if (batch.getHeader().getIsOutOfMemory()) {
       for (DataCollector fSet : fragCounts.values()) {
         try {
-          fSet.batchArrived(0, batch);
+          fSet.batchArrived(0, batch, sender);
         } catch (IOException e) {
           throw new RuntimeException();
         }
@@ -81,7 +82,7 @@ public class IncomingBuffers implements AutoCloseable {
     DataCollector fSet = fragCounts.get(sendMajorFragmentId);
     if (fSet == null) throw new FragmentSetupException(String.format("We received a major fragment id that we were not expecting.  The id was %d. %s", sendMajorFragmentId, Arrays.toString(fragCounts.values().toArray())));
     try {
-      boolean decremented = fSet.batchArrived(batch.getHeader().getSendingMinorFragmentId(), batch);
+      boolean decremented = fSet.batchArrived(batch.getHeader().getSendingMinorFragmentId(), batch, sender);
 
       // we should only return true if remaining required has been decremented and is currently equal to zero.
       return decremented && remainingRequired.get() == 0;

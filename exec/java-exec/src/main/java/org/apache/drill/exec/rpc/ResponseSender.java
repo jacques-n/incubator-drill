@@ -15,23 +15,10 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+package org.apache.drill.exec.rpc;
 
-package org.apache.drill.exec.proto.helper;
 
-import java.util.UUID;
+public interface ResponseSender {
+  public void send(Response r);
 
-import org.apache.drill.exec.proto.ExecProtos.FragmentHandle;
-import org.apache.drill.exec.proto.UserBitShared.QueryId;
-
-/* Helper class around the QueryId protobuf */
-public class QueryIdHelper {
-
-  /* Generate a UUID from the two parts of the queryid */
-  public static String getQueryId(QueryId queryId) {
-    return (new UUID(queryId.getPart1(), queryId.getPart2())).toString();
-  }
-
-  public static String getQueryIdentifier(FragmentHandle h) {
-    return getQueryId(h.getQueryId()) + ":" + h.getMajorFragmentId() + ":" + h.getMinorFragmentId();
-  }
 }

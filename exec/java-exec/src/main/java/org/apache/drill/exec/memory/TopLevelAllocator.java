@@ -64,6 +64,11 @@ public class TopLevelAllocator implements BufferAllocator {
         );
   }
 
+  @Override
+  public boolean takeOwnership(AccountingByteBuf buf) {
+    return buf.transferAccounting(acct);
+  }
+
   public AccountingByteBuf buffer(int min, int max) {
     if(!acct.reserve(min)) return null;
     ByteBuf buffer = innerAllocator.directBuffer(min, max);
@@ -122,6 +127,11 @@ public class TopLevelAllocator implements BufferAllocator {
       assert max >= pre;
       childAcct = new Accountor(errorOnLeak, handle, parentAccountor, max, pre);
       this.handle = handle;
+    }
+
+    @Override
+    public boolean takeOwnership(AccountingByteBuf buf) {
+      return buf.transferAccounting(childAcct);
     }
 
     @Override

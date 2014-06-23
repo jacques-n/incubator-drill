@@ -21,7 +21,7 @@ import java.io.IOException;
 
 import org.apache.drill.exec.record.RawFragmentBatch;
 import org.apache.drill.exec.record.RawFragmentBatchProvider;
-import org.apache.drill.exec.rpc.RemoteConnection;
+import org.apache.drill.exec.rpc.ResponseSender;
 
 /**
  * A batch buffer is responsible for queuing incoming batches until a consumer is ready to receive them. It will also
@@ -36,8 +36,9 @@ public interface RawBatchBuffer extends RawFragmentBatchProvider {
    * @param batch
    *          Batch to enqueue
    * @throws IOException
+   * @returns Whether response should be returned.
    */
-  public void enqueue(RawFragmentBatch batch) throws IOException;
+  public void enqueue(RawFragmentBatch batch, ResponseSender sender) throws IOException;
 
   /**
    * Inform the buffer that no more batches are expected.

@@ -32,7 +32,7 @@ public class AccountingByteBuf extends ByteBuf{
   static final org.slf4j.Logger logger = org.slf4j.LoggerFactory.getLogger(AccountingByteBuf.class);
 
   private final UnsafeDirectLittleEndian b;
-  private final Accountor acct;
+  private volatile Accountor acct;
   private volatile int size;
 
   public AccountingByteBuf(Accountor a, ByteBuf b) {
@@ -45,6 +45,12 @@ public class AccountingByteBuf extends ByteBuf{
   @Override
   public int refCnt() {
     return b.refCnt();
+  }
+
+  public boolean transferAccounting(Accountor target){
+    boolean outcome = acct.transferTo(target, this, size);
+    acct = target;
+    return outcome;
   }
 
   @Override

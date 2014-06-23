@@ -17,7 +17,29 @@
  */
 package org.apache.drill.exec.work.batch;
 
-public interface ReadController {
-  public void setAutoRead(boolean enabled);
-  public void setAutoRead(int minorFragmentId, boolean enabled);
+import java.util.Queue;
+
+import org.apache.drill.exec.rpc.ResponseSender;
+import org.apache.drill.exec.rpc.data.DataRpcConfig;
+
+import com.google.common.collect.Queues;
+
+public class ResponseSenderQueue {
+  static final org.slf4j.Logger logger = org.slf4j.LoggerFactory.getLogger(ResponseSenderQueue.class);
+
+  private Queue<ResponseSender> q = Queues.newConcurrentLinkedQueue();
+
+  public void enqueueResponse(ResponseSender sender){
+    q.add(sender);
+  }
+
+  public void flushResponses(){
+    while(!q.isEmpty()){
+      ResponseSender s = q.poll();
+      if(s != null){
+        s.send(DataRpcConfig.OK);
+      }
+    }
+
+  }
 }

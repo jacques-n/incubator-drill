@@ -34,6 +34,7 @@ import org.apache.drill.exec.proto.BitControl.PlanFragment;
 import org.apache.drill.exec.proto.ExecProtos.FragmentHandle;
 import org.apache.drill.exec.record.RawFragmentBatch;
 import org.apache.drill.exec.rpc.RemoteConnection;
+import org.apache.drill.exec.rpc.ResponseSender;
 import org.apache.drill.exec.server.DrillbitContext;
 import org.apache.drill.exec.work.batch.IncomingBuffers;
 
@@ -70,8 +71,8 @@ public class NonRootFragmentManager implements FragmentManager {
    * @see org.apache.drill.exec.work.fragment.FragmentHandler#handle(org.apache.drill.exec.rpc.RemoteConnection.ConnectionThrottle, org.apache.drill.exec.record.RawFragmentBatch)
    */
   @Override
-  public boolean handle(RawFragmentBatch batch) throws FragmentSetupException {
-    return buffers.batchArrived(batch);
+  public boolean handle(RawFragmentBatch batch, ResponseSender sender) throws FragmentSetupException {
+    return buffers.batchArrived(batch, sender);
   }
 
   /* (non-Javadoc)

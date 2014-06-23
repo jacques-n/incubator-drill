@@ -33,15 +33,15 @@ import java.util.Locale;
 public class PlatformChecker {
   static final org.slf4j.Logger logger = org.slf4j.LoggerFactory.getLogger(PlatformChecker.class);
 
-  public static final boolean SUPPORTS_EPOLL;
+  public static final boolean SUPPORTS_EPOLL = false;
 
   static{
-    String name = SystemPropertyUtil.get("os.name").toLowerCase(Locale.UK).trim();
-    if (!name.startsWith("linux")) {
-      SUPPORTS_EPOLL = false;
-    }else{
-      SUPPORTS_EPOLL = true;
-    }
+//    String name = SystemPropertyUtil.get("os.name").toLowerCase(Locale.UK).trim();
+//    if (!name.startsWith("linux")) {
+//      SUPPORTS_EPOLL = false;
+//    }else{
+//      SUPPORTS_EPOLL = true;
+//    }
   }
 
   public static Class<? extends ServerSocketChannel> getServerSocketChannel(){
