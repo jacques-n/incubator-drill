@@ -240,6 +240,8 @@ public class ClassTransformer {
     return impl;
   }
 
+  private static Map<Integer, Class> classMap = Maps.newConcurrentMap();
+
   
   @SuppressWarnings("unchecked")
   public <T, I> T getImplementationClass( //
@@ -248,50 +250,61 @@ public class ClassTransformer {
       String entireClass, //
       String materializedClassName) throws ClassTransformationException {
 
-    final ClassSet set = new ClassSet(null, templateDefinition.getTemplateClassName(), materializedClassName);
+    Class<?> c;
 
-      
+    String[] splitClassName = materializedClassName.split("\\.");
+    String modifiedClass = entireClass.replace(splitClassName[splitClassName.length - 1], "");
+    int hCode = modifiedClass.hashCode();
+
+    c = classMap.get(hCode);
 
     try {
-      final byte[][] implementationClasses = classLoader.getClassByteCode(set.generated.clazz, entireClass);
+      if (c == null) {
+        final ClassSet set = new ClassSet(null, templateDefinition.getTemplateClassName(), materializedClassName);
+
+      
+
+        final byte[][] implementationClasses = classLoader.getClassByteCode(set.generated.clazz, entireClass);
       
       
-      Map<String, ClassNode> classesToMerge = Maps.newHashMap();
-      for(byte[] clazz : implementationClasses){
-        ClassNode node = getClassNodeFromByteCode(clazz);
-        classesToMerge.put(node.name, node);
-      }
-      
-      LinkedList<ClassSet> names = Lists.newLinkedList();
-      Set<ClassSet> namesCompleted = Sets.newHashSet();
-      names.add(set);
-      
-      while( !names.isEmpty() ){
-        final ClassSet nextSet = names.removeFirst();
-        if(namesCompleted.contains(nextSet)) continue;
-        final ClassNames nextPrecompiled = nextSet.precompiled;
-        final byte[] precompiledBytes = byteCodeLoader.getClassByteCodeFromPath(nextPrecompiled.clazz);
-        ClassNames nextGenerated = nextSet.generated;
-        ClassNode generatedNode = classesToMerge.get(nextGenerated.slash);
-        MergedClassResult result = MergeAdapter.getMergedClass(nextSet, precompiledBytes, generatedNode);
-        
-        for(String s : result.innerClasses){
-          s = s.replace(FileUtils.separatorChar, '.');
-          names.add(nextSet.getChild(s));
+        Map<String, ClassNode> classesToMerge = Maps.newHashMap();
+        for(byte[] clazz : implementationClasses){
+          ClassNode node = getClassNodeFromByteCode(clazz);
+          classesToMerge.put(node.name, node);
         }
-        classLoader.injectByteCode(nextGenerated.dot, result.bytes);
-        namesCompleted.add(nextSet);
-        
-      }
+      
+        LinkedList<ClassSet> names = Lists.newLinkedList();
+        Set<ClassSet> namesCompleted = Sets.newHashSet();
+        names.add(set);
+      
+        while( !names.isEmpty() ){
+          final ClassSet nextSet = names.removeFirst();
+          if(namesCompleted.contains(nextSet)) continue;
+          final ClassNames nextPrecompiled = nextSet.precompiled;
+          final byte[] precompiledBytes = byteCodeLoader.getClassByteCodeFromPath(nextPrecompiled.clazz);
+          ClassNames nextGenerated = nextSet.generated;
+          ClassNode generatedNode = classesToMerge.get(nextGenerated.slash);
+          MergedClassResult result = MergeAdapter.getMergedClass(nextSet, precompiledBytes, generatedNode);
+
+          for(String s : result.innerClasses){
+            s = s.replace(FileUtils.separatorChar, '.');
+            names.add(nextSet.getChild(s));
+          }
+          classLoader.injectByteCode(nextGenerated.dot, result.bytes);
+          namesCompleted.add(nextSet);
+
+        }
       
 
       
       
-//      logger.debug(String.format("[Compile Time] Janino: %dms, Bytecode load and parse: %dms, Class Merge: %dms, Subclass remap and load: %dms.", t1.elapsed(TimeUnit.MILLISECONDS), t2.elapsed(TimeUnit.MILLISECONDS), t3.elapsed(TimeUnit.MILLISECONDS), t4.elapsed(TimeUnit.MILLISECONDS)));
+//        logger.debug(String.format("[Compile Time] Janino: %dms, Bytecode load and parse: %dms, Class Merge: %dms, Subclass remap and load: %dms.", t1.elapsed(TimeUnit.MILLISECONDS), t2.elapsed(TimeUnit.MILLISECONDS), t3.elapsed(TimeUnit.MILLISECONDS), t4.elapsed(TimeUnit.MILLISECONDS)));
       
-      
-      
-      Class<?> c = classLoader.findClass(set.generated.dot);
+
+
+        c = classLoader.findClass(set.generated.dot);
+        classMap.put(hCode, c);
+      }
       if (templateDefinition.getExternalInterface().isAssignableFrom(c)) {
         return (T) c.newInstance();
       } else {
