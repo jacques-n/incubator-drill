@@ -37,19 +37,20 @@ import org.apache.drill.exec.vector.ValueVector;
 import java.io.File;
 
 public class RunRootExec {
-  public static final String PLAN = "/tmp/plan3";
   public static DrillConfig c = DrillConfig.create();
 
   public static void main(String args[]) throws Exception {
+    String path = args[0];
+    int iterations = Integer.parseInt(args[1]);
     Drillbit bit = new Drillbit(c, RemoteServiceSet.getLocalServiceSet());
     bit.run();
     DrillbitContext bitContext = bit.getContext();
     PhysicalPlanReader reader = bitContext.getPlanReader();
-    PhysicalPlan plan = reader.readPhysicalPlan(Files.toString(new File(PLAN), Charsets.UTF_8));
+    PhysicalPlan plan = reader.readPhysicalPlan(Files.toString(new File(path), Charsets.UTF_8));
     FunctionImplementationRegistry registry = bitContext.getFunctionImplementationRegistry();
     FragmentContext context = new FragmentContext(bitContext, PlanFragment.getDefaultInstance(), null, registry);
     SimpleRootExec exec;
-    for (int i = 0; i < 10; i ++) {
+    for (int i = 0; i < iterations; i ++) {
       System.out.println(i);
       exec = new SimpleRootExec(ImplCreator.getExec(context, (FragmentRoot) plan.getSortedOperators(false).iterator().next()));
 
