@@ -18,8 +18,9 @@
 package org.apache.drill.exec;
 
 
-import com.google.common.base.Charsets;
-import com.google.common.io.Files;
+import java.io.File;
+import java.util.concurrent.TimeUnit;
+
 import org.apache.drill.common.config.DrillConfig;
 import org.apache.drill.exec.expr.fn.FunctionImplementationRegistry;
 import org.apache.drill.exec.ops.FragmentContext;
@@ -34,7 +35,9 @@ import org.apache.drill.exec.server.DrillbitContext;
 import org.apache.drill.exec.server.RemoteServiceSet;
 import org.apache.drill.exec.vector.ValueVector;
 
-import java.io.File;
+import com.google.common.base.Charsets;
+import com.google.common.base.Stopwatch;
+import com.google.common.io.Files;
 
 public class RunRootExec {
   public static DrillConfig c = DrillConfig.create();
@@ -51,7 +54,8 @@ public class RunRootExec {
     FragmentContext context = new FragmentContext(bitContext, PlanFragment.getDefaultInstance(), null, registry);
     SimpleRootExec exec;
     for (int i = 0; i < iterations; i ++) {
-      System.out.println(i);
+      Stopwatch w= new Stopwatch().start();
+      System.out.println("STARTITER:" + i);
       exec = new SimpleRootExec(ImplCreator.getExec(context, (FragmentRoot) plan.getSortedOperators(false).iterator().next()));
 
       while (exec.next()) {
@@ -59,6 +63,8 @@ public class RunRootExec {
           v.clear();
         }
       }
+      System.out.println("ENDITER: " + i);
+      System.out.println("TIME: " + w.elapsed(TimeUnit.MILLISECONDS) + "ms");
       exec.stop();
     }
     context.close();

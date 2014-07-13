@@ -22,7 +22,7 @@ import io.netty.util.internal.PlatformDependent;
 
 import java.nio.ByteOrder;
 
-final class UnsafeDirectLittleEndian extends WrappedByteBuf {
+public final class UnsafeDirectLittleEndian extends WrappedByteBuf {
     private static final boolean NATIVE_ORDER = ByteOrder.nativeOrder() == ByteOrder.LITTLE_ENDIAN;
     private final PooledUnsafeDirectByteBuf wrapped;
     private final long memoryAddress;

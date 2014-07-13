@@ -22,6 +22,7 @@ import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufAllocator;
 import io.netty.buffer.PooledByteBufAllocator;
 import io.netty.buffer.PooledByteBufAllocatorL;
+import io.netty.buffer.UnsafeDirectLittleEndian;
 
 import java.util.HashMap;
 import java.util.HashSet;
@@ -38,7 +39,7 @@ public class TopLevelAllocator implements BufferAllocator {
 
   private static final boolean ENABLE_ACCOUNTING = AssertionUtil.isAssertionsEnabled();
   private final Set<ChildAllocator> children;
-  private final PooledByteBufAllocator innerAllocator = PooledByteBufAllocatorL.DEFAULT;
+  private final PooledByteBufAllocatorL innerAllocator = PooledByteBufAllocatorL.DEFAULT;
   private final Accountor acct;
   private final boolean errorOnLeak;
 
@@ -71,7 +72,7 @@ public class TopLevelAllocator implements BufferAllocator {
 
   public AccountingByteBuf buffer(int min, int max) {
     if(!acct.reserve(min)) return null;
-    ByteBuf buffer = innerAllocator.directBuffer(min, max);
+    UnsafeDirectLittleEndian buffer = innerAllocator.directBuffer(min, max);
     AccountingByteBuf wrapped = new AccountingByteBuf(acct, buffer);
     acct.reserved(min, wrapped);
     return wrapped;
