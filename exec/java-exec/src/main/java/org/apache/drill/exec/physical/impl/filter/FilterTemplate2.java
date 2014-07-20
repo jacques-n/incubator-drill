@@ -21,6 +21,8 @@ import javax.inject.Named;
 
 import org.apache.drill.exec.exception.SchemaChangeException;
 import org.apache.drill.exec.ops.FragmentContext;
+import org.apache.drill.exec.physical.impl.filter.Vect.Loop;
+import org.apache.drill.exec.physical.impl.filter.Vect.TwoByteVariable;
 import org.apache.drill.exec.record.BatchSchema.SelectionVectorMode;
 import org.apache.drill.exec.record.RecordBatch;
 import org.apache.drill.exec.record.TransferPair;
@@ -28,7 +30,7 @@ import org.apache.drill.exec.record.selection.SelectionVector2;
 
 public abstract class FilterTemplate2 implements Filterer{
   static final org.slf4j.Logger logger = org.slf4j.LoggerFactory.getLogger(FilterTemplate2.class);
-  
+
   private SelectionVector2 outgoingSelectionVector;
   private SelectionVector2 incomingSelectionVector;
   private SelectionVectorMode svMode;
@@ -39,7 +41,7 @@ public abstract class FilterTemplate2 implements Filterer{
     this.transfers = transfers;
     this.outgoingSelectionVector = outgoing.getSelectionVector2();
     this.svMode = incoming.getSchema().getSelectionVectorMode();
-    
+
     switch(svMode){
     case NONE:
       break;
@@ -58,7 +60,7 @@ public abstract class FilterTemplate2 implements Filterer{
       t.transfer();
     }
   }
-  
+
   public void filterBatch(int recordCount){
     if (! outgoingSelectionVector.allocateNew(recordCount)) {
       throw new UnsupportedOperationException("Unable to allocate filter batch");
@@ -75,14 +77,15 @@ public abstract class FilterTemplate2 implements Filterer{
     }
     doTransfers();
   }
-  
+
   private void filterBatchSV2(int recordCount){
     int svIndex = 0;
     final int count = recordCount;
-    for(int i = 0; i < count; i++){
-      char index = incomingSelectionVector.getIndex(i);
-      if(doEval(i, 0)){
-        outgoingSelectionVector.setIndex(svIndex, index);
+    Loop loop = Vect.incLoop(0, count);
+    while(loop.condition()){
+      int index = Vect.get(incomingSelectionVector, loop.two());
+      if(doEval(loop)){
+        Vect.set(outgoingSelectionVector, svIndex, index);
         svIndex++;
       }
     }
@@ -91,16 +94,17 @@ public abstract class FilterTemplate2 implements Filterer{
 
   private void filterBatchNoSV(int recordCount){
     int svIndex = 0;
-    for(int i = 0; i < recordCount; i++){
-      if(doEval(i, 0)){
-        outgoingSelectionVector.setIndex(svIndex, (char)i);
+    final Loop loop = Vect.incLoop(0, recordCount);
+    while(loop.condition()){
+      if(doEval(loop)){
+        Vect.set(outgoingSelectionVector, svIndex, loop.one());
         svIndex++;
       }
     }
     outgoingSelectionVector.setRecordCount(svIndex);
   }
-  
+
   public abstract void doSetup(@Named("context") FragmentContext context, @Named("incoming") RecordBatch incoming, @Named("outgoing") RecordBatch outgoing);
-  public abstract boolean doEval(@Named("inIndex") int inIndex, @Named("outIndex") int outIndex);
+  public abstract boolean doEval(@Named("inIndex") Loop loop);
 
 }

@@ -17,15 +17,18 @@
 
 PROJECT_ROOT=../../../
 
-mvn dependency:build-classpath -f=$PROJECT_ROOT/pom.xml -Dmdep.outputFile=target/sh/cp.txt
+# mvn dependency:build-classpath -f=$PROJECT_ROOT/pom.xml -Dmdep.outputFile=target/sh/cp.txt
 CP=`cat $PROJECT_ROOT/target/sh/cp.txt`
 CP=./:$CP:$PROJECT_ROOT/target/classes:$PROJECT_ROOT/target/test-classes
-java -Dlogback.configurationFile=logback.xml \
+/Users/jnadeau/Library/Java/JavaVirtualMachines/jdk1.7.0.jdk/Contents/Home/bin/java \
+-Dlogback.configurationFile=logback.xml \
 -XX:MaxDirectMemorySize=8192M \
--XX:+UnlockDiagnosticVMOptions -XX:+PrintInlining \
--XX:FreqInlineSize=325 \
--XX:InlineSmallCode=10000 \
+-XX:+UnlockDiagnosticVMOptions \
+-XX:FreqInlineSize=5000 \
+-XX:InlineSmallCode=5000 \
 -XX:MaxInlineLevel=20 \
--XX:MaxInlineSize=35 \
+-XX:MaxInlineSize=5000 \
 -XX:MaxRecursiveInlineLevel=1 \
--cp $CP org.apache.drill.exec.RunRootExec $@
+-cp $CP \
+org.apache.drill.TestFilter $@
+#org.apache.drill.exec.RunRootExec $@

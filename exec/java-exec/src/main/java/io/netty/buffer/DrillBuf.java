@@ -29,22 +29,23 @@ import java.nio.channels.ScatteringByteChannel;
 import java.nio.charset.Charset;
 
 import org.apache.drill.exec.memory.Accountor;
+import org.apache.drill.exec.memory.BufferAllocator;
 import org.jboss.netty.util.DebugUtil;
 
-public final class AccountingByteBuf extends AbstractByteBuf {
-  static final org.slf4j.Logger logger = org.slf4j.LoggerFactory.getLogger(AccountingByteBuf.class);
+public final class DrillBuf extends AbstractByteBuf {
+  static final org.slf4j.Logger logger = org.slf4j.LoggerFactory.getLogger(DrillBuf.class);
 
   private final ByteBuf b;
-  private volatile Accountor acct;
   private final long addr;
   private final int offset;
+  private final boolean rootBuffer;
 
-
+  private volatile BufferAllocator allocator;
+  private volatile Accountor acct;
   private volatile int length;
 
-  private boolean rootBuffer;
 
-  public AccountingByteBuf(Accountor a, UnsafeDirectLittleEndian b) {
+  public DrillBuf(BufferAllocator allocator, Accountor a, UnsafeDirectLittleEndian b) {
     super(b.maxCapacity());
     this.b = b;
     this.addr = b.memoryAddress();
@@ -52,9 +53,10 @@ public final class AccountingByteBuf extends AbstractByteBuf {
     this.length = b.capacity();
     this.offset = 0;
     this.rootBuffer = true;
+    this.allocator = allocator;
   }
 
-  private AccountingByteBuf(Accountor a, AccountingByteBuf buffer, int index, int length) {
+  private DrillBuf(DrillBuf buffer, int index, int length) {
     super(length);
     if (index < 0 || index > buffer.capacity() - length) {
       throw new IndexOutOfBoundsException(buffer.toString() + ".slice(" + index + ", " + length + ')');
@@ -69,6 +71,11 @@ public final class AccountingByteBuf extends AbstractByteBuf {
     this.acct = null;
     this.length = length;
     this.rootBuffer = false;
+    this.allocator = allocator;
+  }
+
+  public BufferAllocator getAllocator(){
+    return allocator;
   }
 
   @Override
@@ -80,15 +87,36 @@ public final class AccountingByteBuf extends AbstractByteBuf {
     return addr + index;
   }
 
+
+
+  private final void checkIndexD(int index) {
+      ensureAccessible();
+      if (index < 0 || index >= capacity()) {
+          throw new IndexOutOfBoundsException(String.format(
+                  "index: %d (expected: range(0, %d))", index, capacity()));
+      }
+  }
+
+  private final void checkIndexD(int index, int fieldLength) {
+      ensureAccessible();
+      if (fieldLength < 0) {
+          throw new IllegalArgumentException("length: " + fieldLength + " (expected: >= 0)");
+      }
+      if (index < 0 || index > capacity() - fieldLength) {
+          throw new IndexOutOfBoundsException(String.format(
+                  "index: %d, length: %d (expected: range(0, %d))", index, fieldLength, capacity()));
+      }
+  }
+
   private void chk(int index, int width) {
     if (DebugUtil.isDebugEnabled()) {
-      checkIndex(index, width);
+      checkIndexD(offset+index, width);
     }
   }
 
   private void chk(int index) {
     if (DebugUtil.isDebugEnabled()) {
-      checkIndex(index);
+      checkIndexD(index);
     }
   }
 
@@ -130,6 +158,7 @@ public final class AccountingByteBuf extends AbstractByteBuf {
   public int capacity() {
     return length;
   }
+
 
   @Override
   public synchronized ByteBuf capacity(int newCapacity) {
@@ -210,13 +239,13 @@ public final class AccountingByteBuf extends AbstractByteBuf {
   }
 
   @Override
-  public AccountingByteBuf slice(int index, int length) {
-    return new AccountingByteBuf(null, this, index, length);
+  public DrillBuf slice(int index, int length) {
+    return new DrillBuf(this, index, length);
   }
 
   @Override
-  public AccountingByteBuf duplicate() {
-    return new AccountingByteBuf(null, this, 0, length);
+  public DrillBuf duplicate() {
+    return new DrillBuf(this, 0, length);
   }
 
   @Override
@@ -276,12 +305,25 @@ public final class AccountingByteBuf extends AbstractByteBuf {
 
   @Override
   public String toString(Charset charset) {
-    return b.toString(charset);
+      return toString(readerIndex, readableBytes(), charset);
   }
 
   @Override
   public String toString(int index, int length, Charset charset) {
-    return b.toString(offset + index, length, charset);
+      if (length == 0) {
+          return "";
+      }
+
+      ByteBuffer nioBuffer;
+      if (nioBufferCount() == 1) {
+          nioBuffer = nioBuffer(index, length);
+      } else {
+          nioBuffer = ByteBuffer.allocate(length);
+          getBytes(index, nioBuffer);
+          nioBuffer.flip();
+      }
+
+      return ByteBufUtil.decodeString(nioBuffer, charset);
   }
 
   @Override
@@ -293,11 +335,6 @@ public final class AccountingByteBuf extends AbstractByteBuf {
   public boolean equals(Object obj) {
     // identity equals only.
     return this == obj;
-  }
-
-  @Override
-  public String toString() {
-    return "DrillBuf [Inner buffer=" + b + ", size=" + length + "]";
   }
 
   @Override
@@ -375,7 +412,7 @@ public final class AccountingByteBuf extends AbstractByteBuf {
   @Override
   public ByteBuf setLong(int index, long value) {
     chk(index, 8);
-    PlatformDependent.putLong(index, value);
+    PlatformDependent.putLong(addr(index), value);
     return this;
   }
 
@@ -396,7 +433,7 @@ public final class AccountingByteBuf extends AbstractByteBuf {
   @Override
   public ByteBuf setDouble(int index, double value) {
     chk(index, 8);
-    PlatformDependent.putLong(index, Double.doubleToRawLongBits(value));
+    PlatformDependent.putLong(addr(index), Double.doubleToRawLongBits(value));
     return this;
   }
 
@@ -450,96 +487,124 @@ public final class AccountingByteBuf extends AbstractByteBuf {
 
   @Override
   public ByteBuf getBytes(int index, byte[] dst, int dstIndex, int length) {
-    chk(index, length);
-    if (dst == null) {
-      throw new NullPointerException("null destination");
-    }
-    if (dstIndex < 0 || dstIndex > dst.length - length) {
-      throw new IndexOutOfBoundsException("dstIndex: " + dstIndex);
-    }
-    if (length != 0) {
-      PlatformDependent.copyMemory(addr(index), dst, dstIndex, length);
-    }
+    b.getBytes(index + offset,  dst, dstIndex, length);
     return this;
   }
 
   @Override
   public ByteBuf getBytes(int index, ByteBuffer dst) {
-    getBytes(index, dst, false);
+    b.getBytes(index + offset, dst);
     return this;
   }
 
+  @Override
+  public ByteBuf setByte(int index, int value) {
+    PlatformDependent.putByte(addr(index), (byte) value);
+    return this;
+  }
 
   @Override
-  public ByteBuf readBytes(ByteBuffer dst) {
-    int length = dst.remaining();
-    checkReadableBytes(length);
-    getBytes(readerIndex, dst, true);
-    readerIndex += length;
+  protected byte _getByte(int index) {
+    return getByte(index);
+  }
+
+  @Override
+  protected short _getShort(int index) {
+    return getShort(index);
+  }
+
+  @Override
+  protected int _getInt(int index) {
+    return getInt(index);
+  }
+
+  @Override
+  protected long _getLong(int index) {
+    return getLong(index);
+  }
+
+  @Override
+  protected void _setByte(int index, int value) {
+    setByte(index, value);
+  }
+
+  @Override
+  protected void _setShort(int index, int value) {
+    setShort(index, value);
+  }
+
+  @Override
+  protected void _setMedium(int index, int value) {
+    setMedium(index, value);
+  }
+
+  @Override
+  protected void _setInt(int index, int value) {
+    setInt(index, value);
+  }
+
+  @Override
+  protected void _setLong(int index, long value) {
+    setLong(index, value);
+  }
+
+  @Override
+  public ByteBuf getBytes(int index, ByteBuf dst, int dstIndex, int length) {
+    b.getBytes(index + offset, dst, dstIndex, length);
     return this;
   }
 
   @Override
   public ByteBuf getBytes(int index, OutputStream out, int length) throws IOException {
-    chk(index, length);
-    if (length != 0) {
-      byte[] tmp = new byte[length];
-      PlatformDependent.copyMemory(addr(index), tmp, 0, length);
-      out.write(tmp);
-    }
+    b.getBytes(index + offset, out, length);
     return this;
   }
 
   @Override
-  public int getBytes(int index, GatheringByteChannel out, int length) throws IOException {
-    return getBytes(index, out, length, false);
-  }
-
-  private int getBytes(int index, GatheringByteChannel out, int length, boolean internal) throws IOException {
-    checkIndex(index, length);
-    if (length == 0) {
-      return 0;
-    }
-
-    ByteBuffer tmpBuf;
-    if (internal) {
-      tmpBuf = internalNioBuffer();
-    } else {
-      tmpBuf = memory.duplicate();
-    }
-    index = idx(index);
-    tmpBuf.clear().position(index).limit(index + length);
-    return out.write(tmpBuf);
-  }
-
-  private void getBytes(int index, ByteBuffer dst, boolean internal) {
-    checkIndex(index);
-    int bytesToCopy = Math.min(capacity() - index, dst.remaining());
-    ByteBuffer tmpBuf;
-    if (internal) {
-      tmpBuf = internalNioBuffer();
-    } else {
-      tmpBuf = memory.duplicate();
-    }
-    index = idx(index);
-    tmpBuf.clear().position(index).limit(index + bytesToCopy);
-    dst.put(tmpBuf);
-  }
-
-  private final ByteBuffer internalNioBuffer() {
-    ByteBuffer tmpNioBuf = this.tmpNioBuf;
-    if (tmpNioBuf == null) {
-      this.tmpNioBuf = tmpNioBuf = newInternalNioBuffer(memory);
-    }
-    return tmpNioBuf;
+  protected int _getUnsignedMedium(int index) {
+      long addr = addr(index);
+      return (PlatformDependent.getByte(addr) & 0xff) << 16 |
+              (PlatformDependent.getByte(addr + 1) & 0xff) << 8 |
+              PlatformDependent.getByte(addr + 2) & 0xff;
   }
 
   @Override
-  public int readBytes(GatheringByteChannel out, int length) throws IOException {
-    checkReadableBytes(length);
-    int readBytes = getBytes(readerIndex, out, length, true);
-    readerIndex += readBytes;
-    return readBytes;
+  public int getBytes(int index, GatheringByteChannel out, int length) throws IOException {
+    return b.getBytes(index + offset, out, length);
   }
+
+  @Override
+  public ByteBuf setBytes(int index, ByteBuf src, int srcIndex, int length) {
+    b.setBytes(index + offset, src, srcIndex, length);
+    return this;
+  }
+
+  @Override
+  public ByteBuf setBytes(int index, byte[] src, int srcIndex, int length) {
+    b.setBytes(index + offset, src, srcIndex, length);
+    return this;
+  }
+
+  @Override
+  public ByteBuf setBytes(int index, ByteBuffer src) {
+    b.setBytes(index + offset, src);
+    return this;
+  }
+
+  @Override
+  public int setBytes(int index, InputStream in, int length) throws IOException {
+    return b.setBytes(index + offset, in, length);
+  }
+
+  @Override
+  public int setBytes(int index, ScatteringByteChannel in, int length) throws IOException {
+    return b.setBytes(index + offset, in, length);
+  }
+
+  @Override
+  public byte getByte(int index) {
+    return PlatformDependent.getByte(addr(index));
+  }
+
 
 }

@@ -18,6 +18,7 @@
 package org.apache.drill.exec.rpc.user;
 
 import io.netty.buffer.ByteBuf;
+import io.netty.buffer.DrillBuf;
 
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.ConcurrentMap;
@@ -37,25 +38,24 @@ import com.google.common.collect.Queues;
  * Encapsulates the future management of query submissions. This entails a potential race condition. Normal ordering is:
  * 1. Submit query to be executed. 2. Receive QueryHandle for buffer management 3. Start receiving results batches for
  * query.
- * 
+ *
  * However, 3 could potentially occur before 2. As such, we need to handle this case and then do a switcheroo.
- * 
+ *
  */
 public class QueryResultHandler {
   static final org.slf4j.Logger logger = org.slf4j.LoggerFactory.getLogger(QueryResultHandler.class);
 
   private ConcurrentMap<QueryId, UserResultsListener> resultsListener = Maps.newConcurrentMap();
 
-  
+
   public RpcOutcomeListener<QueryId> getWrappedListener(UserResultsListener listener){
     return new SubmissionListener(listener);
   }
-  
+
   public void batchArrived(ConnectionThrottle throttle, ByteBuf pBody, ByteBuf dBody) throws RpcException {
     final QueryResult result = RpcBus.get(pBody, QueryResult.PARSER);
-    final QueryResultBatch batch = new QueryResultBatch(result, dBody);
+    final QueryResultBatch batch = new QueryResultBatch(result, (DrillBuf) dBody);
     UserResultsListener l = resultsListener.get(result.getQueryId());
-    
     boolean failed = batch.getHeader().getQueryState() == QueryState.FAILED;
     // logger.debug("For QueryId [{}], retrieved result listener {}", result.getQueryId(), l);
     if (l == null) {
@@ -79,7 +79,7 @@ public class QueryResultHandler {
         l.submissionFailed(new RpcException(e));
       }
     }
-    
+
     if (
         (failed || result.getIsLastChunk())
         &&
@@ -95,8 +95,8 @@ public class QueryResultHandler {
     }
   }
 
-  
-  
+
+
   private class BufferingListener implements UserResultsListener {
 
     private ConcurrentLinkedQueue<QueryResultBatch> results = Queues.newConcurrentLinkedQueue();
@@ -120,12 +120,12 @@ public class QueryResultHandler {
       }
     }
 
-    
+
     @Override
     public void resultArrived(QueryResultBatch result, ConnectionThrottle throttle) {
       this.throttle = throttle;
       if(result.getHeader().getIsLastChunk()) finished = true;
-      
+
       synchronized (this) {
         if (output == null) {
           this.results.add(result);
@@ -146,7 +146,7 @@ public class QueryResultHandler {
         }
       }
     }
-    
+
     public boolean isFinished(){
       return finished;
     }

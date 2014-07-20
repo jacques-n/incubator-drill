@@ -35,7 +35,7 @@ package org.apache.drill.exec.vector;
  * ${minor.class}Vector implements a vector of variable width values.  Elements in the vector
  * are accessed by position from the logical start of the vector.  A fixed width offsetVector
  * is used to convert an element's position to it's offset from the start of the (0-based)
- * ByteBuf.  Size is inferred by adjacent elements.
+ * DrillBuf.  Size is inferred by adjacent elements.
  *   The width of each element is ${type.width} byte(s)
  *   The equivalent Java primitive is '${minor.javaType!type.javaType}'
  *
@@ -46,8 +46,11 @@ public final class ${minor.class}Vector extends BaseDataValueVector implements V
   static final org.slf4j.Logger logger = org.slf4j.LoggerFactory.getLogger(${minor.class}Vector.class);
 
   private final UInt${type.width}Vector offsetVector;
-  private final Accessor accessor = new Accessor();
-  private final Mutator mutator = new Mutator();
+  private final Accessor accessor;
+  private final Mutator mutator;
+  
+  private final UInt${type.width}Vector.Accessor oAccessor;
+  
 
   private int allocationTotalByteCount = 32768;
   private int allocationMonitor = 0;
@@ -55,6 +58,9 @@ public final class ${minor.class}Vector extends BaseDataValueVector implements V
   public ${minor.class}Vector(MaterializedField field, BufferAllocator allocator) {
     super(field, allocator);
     this.offsetVector = new UInt${type.width}Vector(null, allocator);
+    this.oAccessor = offsetVector.getAccessor();
+    this.accessor = new Accessor();
+    this.mutator = new Mutator();
   }
 
   public int getBufferSize(){
@@ -92,7 +98,7 @@ public final class ${minor.class}Vector extends BaseDataValueVector implements V
              .build();
   }
 
-  public int load(int dataBytes, int valueCount, ByteBuf buf){
+  public int load(int dataBytes, int valueCount, DrillBuf buf){
     this.valueCount = valueCount;
     if(valueCount == 0){
       allocateNew(0,0);
@@ -105,7 +111,7 @@ public final class ${minor.class}Vector extends BaseDataValueVector implements V
   }
   
   @Override
-  public void load(SerializedField metadata, ByteBuf buffer) {
+  public void load(SerializedField metadata, DrillBuf buffer) {
     assert this.field.matches(metadata);
     int loaded = load(metadata.getBufferLength(), metadata.getValueCount(), buffer);
     assert metadata.getBufferLength() == loaded;
@@ -119,10 +125,14 @@ public final class ${minor.class}Vector extends BaseDataValueVector implements V
 
   
   @Override
-  public ByteBuf[] getBuffers() {
-    ByteBuf[] buffers = ObjectArrays.concat(offsetVector.getBuffers(), super.getBuffers(), ByteBuf.class);
+  public DrillBuf[] getBuffers() {
+    DrillBuf[] buffers = ObjectArrays.concat(offsetVector.getBuffers(), super.getBuffers(), DrillBuf.class);
     clear();
     return buffers;
+  }
+  
+  public long getOffsetAddr(){
+    return offsetVector.getDataAddr();
   }
   
   public TransferPair getTransferPair(){
@@ -281,15 +291,19 @@ public final class ${minor.class}Vector extends BaseDataValueVector implements V
   
   public final class Accessor extends BaseValueVector.BaseAccessor{
     final FieldReader reader = new ${minor.class}ReaderImpl(${minor.class}Vector.this);
-    
+    final UInt${type.width}Vector.Accessor oAccessor = offsetVector.getAccessor();
     public FieldReader getReader(){
       return reader;
     }
     
+    public long getStartEnd(int index){
+      return oAccessor.getTwoAsLong(index);
+    }
+    
     public byte[] get(int index) {
       assert index >= 0;
-      int startIdx = offsetVector.getAccessor().get(index);
-      int length = offsetVector.getAccessor().get(index + 1) - startIdx;
+      int startIdx = oAccessor.get(index);
+      int length = oAccessor.get(index + 1) - startIdx;
       assert length >= 0;
       byte[] dst = new byte[length];
       data.getBytes(startIdx, dst, 0, length);
@@ -297,15 +311,15 @@ public final class ${minor.class}Vector extends BaseDataValueVector implements V
     }
     
     public void get(int index, ${minor.class}Holder holder){
-      holder.start = offsetVector.getAccessor().get(index);
-      holder.end = offsetVector.getAccessor().get(index + 1);
+      holder.start = oAccessor.get(index);
+      holder.end = oAccessor.get(index + 1);
       holder.buffer = data;
     }
     
     public void get(int index, Nullable${minor.class}Holder holder){
       holder.isSet = 1;
-      holder.start = offsetVector.getAccessor().get(index);
-      holder.end = offsetVector.getAccessor().get(index + 1);
+      holder.start = oAccessor.get(index);
+      holder.end = oAccessor.get(index + 1);
       holder.buffer = data;
     }
     
@@ -349,7 +363,7 @@ public final class ${minor.class}Vector extends BaseDataValueVector implements V
    * Mutable${minor.class} implements a vector of variable width values.  Elements in the vector
    * are accessed by position from the logical start of the vector.  A fixed width offsetVector
    * is used to convert an element's position to it's offset from the start of the (0-based)
-   * ByteBuf.  Size is inferred by adjacent elements.
+   * DrillBuf.  Size is inferred by adjacent elements.
    *   The width of each element is ${type.width} byte(s)
    *   The equivalent Java primitive is '${minor.javaType!type.javaType}'
    *
@@ -465,11 +479,11 @@ public final class ${minor.class}Vector extends BaseDataValueVector implements V
       return true;
     }
     
-    protected void set(int index, int start, int length, ByteBuf buffer){
+    protected void set(int index, int start, int length, DrillBuf buffer){
       assert index >= 0;
       int currentOffset = offsetVector.getAccessor().get(index);
       offsetVector.getMutator().set(index + 1, currentOffset + length);
-      ByteBuf bb = buffer.slice(start, length);
+      DrillBuf bb = buffer.slice(start, length);
       data.setBytes(currentOffset, bb);
     }
 
