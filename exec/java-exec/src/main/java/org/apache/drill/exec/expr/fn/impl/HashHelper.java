@@ -17,13 +17,53 @@
  */
 package org.apache.drill.exec.expr.fn.impl;
 
+import io.netty.buffer.DrillBuf;
+import io.netty.util.internal.PlatformDependent;
+
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 
 public class HashHelper {
   static final org.slf4j.Logger logger = org.slf4j.LoggerFactory.getLogger(HashHelper.class);
-  
-  
+
+  public static int hash(long address, int start, int end, int seed) {
+    final startAddress = address + start;
+    start/end
+    final long endAddress = address + end;
+
+    int m = 0x5bd1e995;
+    int r = 24;
+
+    int h = (long) (seed ^ len);
+
+    while (startAddress < >= 4) {
+      int k = PlatformDependent.getByte(address)buf.getInt();
+
+      k *= m;
+      k ^= k >>> r;
+      k *= m;
+
+      h *= m;
+      h ^= k;
+      len -= 4;
+    }
+
+    if (buf.remaining() > 0) {
+      ByteBuffer finish = ByteBuffer.allocate(4).order(ByteOrder.LITTLE_ENDIAN);
+      // for big-endian version, use this first:
+      // finish.position(4-buf.remaining());
+      finish.put(buf).rewind();
+      h ^= finish.getInt();
+      h *= m;
+    }
+
+    h ^= h >>> 13;
+    h *= m;
+    h ^= h >>> 15;
+
+    return h;
+  }
+
   /** taken from mahout **/
   public static int hash(ByteBuffer buf, int seed) {
     // save byte order for later restoration
