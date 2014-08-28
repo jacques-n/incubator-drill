@@ -192,11 +192,11 @@ class MergeAdapter extends ClassVisitor {
     ClassWriter writer = new ClassWriter(ClassWriter.COMPUTE_FRAMES);
     RemapClasses re = new RemapClasses(set);
     try{
-//      if(generatedClass != null){
-//        ClassNode generatedMerged = new ClassNode();
-//        generatedClass.accept(new ValueHolderReplacementVisitor(generatedMerged));
-//        generatedClass = generatedMerged;
-//      }
+      if(generatedClass != null){
+        ClassNode generatedMerged = new ClassNode();
+        generatedClass.accept(new ValueHolderReplacementVisitor(generatedMerged));
+        generatedClass = generatedMerged;
+      }
       ClassVisitor remappingAdapter = new RemappingClassAdapter(writer, re);
       ClassVisitor visitor = remappingAdapter;
       if(generatedClass != null){
