@@ -1,10 +1,28 @@
+/**
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package org.apache.drill.exec.expr.fn.impl;
 
+import io.netty.buffer.DrillBuf;
 import io.netty.util.internal.PlatformDependent;
 
 import com.google.common.primitives.UnsignedLongs;
 
-public class XXHash {
+public final class XXHash {
   static final org.slf4j.Logger logger = org.slf4j.LoggerFactory.getLogger(XXHash.class);
 
   static final long PRIME64_1 = UnsignedLongs.decode("11400714785074694791");
@@ -110,6 +128,47 @@ public class XXHash {
     return h64;
 
   }
+
+  public static int hash32(int start, int end, DrillBuf buffer){
+    long s = buffer.memoryAddress() + start;
+    long e = buffer.memoryAddress() + end;
+    return hash32(s, e, 0);
+  }
+
+  public static int hash32(int val, int seed){
+    long h64 = val * PRIME64_1;
+    h64 = Long.rotateLeft(h64, 23) * PRIME64_2 + PRIME64_3;
+    h64 ^= h64 >> 33;
+    h64 *= PRIME64_2;
+    h64 ^= h64 >> 29;
+    h64 *= PRIME64_3;
+    h64 ^= h64 >> 32;
+    return (int) h64;
+  }
+
+  public static int hash32(float val, int seed){
+    return hash32(Float.floatToIntBits(val), seed);
+  }
+
+  public static int hash32(double val, int seed){
+    return hash32(Double.doubleToLongBits(val), seed);
+  }
+
+  public static int hash32(long val, int seed){
+    long k1 = val* PRIME64_2;
+    k1 = Long.rotateLeft(k1, 31);
+    k1 *= PRIME64_1;
+    long h64 = 0;
+    h64 ^= k1;
+    h64 = Long.rotateLeft(h64, 27) * PRIME64_1 + PRIME64_4;
+    h64 ^= h64 >> 33;
+    h64 *= PRIME64_2;
+    h64 ^= h64 >> 29;
+    h64 *= PRIME64_3;
+    h64 ^= h64 >> 32;
+    return (int) h64;
+  }
+
 
   public static int hash32(long start, long bEnd, long seed){
     return (int) hash64(start, bEnd, seed);

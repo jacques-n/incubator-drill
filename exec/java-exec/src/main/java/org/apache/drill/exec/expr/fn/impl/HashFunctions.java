@@ -69,7 +69,7 @@ public class HashFunctions {
       if (in.isSet == 0)
         out.value = 0;
       else
-        out.value = com.google.common.hash.Hashing.murmur3_128().hashInt(Float.floatToIntBits(in.value)).asInt();
+        out.value = org.apache.drill.exec.expr.fn.impl.XXHash.hash32(in.value, 0);
     }
   }
 
@@ -83,7 +83,7 @@ public class HashFunctions {
     }
 
     public void eval() {
-      out.value = com.google.common.hash.Hashing.murmur3_128().hashInt(Float.floatToIntBits(in.value)).asInt();
+      out.value = org.apache.drill.exec.expr.fn.impl.XXHash.hash32(in.value, 0);
     }
   }
 
@@ -100,7 +100,7 @@ public class HashFunctions {
       if (in.isSet == 0)
         out.value = 0;
       else
-        out.value = com.google.common.hash.Hashing.murmur3_128().hashLong(Double.doubleToLongBits(in.value)).asInt();
+        out.value = org.apache.drill.exec.expr.fn.impl.XXHash.hash32(in.value, 0);
     }
   }
 
@@ -114,7 +114,7 @@ public class HashFunctions {
     }
 
     public void eval() {
-      out.value = com.google.common.hash.Hashing.murmur3_128().hashLong(Double.doubleToLongBits(in.value)).asInt();
+      out.value = org.apache.drill.exec.expr.fn.impl.XXHash.hash32(in.value, 0);
     }
   }
 
@@ -131,7 +131,7 @@ public class HashFunctions {
       if (in.isSet == 0)
         out.value = 0;
       else
-        out.value = org.apache.drill.exec.expr.fn.impl.HashHelper.hash(in.buffer.nioBuffer(in.start, in.end - in.start), 0);
+        out.value = org.apache.drill.exec.expr.fn.impl.XXHash.hash32(in.start, in.end, in.buffer);
     }
   }
 
@@ -148,7 +148,7 @@ public class HashFunctions {
       if (in.isSet == 0)
         out.value = 0;
       else
-        out.value = org.apache.drill.exec.expr.fn.impl.HashHelper.hash(in.buffer.nioBuffer(in.start, in.end - in.start), 0);
+        out.value = org.apache.drill.exec.expr.fn.impl.XXHash.hash32(in.start, in.end, in.buffer);
     }
   }
 
@@ -165,7 +165,7 @@ public class HashFunctions {
       if (in.isSet == 0)
         out.value = 0;
       else
-        out.value = org.apache.drill.exec.expr.fn.impl.HashHelper.hash(in.buffer.nioBuffer(in.start, in.end - in.start), 0);
+        out.value = org.apache.drill.exec.expr.fn.impl.XXHash.hash32(in.start, in.end, in.buffer);
     }
   }
 
@@ -179,11 +179,10 @@ public class HashFunctions {
     }
 
     public void eval() {
-      // TODO: implement hash function for other types
       if (in.isSet == 0)
         out.value = 0;
       else
-        out.value = com.google.common.hash.Hashing.murmur3_128().hashLong(in.value).asInt();
+        out.value = org.apache.drill.exec.expr.fn.impl.XXHash.hash32(in.value, 0);
     }
   }
 
@@ -196,11 +195,10 @@ public class HashFunctions {
     }
 
     public void eval() {
-      // TODO: implement hash function for other types
       if (in.isSet == 0)
         out.value = 0;
       else
-        out.value = com.google.common.hash.Hashing.murmur3_128().hashInt(in.value).asInt();
+        out.value = org.apache.drill.exec.expr.fn.impl.XXHash.hash32(in.value, 0);
     }
   }
 
@@ -214,7 +212,7 @@ public class HashFunctions {
     }
 
     public void eval() {
-      out.value = org.apache.drill.exec.expr.fn.impl.HashHelper.hash(in.buffer.nioBuffer(in.start, in.end - in.start), 0);
+      out.value = org.apache.drill.exec.expr.fn.impl.XXHash.hash32(in.start, in.end, in.buffer);
     }
   }
 
@@ -228,7 +226,7 @@ public class HashFunctions {
     }
 
     public void eval() {
-      out.value = org.apache.drill.exec.expr.fn.impl.HashHelper.hash(in.buffer.nioBuffer(in.start, in.end - in.start), 0);
+      out.value = org.apache.drill.exec.expr.fn.impl.XXHash.hash32(in.start, in.end, in.buffer);
     }
   }
 
@@ -242,7 +240,7 @@ public class HashFunctions {
     }
 
     public void eval() {
-      out.value = org.apache.drill.exec.expr.fn.impl.HashHelper.hash(in.buffer.nioBuffer(in.start, in.end - in.start), 0);
+      out.value = org.apache.drill.exec.expr.fn.impl.XXHash.hash32(in.start, in.end, in.buffer);
     }
   }
 
@@ -256,8 +254,7 @@ public class HashFunctions {
     }
 
     public void eval() {
-      // TODO: implement hash function for other types
-      out.value = com.google.common.hash.Hashing.murmur3_128().hashLong(in.value).asInt();
+      out.value = org.apache.drill.exec.expr.fn.impl.XXHash.hash32(in.value, 0);
     }
   }
 
@@ -271,7 +268,7 @@ public class HashFunctions {
 
     public void eval() {
       // TODO: implement hash function for other types
-      out.value = com.google.common.hash.Hashing.murmur3_128().hashInt(in.value).asInt();
+      out.value = org.apache.drill.exec.expr.fn.impl.XXHash.hash32(in.value, 0);
     }
   }
   @FunctionTemplate(name = "hash", scope = FunctionScope.SIMPLE, nulls = FunctionTemplate.NullHandling.INTERNAL)
@@ -283,7 +280,7 @@ public class HashFunctions {
     }
 
     public void eval() {
-      out.value = com.google.common.hash.Hashing.murmur3_128().hashLong(in.value).asInt();
+      out.value = org.apache.drill.exec.expr.fn.impl.XXHash.hash32(in.value, 0);
     }
   }
 
@@ -299,7 +296,7 @@ public class HashFunctions {
       if (in.isSet == 0)
         out.value = 0;
       else
-        out.value = com.google.common.hash.Hashing.murmur3_128().hashLong(in.value).asInt();
+        out.value = org.apache.drill.exec.expr.fn.impl.XXHash.hash32(in.value, 0);
     }
   }
 
@@ -312,7 +309,7 @@ public class HashFunctions {
     }
 
     public void eval() {
-      out.value = com.google.common.hash.Hashing.murmur3_128().hashLong(in.value).asInt();
+      out.value = org.apache.drill.exec.expr.fn.impl.XXHash.hash32(in.value, 0);
     }
   }
 
@@ -328,7 +325,7 @@ public class HashFunctions {
       if (in.isSet == 0)
         out.value = 0;
       else
-        out.value = com.google.common.hash.Hashing.murmur3_128().hashLong(in.value).asInt();
+        out.value = org.apache.drill.exec.expr.fn.impl.XXHash.hash32(in.value, 0);
     }
   }
 
@@ -341,7 +338,7 @@ public class HashFunctions {
     }
 
     public void eval() {
-      out.value = com.google.common.hash.Hashing.murmur3_128().hashInt(in.value).asInt();
+      out.value = org.apache.drill.exec.expr.fn.impl.XXHash.hash32(in.value, 0);
     }
   }
 
@@ -357,7 +354,7 @@ public class HashFunctions {
       if (in.isSet == 0)
         out.value = 0;
       else
-        out.value = com.google.common.hash.Hashing.murmur3_128().hashInt(in.value).asInt();
+        out.value = org.apache.drill.exec.expr.fn.impl.XXHash.hash32(in.value, 0);
     }
   }
 
@@ -370,7 +367,7 @@ public class HashFunctions {
     }
 
     public void eval() {
-      out.value = com.google.common.hash.Hashing.murmur3_128().hashLong(in.value ^ in.index).asInt();
+      out.value = org.apache.drill.exec.expr.fn.impl.XXHash.hash32(in.value ^ in.index, 0);
     }
   }
 
@@ -386,7 +383,7 @@ public class HashFunctions {
       if (in.isSet == 0)
         out.value = 0;
       else
-        out.value = com.google.common.hash.Hashing.murmur3_128().hashLong(in.value ^ in.index).asInt();
+        out.value = org.apache.drill.exec.expr.fn.impl.XXHash.hash32(in.value ^ in.index, 0);
     }
   }
 
@@ -399,7 +396,7 @@ public class HashFunctions {
     }
 
     public void eval() {
-      out.value = com.google.common.hash.Hashing.murmur3_128().hashInt(in.value).asInt();
+      out.value = org.apache.drill.exec.expr.fn.impl.XXHash.hash32(in.value, 0);
     }
   }
 
@@ -415,7 +412,7 @@ public class HashFunctions {
       if (in.isSet == 0)
         out.value = 0;
       else
-        out.value = com.google.common.hash.Hashing.murmur3_128().hashInt(in.value).asInt();
+        out.value = org.apache.drill.exec.expr.fn.impl.XXHash.hash32(in.value, 0);
     }
   }
 
@@ -428,7 +425,7 @@ public class HashFunctions {
     }
 
     public void eval() {
-      out.value = com.google.common.hash.Hashing.murmur3_128().hashLong(in.value).asInt();
+      out.value = org.apache.drill.exec.expr.fn.impl.XXHash.hash32(in.value, 0);
     }
   }
 
@@ -444,7 +441,7 @@ public class HashFunctions {
       if (in.isSet == 0)
         out.value = 0;
       else
-        out.value = com.google.common.hash.Hashing.murmur3_128().hashLong(in.value).asInt();
+        out.value = org.apache.drill.exec.expr.fn.impl.XXHash.hash32(in.value, 0);
     }
   }
 
@@ -462,7 +459,7 @@ public class HashFunctions {
       for (int i = 0; i < in.nDecimalDigits; i++) {
         xor = xor ^ Decimal28SparseHolder.getInteger(i, in.start, in.buffer);
       }
-      out.value = com.google.common.hash.Hashing.murmur3_128().hashInt(xor).asInt();
+      out.value = org.apache.drill.exec.expr.fn.impl.XXHash.hash32(xor, 0);
     }
   }
 
@@ -482,7 +479,7 @@ public class HashFunctions {
         for (int i = 0; i < in.nDecimalDigits; i++) {
           xor = xor ^ NullableDecimal28SparseHolder.getInteger(i, in.start, in.buffer);
         }
-        out.value = com.google.common.hash.Hashing.murmur3_128().hashInt(xor).asInt();
+        out.value = org.apache.drill.exec.expr.fn.impl.XXHash.hash32(xor, 0);
       }
     }
   }
@@ -501,7 +498,7 @@ public class HashFunctions {
       for (int i = 0; i < in.nDecimalDigits; i++) {
         xor = xor ^ Decimal38SparseHolder.getInteger(i, in.start, in.buffer);
       }
-      out.value = com.google.common.hash.Hashing.murmur3_128().hashInt(xor).asInt();
+      out.value = org.apache.drill.exec.expr.fn.impl.XXHash.hash32(xor, 0);
     }
   }
 
@@ -521,7 +518,7 @@ public class HashFunctions {
         for (int i = 0; i < in.nDecimalDigits; i++) {
           xor = xor ^ NullableDecimal38SparseHolder.getInteger(i, in.start, in.buffer);
         }
-        out.value = com.google.common.hash.Hashing.murmur3_128().hashInt(xor).asInt();
+        out.value = org.apache.drill.exec.expr.fn.impl.XXHash.hash32(xor, 0);
       }
     }
   }
