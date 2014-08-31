@@ -247,7 +247,7 @@ public class ExternalSortBatch extends AbstractRecordBatch<ExternalSort> {
             for (VectorWrapper w : incoming) {
               w.clear();
             }
-            break outer;
+            break;
           }
           if (first) first = false;
           totalSizeInMemory += getBufferSize(incoming);
