@@ -28,7 +28,7 @@
       {inputType: "NullableFloat4", outputType: "NullableFloat4", runningType: "Float4", major: "Numeric"},
       {inputType: "NullableFloat8", outputType: "NullableFloat8", runningType: "Float8", major: "Numeric"},
       {inputType: "Date", outputType: "Date", runningType: "Date", major: "Date", initialValue: "Long.MAX_VALUE"},
-      {inputType: "NullableDate", outputType: "NullableDate", runningType: "Date", major: "Date", initialValue: "Long.MAX_VALUE"},
+      {inputType: "NullableDate", outputType: "Date", runningType: "Date", major: "Date", initialValue: "Long.MAX_VALUE"},
       {inputType: "TimeStamp", outputType: "TimeStamp", runningType: "TimeStamp", major: "Date", initialValue: "Long.MAX_VALUE"},
       {inputType: "NullableTimeStamp", outputType: "TimeStamp", runningType: "TimeStamp", major: "Date", initialValue: "Long.MAX_VALUE"},
       {inputType: "TimeStampTZ", outputType: "TimeStampTZ", runningType: "TimeStampTZ", major: "Date", initialValue: "Long.MAX_VALUE"},
@@ -42,9 +42,9 @@
       {inputType: "Interval", outputType: "Interval", runningType: "BigInt", major: "Date", initialValue: "Long.MAX_VALUE"},
       {inputType: "NullableInterval", outputType: "Interval", runningType: "BigInt", major: "Date", initialValue: "Long.MAX_VALUE"},
       {inputType: "VarChar", outputType: "VarChar", runningType: "VarChar", major: "VarBytes"},
-      {inputType: "NullableVarChar", outputType: "NullableVarChar", runningType: "VarChar", major: "VarBytes"},
+      {inputType: "NullableVarChar", outputType: "VarChar", runningType: "VarChar", major: "VarBytes"},
       {inputType: "VarBinary", outputType: "VarBinary", runningType: "VarBinary", major: "VarBytes"},
-      {inputType: "NullableVarBinary", outputType: "NullableVarBinary", runningType: "VarBinary", major: "VarBytes"}
+      {inputType: "NullableVarBinary", outputType: "VarBinary", runningType: "VarBinary", major: "VarBytes"}
      ]
    },
    {className: "Max", funcName: "max", types: [
@@ -73,9 +73,9 @@
       {inputType: "Interval", outputType: "Interval", runningType: "BigInt", major: "Date", initialValue: "Long.MIN_VALUE"},
       {inputType: "NullableInterval", outputType: "Interval", runningType: "BigInt", major: "Date", initialValue: "Long.MIN_VALUE"},
       {inputType: "VarChar", outputType: "VarChar", runningType: "VarChar", major: "VarBytes"},
-      {inputType: "NullableVarChar", outputType: "NullableVarChar", runningType: "VarChar", major: "VarBytes"},
+      {inputType: "NullableVarChar", outputType: "VarChar", runningType: "VarChar", major: "VarBytes"},
       {inputType: "VarBinary", outputType: "VarBinary", runningType: "VarBinary", major: "VarBytes"},
-      {inputType: "NullableVarBinary", outputType: "NullableVarBinary", runningType: "VarBinary", major: "VarBytes"}
+      {inputType: "NullableVarBinary", outputType: "VarBinary", runningType: "VarBinary", major: "VarBytes"}
      ]
    },
    {className: "Sum", funcName: "sum", types: [   
@@ -109,7 +109,7 @@
       {inputType: "NullableFloat4", outputType: "NullableBigInt", runningType: "BigInt", major: "Numeric"},
       {inputType: "NullableFloat8", outputType: "NullableBigInt", runningType: "BigInt", major: "Numeric"},
       {inputType: "Date", outputType: "BigInt", runningType: "BigInt", major: "Date", initialValue: "0"},
-      {inputType: "NullableDate", outputType: "NullableBigInt", runningType: "BigInt", major: "Date", initialValue: "0"},
+      {inputType: "NullableDate", outputType: "BigInt", runningType: "BigInt", major: "Date", initialValue: "0"},
       {inputType: "TimeStamp", outputType: "BigInt", runningType: "BigInt", major: "Date", initialValue: "0"},
       {inputType: "NullableTimeStamp", outputType: "BigInt", runningType: "BigInt", major: "Date", initialValue: "0"},
       {inputType: "TimeStampTZ", outputType: "BigInt", runningType: "BigInt", major: "Date", initialValue: "0"},
@@ -123,9 +123,9 @@
       {inputType: "Interval", outputType: "BigInt", runningType: "BigInt", major: "Date", initialValue: "0"},
       {inputType: "NullableInterval", outputType: "BigInt", runningType: "BigInt", major: "Date", initialValue: "0"},
       {inputType: "VarChar", outputType: "BigInt", runningType: "BigInt", major: "VarBytes"},
-      {inputType: "NullableVarChar", outputType: "NullableBigInt", runningType: "BigInt", major: "VarBytes"},
+      {inputType: "NullableVarChar", outputType: "BigInt", runningType: "BigInt", major: "VarBytes"},
       {inputType: "VarBinary", outputType: "BigInt", runningType: "BigInt", major: "VarBytes"},
-      {inputType: "NullableVarBinary", outputType: "NullableBigInt", runningType: "BigInt", major: "VarBytes"}
+      {inputType: "NullableVarBinary", outputType: "BigInt", runningType: "BigInt", major: "VarBytes"}
      ]
    }
   ]
