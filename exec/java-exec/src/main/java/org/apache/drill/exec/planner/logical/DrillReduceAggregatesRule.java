@@ -18,7 +18,7 @@
 
 package org.apache.drill.exec.planner.logical;
 
-  
+
 import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -68,7 +68,7 @@ public class DrillReduceAggregatesRule extends RelOptRule {
       new DrillReduceAggregatesRule(operand(AggregateRel.class, any()));
 
   private static final DrillSqlOperator CastHighOp = new DrillSqlOperator("CastHigh", 1);
-  
+
   //~ Constructors -----------------------------------------------------------
 
   protected DrillReduceAggregatesRule(RelOptRuleOperand operand) {
@@ -116,7 +116,7 @@ public class DrillReduceAggregatesRule extends RelOptRule {
     return false;
   }
  */
-  
+
   /**
    * Reduces all calls to AVG, STDDEV_POP, STDDEV_SAMP, VAR_POP, VAR_SAMP in
    * the aggregates list to.
@@ -302,26 +302,26 @@ public class DrillReduceAggregatesRule extends RelOptRule {
             newCalls,
             aggCallMapping,
             ImmutableList.of(avgInputType));
-    
+
     RexNode tmpcountRef =
         rexBuilder.addAggCall(
             countCall,
             nGroups,
             newCalls,
             aggCallMapping,
-            ImmutableList.of(avgInputType));   
-    
+            ImmutableList.of(avgInputType));
+
     RexNode n = rexBuilder.makeCall(SqlStdOperatorTable.CASE,
         rexBuilder.makeCall(SqlStdOperatorTable.EQUALS,
             tmpcountRef, rexBuilder.makeExactLiteral(BigDecimal.ZERO)),
             rexBuilder.constantNull(),
             tmpsumRef);
-    
+
     // NOTE:  these references are with respect to the output
     // of newAggRel
-    /* 
-    RexNode numeratorRef = 
-        rexBuilder.makeCall(CastHighOp, 
+    /*
+    RexNode numeratorRef =
+        rexBuilder.makeCall(CastHighOp,
           rexBuilder.addAggCall(
               sumCall,
               nGroups,
@@ -331,7 +331,7 @@ public class DrillReduceAggregatesRule extends RelOptRule {
         );
     */
     RexNode numeratorRef = rexBuilder.makeCall(CastHighOp,  n);
-    
+
     RexNode denominatorRef =
         rexBuilder.addAggCall(
             countCall,
@@ -445,7 +445,8 @@ public class DrillReduceAggregatesRule extends RelOptRule {
 
     // final RexNode argRef = inputExprs.get(argOrdinal);
     RexNode argRef = rexBuilder.makeCall(CastHighOp, inputExprs.get(argOrdinal));
-    
+    inputExprs.set(argOrdinal, argRef);
+
     final RexNode argSquared =
         rexBuilder.makeCall(
             SqlStdOperatorTable.MULTIPLY, argRef, argRef);
@@ -457,7 +458,7 @@ public class DrillReduceAggregatesRule extends RelOptRule {
             true);
     final AggregateCall sumArgSquaredAggCall =
         new AggregateCall(
-            new SqlSumAggFunction(sumType), 
+            new SqlSumAggFunction(sumType),
             oldCall.isDistinct(),
             ImmutableIntList.of(argSquaredOrdinal),
             sumType,
@@ -472,7 +473,7 @@ public class DrillReduceAggregatesRule extends RelOptRule {
 
     final AggregateCall sumArgAggCall =
         new AggregateCall(
-            new SqlSumAggFunction(sumType), 
+            new SqlSumAggFunction(sumType),
             oldCall.isDistinct(),
             ImmutableIntList.of(argOrdinal),
             sumType,
