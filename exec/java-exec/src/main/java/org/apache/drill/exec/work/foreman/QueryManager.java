@@ -87,10 +87,9 @@ public class QueryManager implements FragmentStatusListener{
   }
 
   public void runFragments(WorkerBee bee, PlanFragment rootFragment, FragmentRoot rootOperator,
-                           UserClientConnection rootClient, List<PlanFragment> leafFragments,
-                           List<PlanFragment> intermediateFragments) throws ExecutionSetupException{
+                           UserClientConnection rootClient, List<PlanFragment> nonRootFragments) throws ExecutionSetupException{
     logger.debug("Setting up fragment runs.");
-    remainingFragmentCount.set(intermediateFragments.size() + leafFragments.size() + 1);
+    remainingFragmentCount.set(nonRootFragments.size() + 1);
     assert queryId == rootFragment.getHandle().getQueryId();
     workBus = bee.getContext().getWorkBus();
 
@@ -103,7 +102,7 @@ public class QueryManager implements FragmentStatusListener{
       logger.debug("Setting buffers on root context.");
       rootContext.setBuffers(buffers);
       // add fragment to local node.
-      status.add(new FragmentData(rootFragment.getHandle(), null, true));
+      status.add(new FragmentData(rootFragment.getHandle(), rootFragment.getAssignment(), true));
       logger.debug("Fragment added to local node.");
       rootRunner = new FragmentExecutor(rootContext, bee, rootOperator, new RootStatusHandler(rootContext, rootFragment));
       RootFragmentManager fragmentManager = new RootFragmentManager(rootFragment.getHandle(), buffers, rootRunner);
@@ -113,18 +112,18 @@ public class QueryManager implements FragmentStatusListener{
         bee.addFragmentRunner(fragmentManager.getRunnable());
       }else{
         // if we do, record the fragment manager in the workBus.
-        workBus.setRootFragmentManager(fragmentManager);
+        workBus.setFragmentManager(fragmentManager);
       }
     }
 
-    // keep track of intermediate fragments (not root or leaf)
-    for (PlanFragment f : intermediateFragments) {
+    // record all fragments for status purposes.
+    for (PlanFragment f : nonRootFragments) {
       logger.debug("Tracking intermediate remote node {} with data {}", f.getAssignment(), f.getFragmentJson());
       status.add(new FragmentData(f.getHandle(), f.getAssignment(), false));
     }
 
     // send remote (leaf) fragments.
-    for (PlanFragment f : leafFragments) {
+    for (PlanFragment f : nonRootFragments) {
       sendRemoteFragment(f);
     }
 

@@ -82,56 +82,65 @@ public class WorkEventBus {
     }
   }
 
-  public void setRootFragmentManager(RootFragmentManager fragmentManager) {
-    FragmentManager old = managers.putIfAbsent(fragmentManager.getHandle(), fragmentManager);
-    if (old != null) {
-      throw new IllegalStateException(
-          "Tried to set fragment manager when has already been set for the provided fragment handle.");
+  public void setFragmentManager(FragmentManager fragmentManager) {
+    synchronized (managers) {
+      FragmentManager old = managers.putIfAbsent(fragmentManager.getHandle(), fragmentManager);
+      managers.notifyAll();
+      if (old != null) {
+        throw new IllegalStateException(
+            "Tried to set fragment manager when has already been set for the provided fragment handle.");
+      }
     }
   }
 
-  public FragmentManager getFragmentManager(FragmentHandle handle) {
+  public FragmentManager getFragmentManagerIfExists(FragmentHandle handle){
     return managers.get(handle);
+
+  }
+
+  public FragmentManager getFragmentManager(FragmentHandle handle) throws FragmentSetupException {
+
+    // check if this was a recently canceled fragment.  If so, throw away message.
+    if (cancelledFragments.asMap().containsKey(handle)) {
+      logger.debug("Fragment: {} was cancelled. Ignoring fragment handle", handle);
+      return null;
+    }
+
+    // chm manages concurrency better then everyone fighting for the same lock so we'll do a double check.
+    FragmentManager m = managers.get(handle);
+    if(m != null){
+      return m;
+    }
+
+    try{
+    // We need to handle the race condition between the fragments being sent to leaf nodes and intermediate nodes.  It is possible that a leaf node would send a data batch to a intermediate node before the intermediate node received the associated plan.  As such, we will wait here for a bit to see if the appropriate fragment shows up.
+    long expire = System.nanoTime() + 800*1000; //800ms
+    synchronized(managers){
+
+      // we loop because we may be woken up by some other, unrelated manager insertion.
+      while(true){
+        m = managers.get(handle);
+        if(m != null) {
+          return m;
+        }
+        long timeToWait = expire - System.nanoTime();
+        if(timeToWait <= 0){
+          break;
+        }
+
+        managers.wait(0, (int) timeToWait);
+      }
+
+      throw new FragmentSetupException("Failed to receive plan fragment that was required.");
+    }
+    }catch(InterruptedException e){
+      throw new FragmentSetupException("Interrupted while waiting to receive plan fragment..");
+    }
   }
 
   public void cancelFragment(FragmentHandle handle) {
     cancelledFragments.put(handle, null);
     removeFragmentManager(handle);
-  }
-
-  public FragmentManager getOrCreateFragmentManager(FragmentHandle handle) throws FragmentSetupException{
-    if (cancelledFragments.asMap().containsKey(handle)) {
-      logger.debug("Fragment: {} was cancelled. Ignoring fragment handle", handle);
-      return null;
-    }
-    FragmentManager manager = managers.get(handle);
-    if (manager != null) {
-      return manager;
-    }
-    DistributedMap<FragmentHandle, PlanFragment> planCache = bee.getContext().getCache().getMap(Foreman.FRAGMENT_CACHE);
-    for (Map.Entry<FragmentHandle, PlanFragment> e : planCache.getLocalEntries()) {
-//      logger.debug("Key: {}", e.getKey());
-//      logger.debug("Value: {}", e.getValue());
-    }
-    PlanFragment fragment = bee.getContext().getCache().getMap(Foreman.FRAGMENT_CACHE).get(handle);
-
-    if (fragment == null) {
-      throw new FragmentSetupException("Received batch where fragment was not in cache.");
-    }
-
-    FragmentManager newManager = new NonRootFragmentManager(fragment, bee);
-
-    // since their could be a race condition on the check, we'll use putIfAbsent so we don't have two competing
-    // handlers.
-    manager = managers.putIfAbsent(fragment.getHandle(), newManager);
-
-    if (manager == null) {
-      // we added a handler, inform the bee that we did so. This way, the foreman can track status.
-      bee.addFragmentPendingRemote(newManager);
-      manager = newManager;
-    }
-
-    return manager;
   }
 
   public void removeFragmentManager(FragmentHandle handle) {
