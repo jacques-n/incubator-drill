@@ -46,6 +46,7 @@ import org.apache.drill.exec.work.foreman.Foreman;
 import org.apache.drill.exec.work.foreman.QueryStatus;
 import org.apache.drill.exec.work.fragment.FragmentExecutor;
 import org.apache.drill.exec.work.fragment.FragmentManager;
+import org.apache.drill.exec.work.fragment.NonRootFragmentManager;
 import org.apache.drill.exec.work.fragment.NonRootStatusReporter;
 
 public class ControlHandlerImpl implements ControlMessageHandler {
@@ -113,9 +114,6 @@ public class ControlHandlerImpl implements ControlMessageHandler {
 
   }
 
-  /* (non-Javadoc)
-   * @see org.apache.drill.exec.work.batch.BitComHandler#startNewRemoteFragment(org.apache.drill.exec.proto.ExecProtos.PlanFragment)
-   */
   @Override
   public void startNewRemoteFragment(PlanFragment fragment) throws ExecutionSetupException{
     logger.debug("Received remote fragment start instruction", fragment);
@@ -123,10 +121,20 @@ public class ControlHandlerImpl implements ControlMessageHandler {
     ControlTunnel tunnel = bee.getContext().getController().getTunnel(fragment.getForeman());
 
     NonRootStatusReporter listener = new NonRootStatusReporter(context, tunnel);
+
     try {
-      FragmentRoot rootOperator = bee.getContext().getPlanReader().readFragmentOperator(fragment.getFragmentJson());
-      FragmentExecutor fr = new FragmentExecutor(context, bee, rootOperator, listener);
-      bee.addFragmentRunner(fr);
+
+      // we either need to start the fragment if it is a leaf fragment, or set up a fragment manager if it is non leaf.
+      if(fragment.getLeafFragment()){
+        FragmentRoot rootOperator = bee.getContext().getPlanReader().readFragmentOperator(fragment.getFragmentJson());
+        FragmentExecutor fr = new FragmentExecutor(context, bee, rootOperator, listener);
+        bee.addFragmentRunner(fr);
+      }else{ // isIntermediate, store for incoming data.
+        NonRootFragmentManager manager = new NonRootFragmentManager(fragment, bee);
+        bee.getContext().getWorkBus().setFragmentManager(manager);
+      }
+
+
     } catch (Exception e) {
       listener.fail(fragment.getHandle(), "Failure due to uncaught exception", e);
     } catch (OutOfMemoryError t) {
@@ -137,6 +145,10 @@ public class ControlHandlerImpl implements ControlMessageHandler {
       }
     }
 
+    if(!fragment.getLeafFragment()){
+      context.close();
+    }
+
   }
 
   /* (non-Javadoc)
@@ -144,7 +156,7 @@ public class ControlHandlerImpl implements ControlMessageHandler {
    */
   @Override
   public Ack cancelFragment(FragmentHandle handle) {
-    FragmentManager manager = bee.getContext().getWorkBus().getFragmentManager(handle);
+    FragmentManager manager = bee.getContext().getWorkBus().getFragmentManagerIfExists(handle);
     if (manager != null) {
       // try remote fragment cancel.
       manager.cancel();
@@ -160,7 +172,7 @@ public class ControlHandlerImpl implements ControlMessageHandler {
   }
 
   public Ack receivingFragmentFinished(FinishedReceiver finishedReceiver) {
-    FragmentManager manager = bee.getContext().getWorkBus().getFragmentManager(finishedReceiver.getSender());
+    FragmentManager manager = bee.getContext().getWorkBus().getFragmentManagerIfExists(finishedReceiver.getSender());
 
     FragmentExecutor executor;
     if (manager != null) {
