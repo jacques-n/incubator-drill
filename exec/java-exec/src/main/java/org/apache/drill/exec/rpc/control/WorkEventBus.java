@@ -28,6 +28,7 @@ import org.apache.drill.exec.proto.BitControl.FragmentStatus;
 import org.apache.drill.exec.proto.BitControl.PlanFragment;
 import org.apache.drill.exec.proto.ExecProtos.FragmentHandle;
 import org.apache.drill.exec.proto.UserBitShared.QueryId;
+import org.apache.drill.exec.proto.helper.QueryIdHelper;
 import org.apache.drill.exec.rpc.RpcException;
 import org.apache.drill.exec.work.WorkManager.WorkerBee;
 import org.apache.drill.exec.work.foreman.Foreman;
@@ -83,6 +84,8 @@ public class WorkEventBus {
   }
 
   public void setFragmentManager(FragmentManager fragmentManager) {
+    logger.debug("Manager created: {}", QueryIdHelper.getQueryIdentifier(fragmentManager.getHandle()));
+
     synchronized (managers) {
       FragmentManager old = managers.putIfAbsent(fragmentManager.getHandle(), fragmentManager);
       managers.notifyAll();
@@ -131,7 +134,7 @@ public class WorkEventBus {
         managers.wait(0, (int) timeToWait);
       }
 
-      throw new FragmentSetupException("Failed to receive plan fragment that was required.");
+      throw new FragmentSetupException("Failed to receive plan fragment that was required for id: " + QueryIdHelper.getQueryIdentifier(handle));
     }
     }catch(InterruptedException e){
       throw new FragmentSetupException("Interrupted while waiting to receive plan fragment..");
@@ -139,11 +142,13 @@ public class WorkEventBus {
   }
 
   public void cancelFragment(FragmentHandle handle) {
+    logger.debug("Fragment canceled: {}", QueryIdHelper.getQueryIdentifier(handle));
     cancelledFragments.put(handle, null);
     removeFragmentManager(handle);
   }
 
   public void removeFragmentManager(FragmentHandle handle) {
+    logger.debug("Removing fragment manager: {}", QueryIdHelper.getQueryIdentifier(handle));
     managers.remove(handle);
   }
 
