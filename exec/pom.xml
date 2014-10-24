@@ -28,12 +28,22 @@
   <packaging>pom</packaging>
   <name>exec/Parent Pom</name>
 
-  <dependencies>
-  </dependencies>
+
+  <profiles>
+    <profile>
+      <id>build-jdbc-all</id>
+      <activation>
+        <activeByDefault>true</activeByDefault>
+      </activation>
+      <modules>
+        <module>jdbc-all</module>
+      </modules>
+    </profile>
+  </profiles>
+
   <modules>
     <module>java-exec</module>
     <module>jdbc</module>
-    <module>jdbc-all</module>
     <module>interpreter</module>
   </modules>
 </project>
