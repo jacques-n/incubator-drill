@@ -118,7 +118,7 @@ public class WorkEventBus {
     logger.debug("Fragment was requested but no manager exists.  Waiting for manager for fragment: {}", QueryIdHelper.getQueryIdentifier(handle));
     try{
     // We need to handle the race condition between the fragments being sent to leaf nodes and intermediate nodes.  It is possible that a leaf node would send a data batch to a intermediate node before the intermediate node received the associated plan.  As such, we will wait here for a bit to see if the appropriate fragment shows up.
-    long expire = System.nanoTime() + 800*1000; //800ms
+    long expire = System.currentTimeMillis() + 800;
     synchronized(managers){
 
       // we loop because we may be woken up by some other, unrelated manager insertion.
@@ -127,12 +127,12 @@ public class WorkEventBus {
         if(m != null) {
           return m;
         }
-        long timeToWait = expire - System.nanoTime();
+        long timeToWait = expire - System.currentTimeMillis();
         if(timeToWait <= 0){
           break;
         }
 
-        managers.wait(0, (int) timeToWait);
+        managers.wait(timeToWait);
       }
 
       throw new FragmentSetupException("Failed to receive plan fragment that was required for id: " + QueryIdHelper.getQueryIdentifier(handle));
