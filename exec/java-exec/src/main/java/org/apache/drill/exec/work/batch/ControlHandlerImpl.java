@@ -22,11 +22,11 @@ import io.netty.buffer.ByteBuf;
 
 import java.io.IOException;
 
-import org.apache.drill.common.exceptions.ExecutionSetupException;
 import org.apache.drill.exec.ops.FragmentContext;
 import org.apache.drill.exec.physical.base.FragmentRoot;
 import org.apache.drill.exec.proto.BitControl.FinishedReceiver;
 import org.apache.drill.exec.proto.BitControl.FragmentStatus;
+import org.apache.drill.exec.proto.BitControl.InitializeFragments;
 import org.apache.drill.exec.proto.BitControl.PlanFragment;
 import org.apache.drill.exec.proto.BitControl.RpcType;
 import org.apache.drill.exec.proto.ExecProtos.FragmentHandle;
@@ -38,6 +38,7 @@ import org.apache.drill.exec.rpc.Acks;
 import org.apache.drill.exec.rpc.Response;
 import org.apache.drill.exec.rpc.RpcConstants;
 import org.apache.drill.exec.rpc.RpcException;
+import org.apache.drill.exec.rpc.UserRpcException;
 import org.apache.drill.exec.rpc.control.ControlConnection;
 import org.apache.drill.exec.rpc.control.ControlTunnel;
 import org.apache.drill.exec.rpc.data.DataRpcConfig;
@@ -82,16 +83,12 @@ public class ControlHandlerImpl implements ControlMessageHandler {
       // TODO: Support a type of message that has no response.
       return DataRpcConfig.OK;
 
-    case RpcType.REQ_INIATILIZE_FRAGMENT_VALUE:
-      PlanFragment fragment = get(pBody, PlanFragment.PARSER);
-      try {
-        startNewRemoteFragment(fragment);
-        return DataRpcConfig.OK;
-
-      } catch (ExecutionSetupException e) {
-        logger.error("Failure while attempting to start remote fragment.", fragment);
-        return new Response(RpcType.ACK, Acks.FAIL);
+    case RpcType.REQ_INIATILIZE_FRAGMENTS_VALUE:
+      InitializeFragments fragments = get(pBody, InitializeFragments.PARSER);
+      for(int i =0; i < fragments.getFragmentCount(); i++){
+        startNewRemoteFragment(fragments.getFragment(i));
       }
+      return DataRpcConfig.OK;
 
     case RpcType.REQ_QUERY_STATUS_VALUE:
       QueryId queryId = get(pBody, QueryId.PARSER);
@@ -115,17 +112,15 @@ public class ControlHandlerImpl implements ControlMessageHandler {
   }
 
   @Override
-  public void startNewRemoteFragment(PlanFragment fragment) throws ExecutionSetupException{
+  public void startNewRemoteFragment(PlanFragment fragment) throws UserRpcException {
     logger.debug("Received remote fragment start instruction", fragment);
-    FragmentContext context = new FragmentContext(bee.getContext(), fragment, null, bee.getContext().getFunctionImplementationRegistry());
-    ControlTunnel tunnel = bee.getContext().getController().getTunnel(fragment.getForeman());
-
-    NonRootStatusReporter listener = new NonRootStatusReporter(context, tunnel);
 
     try {
-
       // we either need to start the fragment if it is a leaf fragment, or set up a fragment manager if it is non leaf.
       if(fragment.getLeafFragment()){
+        FragmentContext context = new FragmentContext(bee.getContext(), fragment, null, bee.getContext().getFunctionImplementationRegistry());
+        ControlTunnel tunnel = bee.getContext().getController().getTunnel(fragment.getForeman());
+        NonRootStatusReporter listener = new NonRootStatusReporter(context, tunnel);
         FragmentRoot rootOperator = bee.getContext().getPlanReader().readFragmentOperator(fragment.getFragmentJson());
         FragmentExecutor fr = new FragmentExecutor(context, bee, rootOperator, listener);
         bee.addFragmentRunner(fr);
@@ -134,19 +129,14 @@ public class ControlHandlerImpl implements ControlMessageHandler {
         bee.getContext().getWorkBus().setFragmentManager(manager);
       }
 
-
     } catch (Exception e) {
-      listener.fail(fragment.getHandle(), "Failure due to uncaught exception", e);
+        throw new UserRpcException(bee.getContext().getEndpoint(), "Failure while trying to start remote fragment", e);
     } catch (OutOfMemoryError t) {
       if (t.getMessage().startsWith("Direct buffer")) {
-        listener.fail(fragment.getHandle(), "Failure due to error", t);
+        throw new UserRpcException(bee.getContext().getEndpoint(), "Out of direct memory while trying to start remote fragment", t);
       } else {
         throw t;
       }
-    }
-
-    if(!fragment.getLeafFragment()){
-      context.close();
     }
 
   }

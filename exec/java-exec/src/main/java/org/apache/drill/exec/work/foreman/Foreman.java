@@ -141,8 +141,7 @@ public class Foreman implements Runnable, Closeable, Comparable<Object>{
       }
     }
 
-    boolean verbose = getContext().getOptions().getOption(ExecConstants.ENABLE_VERBOSE_ERRORS_KEY).bool_val;
-    DrillPBError error = ErrorHelper.logAndConvertError(context.getCurrentEndpoint(), message, t, logger, verbose);
+    DrillPBError error = ErrorHelper.logAndConvertError(context.getCurrentEndpoint(), message, t, logger);
     QueryResult result = QueryResult //
         .newBuilder() //
         .addError(error) //
