@@ -82,14 +82,18 @@ public class ErrorHelper {
 
 
     ExceptionWrapper.Builder ew = ExceptionWrapper.newBuilder();
-    if(ex.getMessage() != null) ew.setMessage(ex.getMessage());
+    if(ex.getMessage() != null) {
+      ew.setMessage(ex.getMessage());
+    }
     ew.setExceptionClass(ex.getClass().getCanonicalName());
     boolean isHidden = false;
     StackTraceElementWrapper[] wrappers = new StackTraceElementWrapper[ex.getStackTrace().length];
     for(int i = 0; i < wrappers.length; i++){
       StackTraceElement ele = ex.getStackTrace()[i];
       if(include(ele, includeAllStack)){
-        if(isHidden) isHidden = false;
+        if(isHidden){
+          isHidden = false;
+        }
         ew.addStackTrace(getSTWrapper(ele));
       }else{
         if(!isHidden){
@@ -107,7 +111,9 @@ public class ErrorHelper {
   }
 
   private static boolean include(StackTraceElement ele, boolean includeAllStack){
-    if(includeAllStack) return true;
+    if(includeAllStack) {
+      return true;
+    }
     return !(IGNORE.matcher(ele.getClassName()).matches());
   }
 
@@ -122,7 +128,9 @@ public class ErrorHelper {
   public static StackTraceElementWrapper.Builder getSTWrapper(StackTraceElement ele){
     StackTraceElementWrapper.Builder w = StackTraceElementWrapper.newBuilder();
     w.setClassName(ele.getClassName());
-    if(ele.getFileName() != null) w.setFileName(ele.getFileName());
+    if(ele.getFileName() != null) {
+      w.setFileName(ele.getFileName());
+    }
     w.setIsNativeMethod(ele.isNativeMethod());
     w.setLineNumber(ele.getLineNumber());
     w.setMethodName(ele.getMethodName());

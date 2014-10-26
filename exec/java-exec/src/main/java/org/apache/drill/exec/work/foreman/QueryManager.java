@@ -153,7 +153,7 @@ public class QueryManager implements FragmentStatusListener{
     }
     InitializeFragments initFrags = fb.build();
 
-    if(logger.isDebugEnabled()) logger.debug("Sending remote fragments to node {} with data {}", assignment, initFrags);
+    logger.debug("Sending remote fragments to node {} with data {}", assignment, initFrags);
     FragmentSubmitListener listener = new FragmentSubmitListener(assignment, initFrags);
     controller.getTunnel(assignment).sendFragments(listener, initFrags);
   }
