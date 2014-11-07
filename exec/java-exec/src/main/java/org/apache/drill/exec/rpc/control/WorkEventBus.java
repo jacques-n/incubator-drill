@@ -42,8 +42,9 @@ public class WorkEventBus {
   private final ConcurrentMap<QueryId, FragmentStatusListener> listeners = new ConcurrentHashMap<QueryId, FragmentStatusListener>(
       16, 0.75f, 16);
   private final WorkerBee bee;
-  private final Cache<FragmentHandle,Void> recentlyFinishedFragments = CacheBuilder.newBuilder()
+  private final Cache<FragmentHandle,Integer> recentlyFinishedFragments = CacheBuilder.newBuilder()
           .maximumSize(10000)
+
           .expireAfterWrite(10, TimeUnit.MINUTES)
           .build();
 
@@ -113,7 +114,7 @@ public class WorkEventBus {
 
   public void removeFragmentManager(FragmentHandle handle) {
     logger.debug("Removing fragment manager: {}", QueryIdHelper.getQueryIdentifier(handle));
-    recentlyFinishedFragments.put(handle,  null);
+    recentlyFinishedFragments.put(handle,  1);
     managers.remove(handle);
   }
 
