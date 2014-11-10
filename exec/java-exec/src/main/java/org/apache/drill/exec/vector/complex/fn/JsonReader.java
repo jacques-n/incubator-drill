@@ -23,6 +23,7 @@ import java.io.IOException;
 import java.io.Reader;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 
 import org.apache.drill.common.exceptions.DrillRuntimeException;
 import org.apache.drill.common.expression.PathSegment;
@@ -44,6 +45,7 @@ import com.fasterxml.jackson.core.JsonParser.Feature;
 import com.fasterxml.jackson.core.JsonToken;
 import com.google.common.base.Charsets;
 import com.google.common.base.Preconditions;
+import com.google.common.base.Stopwatch;
 
 public class JsonReader {
   static final org.slf4j.Logger logger = org.slf4j.LoggerFactory.getLogger(JsonReader.class);
@@ -120,14 +122,18 @@ public class JsonReader {
   }
 
   public boolean write(Reader reader, ComplexWriter writer) throws JsonParseException, IOException {
-
+    Stopwatch w = new Stopwatch().start();
     parser = factory.createJsonParser(reader);
+    w.stop();
     reader.mark(MAX_RECORD_SIZE);
+
     JsonToken t = parser.nextToken();
     while (!parser.hasCurrentToken()) {
       t = parser.nextToken();
     }
-    return writeToVector(writer, t);
+    boolean write = writeToVector(writer, t);
+
+    return write;
   }
 
  public boolean write(byte[] jsonString, ComplexWriter writer) throws JsonParseException, IOException {
@@ -212,6 +218,7 @@ private boolean writeToVector(ComplexWriter writer, JsonToken t) throws JsonPars
       } else {
         path = map.getField().getPath().getChild(fieldName);
       }
+
       if ( ! fieldSelected(path) ) {
         consumeEntireNextValue(parser);
         continue outside;
