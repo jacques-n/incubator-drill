@@ -81,7 +81,7 @@ public abstract class ClusterCoordinator implements Closeable {
    * @param listener
    */
   public void addDrillbitStatusListener(DrillbitStatusListener listener) {
-    listeners.putIfAbsent(listener, listener);
+    //listeners.putIfAbsent(listener, listener);
   }
 
   /**
