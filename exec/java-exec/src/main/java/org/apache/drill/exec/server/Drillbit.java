@@ -127,18 +127,26 @@ public class Drillbit implements Closeable{
     context.setErrorHandler(errorHandler);
     context.setContextPath("/");
     embeddedJetty.setHandler(context);
-    ServletHolder h = new ServletHolder(new ServletContainer(new DrillRestServer(manager)));
-//    h.setInitParameter(ServerProperties.PROVIDER_PACKAGES, "org.apache.drill.exec.server");
-    h.setInitOrder(1);
-    context.addServlet(h, "/*");
+
+    // metrics
     context.addServlet(new ServletHolder(new MetricsServlet(this.context.getMetrics())), "/status/metrics");
+
+    // threads
     context.addServlet(new ServletHolder(new ThreadDumpServlet()), "/status/threads");
 
+    // static assets
     ServletHolder staticHolder = new ServletHolder("static", DefaultServlet.class);
+    staticHolder.setInitOrder(1);
     staticHolder.setInitParameter("resourceBase", Resource.newClassPathResource("/rest/static").toString());
     staticHolder.setInitParameter("dirAllowed","false");
     staticHolder.setInitParameter("pathInfoOnly","true");
     context.addServlet(staticHolder,"/static/*");
+
+    // rest
+    ServletHolder restHolder = new ServletHolder(new ServletContainer(new DrillRestServer(manager)));
+    //  h.setInitParameter(ServerProperties.PROVIDER_PACKAGES, "org.apache.drill.exec.server");
+    restHolder.setInitOrder(2);
+    context.addServlet(restHolder, "/*");
 
     embeddedJetty.start();
 
