@@ -86,7 +86,6 @@ public class ZkPStoreProvider implements PStoreProvider {
   }
 
   public <V> ZkPStore<V> getZkPStore(PStoreConfig<V> store) throws IOException {
-    Preconditions.checkArgument(store.getMode() == Mode.EPHEMERAL);
     ZkPStore<V> s = (ZkPStore<V>) stores.get(store);
     if(s != null){
       return s;

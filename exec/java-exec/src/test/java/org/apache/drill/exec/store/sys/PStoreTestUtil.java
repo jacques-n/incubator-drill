@@ -41,7 +41,7 @@ public class PStoreTestUtil {
       expectedMap.put(keys[i], values[i]);
       store.put(keys[i], values[i]);
     }
-    // allow one second for puts to propagate back to cache
+
     {
       Iterator<Map.Entry<String, String>> iter = store.iterator();
       for(int i =0; i < keys.length; i++){
@@ -60,8 +60,6 @@ public class PStoreTestUtil {
         iter.remove();
       }
     }
-
-    // allow one second for deletes to propagate back to cache
 
     assertFalse(store.iterator().hasNext());
   }
