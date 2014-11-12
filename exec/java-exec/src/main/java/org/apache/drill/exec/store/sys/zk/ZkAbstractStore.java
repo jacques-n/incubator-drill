@@ -206,4 +206,8 @@ public abstract class ZkAbstractStore<V> {
     }
 
   }
+
+  public void close() throws IOException {
+    childrenCache.close();
+  }
 }

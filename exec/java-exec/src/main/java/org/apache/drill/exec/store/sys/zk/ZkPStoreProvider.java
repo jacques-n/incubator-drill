@@ -17,8 +17,8 @@
  */
 package org.apache.drill.exec.store.sys.zk;
 
-import java.io.File;
 import java.io.IOException;
+import java.util.concurrent.ConcurrentMap;
 
 import org.apache.curator.framework.CuratorFramework;
 import org.apache.drill.common.config.DrillConfig;
@@ -26,15 +26,17 @@ import org.apache.drill.exec.coord.ClusterCoordinator;
 import org.apache.drill.exec.coord.zk.ZKClusterCoordinator;
 import org.apache.drill.exec.exception.DrillbitStartupException;
 import org.apache.drill.exec.store.dfs.shim.DrillFileSystem;
-import org.apache.drill.exec.store.sys.EStore;
 import org.apache.drill.exec.store.sys.PStore;
 import org.apache.drill.exec.store.sys.PStoreConfig;
+import org.apache.drill.exec.store.sys.PStoreConfig.Mode;
 import org.apache.drill.exec.store.sys.PStoreProvider;
 import org.apache.drill.exec.store.sys.PStoreRegistry;
 import org.apache.drill.exec.store.sys.local.FilePStore;
 import org.apache.hadoop.fs.Path;
 
 import com.google.common.annotations.VisibleForTesting;
+import com.google.common.base.Preconditions;
+import com.google.common.collect.Maps;
 
 public class ZkPStoreProvider implements PStoreProvider {
   static final org.slf4j.Logger logger = org.slf4j.LoggerFactory.getLogger(ZkPStoreProvider.class);
@@ -46,6 +48,7 @@ public class ZkPStoreProvider implements PStoreProvider {
   private final DrillFileSystem fs;
   private final Path blobRoot;
   private final ZkEStoreProvider zkEStoreProvider;
+  private final ConcurrentMap<PStoreConfig<?>, ZkPStore<?>> stores = Maps.newConcurrentMap();
 
   public ZkPStoreProvider(PStoreRegistry registry) throws DrillbitStartupException {
     ClusterCoordinator coord = registry.getClusterCoordinator();
@@ -82,6 +85,21 @@ public class ZkPStoreProvider implements PStoreProvider {
   public void close() {
   }
 
+  public <V> ZkPStore<V> getZkPStore(PStoreConfig<V> store) throws IOException {
+    Preconditions.checkArgument(store.getMode() == Mode.EPHEMERAL);
+    ZkPStore<V> s = (ZkPStore<V>) stores.get(store);
+    if(s != null){
+      return s;
+    }
+    s = new ZkPStore<V>(curator,store);
+    ZkPStore<V> s2 = (ZkPStore<V>) stores.putIfAbsent(store, s);
+    if(s2 == null){
+      return s;
+    }else{
+      s.close();
+      return s2;
+    }
+  }
 
   @Override
   public <V> PStore<V> getStore(PStoreConfig<V> config) throws IOException {
@@ -91,7 +109,7 @@ public class ZkPStoreProvider implements PStoreProvider {
     case EPHEMERAL:
       return zkEStoreProvider.getStore(config);
     case PERSISTENT:
-      return new ZkPStore<V>(curator, config);
+      return getZkPStore(config);
     default:
       throw new IllegalStateException();
     }

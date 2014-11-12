@@ -18,6 +18,9 @@
 
 package org.apache.drill.exec.store.sys.zk;
 
+import java.io.IOException;
+import java.util.concurrent.ConcurrentMap;
+
 import org.apache.curator.framework.CuratorFramework;
 import org.apache.drill.exec.store.sys.EStore;
 import org.apache.drill.exec.store.sys.EStoreProvider;
@@ -25,11 +28,12 @@ import org.apache.drill.exec.store.sys.PStoreConfig;
 import org.apache.drill.exec.store.sys.PStoreConfig.Mode;
 
 import com.google.common.base.Preconditions;
-
-import java.io.IOException;
+import com.google.common.collect.Maps;
 
 public class ZkEStoreProvider implements EStoreProvider{
+
   private final CuratorFramework curator;
+  private final ConcurrentMap<PStoreConfig<?>, ZkEStore<?>> stores = Maps.newConcurrentMap();
 
   public ZkEStoreProvider(CuratorFramework curator) {
     this.curator = curator;
@@ -38,6 +42,17 @@ public class ZkEStoreProvider implements EStoreProvider{
   @Override
   public <V> EStore<V> getStore(PStoreConfig<V> store) throws IOException {
     Preconditions.checkArgument(store.getMode() == Mode.EPHEMERAL);
-    return new ZkEStore<V>(curator,store);
+    ZkEStore<V> s = (ZkEStore<V>) stores.get(store);
+    if(s != null){
+      return s;
+    }
+    s = new ZkEStore<V>(curator,store);
+    ZkEStore<V> s2 = (ZkEStore<V>) stores.putIfAbsent(store, s);
+    if(s2 == null){
+      return s;
+    }else{
+      s.close();
+      return s2;
+    }
   }
 }
