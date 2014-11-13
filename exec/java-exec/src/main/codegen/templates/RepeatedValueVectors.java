@@ -77,6 +77,9 @@ public final class Repeated${minor.class}Vector extends BaseValueVector implemen
   }
   
   public int getBufferSize(){
+    if(getGroupCount() == 0){
+      return 0;
+    }
     return offsets.getBufferSize() + values.getBufferSize();
   }
 
@@ -512,7 +515,7 @@ public final class Repeated${minor.class}Vector extends BaseValueVector implemen
     public void setValueCount(int groupCount) {
       parentValueCount = groupCount;
       childValueCount = offsets.getAccessor().get(groupCount);
-      offsets.getMutator().setValueCount(groupCount+1);
+      offsets.getMutator().setValueCount(valueCount == 0 ? 0 : valueCount+1);
       values.getMutator().setValueCount(childValueCount);
     }
     
