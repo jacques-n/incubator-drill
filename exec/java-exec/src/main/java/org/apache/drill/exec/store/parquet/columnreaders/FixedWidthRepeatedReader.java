@@ -19,9 +19,9 @@ package org.apache.drill.exec.store.parquet.columnreaders;
 
 import java.io.IOException;
 
-import org.apache.drill.common.exceptions.ExecutionSetupException;
 import org.apache.drill.exec.vector.RepeatedFixedWidthVector;
 import org.apache.drill.exec.vector.ValueVector;
+import org.apache.drill.exec.work.foreman.ForemanException;
 
 import parquet.column.ColumnDescriptor;
 import parquet.format.SchemaElement;
@@ -47,7 +47,7 @@ public class FixedWidthRepeatedReader extends VarLengthColumn {
   boolean notFishedReadingList;
   byte[] leftOverBytes;
 
-  FixedWidthRepeatedReader(ParquetRecordReader parentReader, ColumnReader dataReader, int dataTypeLengthInBytes, int allocateSize, ColumnDescriptor descriptor, ColumnChunkMetaData columnChunkMetaData, boolean fixedLength, ValueVector valueVector, SchemaElement schemaElement) throws ExecutionSetupException {
+  FixedWidthRepeatedReader(ParquetRecordReader parentReader, ColumnReader dataReader, int dataTypeLengthInBytes, int allocateSize, ColumnDescriptor descriptor, ColumnChunkMetaData columnChunkMetaData, boolean fixedLength, ValueVector valueVector, SchemaElement schemaElement) throws ForemanException {
     super(parentReader, allocateSize, descriptor, columnChunkMetaData, fixedLength, valueVector, schemaElement);
     castedRepeatedVector = (RepeatedFixedWidthVector) valueVector;
     this.dataTypeLengthInBytes = dataTypeLengthInBytes;

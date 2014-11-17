@@ -19,7 +19,6 @@ package org.apache.drill.exec.physical.impl.aggregate;
 
 import java.io.IOException;
 
-import org.apache.drill.common.exceptions.ExecutionSetupException;
 import org.apache.drill.common.expression.ErrorCollector;
 import org.apache.drill.common.expression.ErrorCollectorImpl;
 import org.apache.drill.common.expression.LogicalExpression;
@@ -49,6 +48,7 @@ import org.apache.drill.exec.record.TypedFieldId;
 import org.apache.drill.exec.record.selection.SelectionVector2;
 import org.apache.drill.exec.record.selection.SelectionVector4;
 import org.apache.drill.exec.vector.ValueVector;
+import org.apache.drill.exec.work.foreman.ForemanException;
 
 import com.sun.codemodel.JExpr;
 import com.sun.codemodel.JVar;
@@ -75,7 +75,7 @@ public class HashAggBatch extends AbstractRecordBatch<HashAggregate> {
   private final MappingSet UpdateAggrValuesMapping = new MappingSet("incomingRowIdx" /* read index */, "outRowIdx" /* write index */, "htRowIdx" /* workspace index */, "incoming" /* read container */, "outgoing" /* write container */, "aggrValuesContainer" /* workspace container */, UPDATE_AGGR_INSIDE, UPDATE_AGGR_OUTSIDE, UPDATE_AGGR_INSIDE);
 
 
-  public HashAggBatch(HashAggregate popConfig, RecordBatch incoming, FragmentContext context) throws ExecutionSetupException {
+  public HashAggBatch(HashAggregate popConfig, RecordBatch incoming, FragmentContext context) throws ForemanException {
     super(popConfig, context);
     this.incoming = incoming;
   }

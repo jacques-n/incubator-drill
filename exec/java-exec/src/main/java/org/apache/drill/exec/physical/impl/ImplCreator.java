@@ -20,7 +20,6 @@ package org.apache.drill.exec.physical.impl;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
-import org.apache.drill.common.exceptions.ExecutionSetupException;
 import org.apache.drill.exec.ops.FragmentContext;
 import org.apache.drill.exec.physical.base.AbstractPhysicalVisitor;
 import org.apache.drill.exec.physical.base.FragmentRoot;
@@ -28,6 +27,7 @@ import org.apache.drill.exec.physical.base.PhysicalOperator;
 import org.apache.drill.exec.physical.impl.validate.IteratorValidatorInjector;
 import org.apache.drill.exec.record.RecordBatch;
 import org.apache.drill.exec.util.AssertionUtil;
+import org.apache.drill.exec.work.foreman.ForemanException;
 
 import com.google.common.base.Preconditions;
 import com.google.common.base.Stopwatch;
@@ -36,7 +36,7 @@ import com.google.common.collect.Lists;
 /**
  * Implementation of the physical operator visitor
  */
-public class ImplCreator extends AbstractPhysicalVisitor<RecordBatch, FragmentContext, ExecutionSetupException> {
+public class ImplCreator extends AbstractPhysicalVisitor<RecordBatch, FragmentContext, ForemanException> {
   static final org.slf4j.Logger logger = org.slf4j.LoggerFactory.getLogger(ImplCreator.class);
 
   private RootExec root = null;
@@ -49,7 +49,7 @@ public class ImplCreator extends AbstractPhysicalVisitor<RecordBatch, FragmentCo
 
   @Override
   @SuppressWarnings("unchecked")
-  public RecordBatch visitOp(PhysicalOperator op, FragmentContext context) throws ExecutionSetupException {
+  public RecordBatch visitOp(PhysicalOperator op, FragmentContext context) throws ForemanException {
     Preconditions.checkNotNull(op);
     Preconditions.checkNotNull(context);
 
@@ -68,7 +68,7 @@ public class ImplCreator extends AbstractPhysicalVisitor<RecordBatch, FragmentCo
     }
   }
 
-  private List<RecordBatch> getChildren(PhysicalOperator op, FragmentContext context) throws ExecutionSetupException {
+  private List<RecordBatch> getChildren(PhysicalOperator op, FragmentContext context) throws ForemanException {
     List<RecordBatch> children = Lists.newArrayList();
     for (PhysicalOperator child : op) {
       children.add(child.accept(this, context));
@@ -76,7 +76,7 @@ public class ImplCreator extends AbstractPhysicalVisitor<RecordBatch, FragmentCo
     return children;
   }
 
-  public static RootExec getExec(FragmentContext context, FragmentRoot root) throws ExecutionSetupException {
+  public static RootExec getExec(FragmentContext context, FragmentRoot root) throws ForemanException {
     ImplCreator i = new ImplCreator();
     if (AssertionUtil.isAssertionsEnabled()) {
       root = IteratorValidatorInjector.rewritePlanWithIteratorValidator(context, root);
@@ -87,7 +87,7 @@ public class ImplCreator extends AbstractPhysicalVisitor<RecordBatch, FragmentCo
     root.accept(i, context);
     logger.debug("Took {} ms to accept", watch.elapsed(TimeUnit.MILLISECONDS));
     if (i.root == null) {
-      throw new ExecutionSetupException(
+      throw new ForemanException(
           "The provided fragment did not have a root node that correctly created a RootExec value.");
     }
     return i.getRoot();

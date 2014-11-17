@@ -19,12 +19,12 @@ package org.apache.drill.exec.store;
 
 import java.util.Map;
 
-import org.apache.drill.common.exceptions.ExecutionSetupException;
 import org.apache.drill.exec.memory.OutOfMemoryException;
 import org.apache.drill.exec.ops.OperatorContext;
 import org.apache.drill.exec.physical.impl.OutputMutator;
 import org.apache.drill.exec.record.MaterializedField.Key;
 import org.apache.drill.exec.vector.ValueVector;
+import org.apache.drill.exec.work.foreman.ForemanException;
 
 public interface RecordReader {
 
@@ -37,9 +37,9 @@ public interface RecordReader {
    * @param output
    *          The place where output for a particular scan should be written. The record reader is responsible for
    *          mutating the set of schema values for that particular record.
-   * @throws ExecutionSetupException
+   * @throws ForemanException
    */
-  public abstract void setup(OutputMutator output) throws ExecutionSetupException;
+  public abstract void setup(OutputMutator output) throws ForemanException;
 
   public abstract void allocate(Map<Key, ValueVector> vectorMap) throws OutOfMemoryException;
 

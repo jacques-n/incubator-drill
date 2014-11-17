@@ -19,10 +19,10 @@ package org.apache.drill.exec.physical.base;
 
 import java.util.List;
 
-import org.apache.drill.common.exceptions.ExecutionSetupException;
-import org.apache.drill.common.exceptions.PhysicalOperatorSetupException;
 import org.apache.drill.common.expression.SchemaPath;
+import org.apache.drill.exec.physical.PhysicalOperatorSetupException;
 import org.apache.drill.exec.proto.CoordinationProtos.DrillbitEndpoint;
+import org.apache.drill.exec.work.foreman.ForemanException;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.google.common.collect.Lists;
@@ -38,7 +38,7 @@ public interface GroupScan extends Scan, HasAffinity{
 
   public abstract void applyAssignments(List<DrillbitEndpoint> endpoints) throws PhysicalOperatorSetupException;
 
-  public abstract SubScan getSpecificScan(int minorFragmentId) throws ExecutionSetupException;
+  public abstract SubScan getSpecificScan(int minorFragmentId) throws ForemanException;
 
   @JsonIgnore
   public int getMaxParallelizationWidth();

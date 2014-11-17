@@ -20,9 +20,9 @@ package org.apache.drill.exec.server.rest;
 
 import javax.xml.bind.annotation.XmlRootElement;
 
-import org.apache.drill.common.exceptions.ExecutionSetupException;
 import org.apache.drill.common.logical.StoragePluginConfig;
 import org.apache.drill.exec.store.StoragePluginRegistry;
+import org.apache.drill.exec.work.foreman.ForemanException;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
@@ -53,11 +53,11 @@ public class PluginConfigWrapper {
     return exists && config.isEnabled();
   }
 
-  public void createOrUpdateInStorage(StoragePluginRegistry storage) throws ExecutionSetupException {
+  public void createOrUpdateInStorage(StoragePluginRegistry storage) throws ForemanException {
     storage.createOrUpdate(name, config, true);
   }
 
-  public boolean setEnabledInStorage(StoragePluginRegistry storage, boolean enabled) throws ExecutionSetupException {
+  public boolean setEnabledInStorage(StoragePluginRegistry storage, boolean enabled) throws ForemanException {
     if (exists) {
       config.setEnabled(enabled);
       createOrUpdateInStorage(storage);

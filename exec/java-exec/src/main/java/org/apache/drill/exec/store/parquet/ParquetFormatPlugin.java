@@ -23,7 +23,6 @@ import java.util.Map;
 import java.util.Set;
 import java.util.regex.Pattern;
 
-import org.apache.drill.common.exceptions.ExecutionSetupException;
 import org.apache.drill.common.expression.SchemaPath;
 import org.apache.drill.common.logical.StoragePluginConfig;
 import org.apache.drill.exec.ExecConstants;
@@ -47,6 +46,7 @@ import org.apache.drill.exec.store.dfs.FormatSelection;
 import org.apache.drill.exec.store.dfs.MagicString;
 import org.apache.drill.exec.store.dfs.shim.DrillFileSystem;
 import org.apache.drill.exec.store.mock.MockStorageEngine;
+import org.apache.drill.exec.work.foreman.ForemanException;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileStatus;
 import org.apache.hadoop.fs.FileSystem;
@@ -139,11 +139,11 @@ public class ParquetFormatPlugin implements FormatPlugin{
   }
 
   public RecordBatch getWriterBatch(FragmentContext context, RecordBatch incoming, ParquetWriter writer)
-          throws ExecutionSetupException {
+          throws ForemanException {
     try {
       return new WriterRecordBatch(writer, incoming, context, getRecordWriter(context, writer));
     } catch(IOException e) {
-      throw new ExecutionSetupException(String.format("Failed to create the WriterRecordBatch. %s", e.getMessage()), e);
+      throw new ForemanException(String.format("Failed to create the WriterRecordBatch. %s", e.getMessage()), e);
     }
   }
 

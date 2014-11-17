@@ -19,13 +19,13 @@ package org.apache.drill.exec.physical.impl;
 
 import java.util.List;
 
-import org.apache.drill.common.exceptions.ExecutionSetupException;
 import org.apache.drill.exec.ops.FragmentContext;
 import org.apache.drill.exec.physical.config.MergingReceiverPOP;
 import org.apache.drill.exec.physical.impl.mergereceiver.MergingRecordBatch;
 import org.apache.drill.exec.record.RecordBatch;
 import org.apache.drill.exec.work.batch.IncomingBuffers;
 import org.apache.drill.exec.work.batch.RawBatchBuffer;
+import org.apache.drill.exec.work.foreman.ForemanException;
 
 public class MergingReceiverCreator implements BatchCreator<MergingReceiverPOP> {
   static final org.slf4j.Logger logger = org.slf4j.LoggerFactory.getLogger(MergingReceiverCreator.class);
@@ -34,7 +34,7 @@ public class MergingReceiverCreator implements BatchCreator<MergingReceiverPOP> 
   public RecordBatch getBatch(FragmentContext context,
                               MergingReceiverPOP receiver,
                               List<RecordBatch> children)
-      throws ExecutionSetupException {
+      throws ForemanException {
 
     assert children == null || children.isEmpty();
     IncomingBuffers bufHolder = context.getBuffers();

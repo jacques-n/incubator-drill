@@ -19,18 +19,18 @@ package org.apache.drill.exec.physical.impl.join;
 
 import java.util.List;
 
-import org.apache.drill.common.exceptions.ExecutionSetupException;
 import org.apache.drill.exec.ops.FragmentContext;
 import org.apache.drill.exec.physical.config.HashJoinPOP;
 import org.apache.drill.exec.physical.impl.BatchCreator;
 import org.apache.drill.exec.record.RecordBatch;
+import org.apache.drill.exec.work.foreman.ForemanException;
 
 import com.google.common.base.Preconditions;
 
 public class HashJoinBatchCreator implements BatchCreator<HashJoinPOP> {
 
   @Override
-  public RecordBatch getBatch(FragmentContext context, HashJoinPOP config, List<RecordBatch> children) throws ExecutionSetupException {
+  public RecordBatch getBatch(FragmentContext context, HashJoinPOP config, List<RecordBatch> children) throws ForemanException {
     Preconditions.checkArgument(children.size() == 2);
     return new HashJoinBatch(config, context, children.get(0), children.get(1));
   }

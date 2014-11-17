@@ -36,7 +36,6 @@ import net.hydromatic.optiq.tools.RuleSet;
 
 import org.apache.drill.common.config.DrillConfig;
 import org.apache.drill.common.exceptions.DrillRuntimeException;
-import org.apache.drill.common.exceptions.ExecutionSetupException;
 import org.apache.drill.common.logical.FormatPluginConfig;
 import org.apache.drill.common.logical.StoragePluginConfig;
 import org.apache.drill.common.util.PathScanner;
@@ -54,6 +53,7 @@ import org.apache.drill.exec.store.sys.PStore;
 import org.apache.drill.exec.store.sys.PStoreConfig;
 import org.apache.drill.exec.store.sys.SystemTablePlugin;
 import org.apache.drill.exec.store.sys.SystemTablePluginConfig;
+import org.apache.drill.exec.work.foreman.ForemanException;
 import org.eigenbase.relopt.RelOptRule;
 
 import com.google.common.base.Charsets;
@@ -168,7 +168,7 @@ public class StoragePluginRegistry implements Iterable<Map.Entry<String, Storage
           try {
             StoragePlugin plugin = create(name, config);
             activePlugins.put(name, plugin);
-          } catch (ExecutionSetupException e) {
+          } catch (ForemanException e) {
             logger.error("Failure while setting up StoragePlugin with name: '{}', disabling.", name, e);
             config.setEnabled(false);
             pluginSystemTable.put(name, config);
@@ -191,7 +191,7 @@ public class StoragePluginRegistry implements Iterable<Map.Entry<String, Storage
     pluginSystemTable.delete(name);
   }
 
-  public StoragePlugin createOrUpdate(String name, StoragePluginConfig config, boolean persist) throws ExecutionSetupException {
+  public StoragePlugin createOrUpdate(String name, StoragePluginConfig config, boolean persist) throws ForemanException {
     StoragePlugin oldPlugin = plugins.get(name);
 
     StoragePlugin newPlugin = create(name, config);
@@ -207,7 +207,7 @@ public class StoragePluginRegistry implements Iterable<Map.Entry<String, Storage
     }
 
     if(!ok) {
-      throw new ExecutionSetupException("Two processes tried to change a plugin at the same time.");
+      throw new ForemanException("Two processes tried to change a plugin at the same time.");
     }
 
     if (persist) {
@@ -217,7 +217,7 @@ public class StoragePluginRegistry implements Iterable<Map.Entry<String, Storage
     return newPlugin;
   }
 
-  public StoragePlugin getPlugin(String name) throws ExecutionSetupException {
+  public StoragePlugin getPlugin(String name) throws ForemanException {
     StoragePlugin plugin = plugins.get(name);
     if (name.equals(SYS_PLUGIN) || name.equals(INFORMATION_SCHEMA_PLUGIN)) {
       return plugin;
@@ -238,7 +238,7 @@ public class StoragePluginRegistry implements Iterable<Map.Entry<String, Storage
     }
   }
 
-  public StoragePlugin getPlugin(StoragePluginConfig config) throws ExecutionSetupException {
+  public StoragePlugin getPlugin(StoragePluginConfig config) throws ForemanException {
     if (config instanceof NamedStoragePluginConfig) {
       return getPlugin(((NamedStoragePluginConfig) config).name);
     } else {
@@ -247,20 +247,20 @@ public class StoragePluginRegistry implements Iterable<Map.Entry<String, Storage
     }
   }
 
-  public FormatPlugin getFormatPlugin(StoragePluginConfig storageConfig, FormatPluginConfig formatConfig) throws ExecutionSetupException {
+  public FormatPlugin getFormatPlugin(StoragePluginConfig storageConfig, FormatPluginConfig formatConfig) throws ForemanException {
     StoragePlugin p = getPlugin(storageConfig);
     if (!(p instanceof FileSystemPlugin)) {
-      throw new ExecutionSetupException(String.format("You tried to request a format plugin for a storage plugin that wasn't of type FileSystemPlugin.  The actual type of plugin was %s.", p.getClass().getName()));
+      throw new ForemanException(String.format("You tried to request a format plugin for a storage plugin that wasn't of type FileSystemPlugin.  The actual type of plugin was %s.", p.getClass().getName()));
     }
     FileSystemPlugin storage = (FileSystemPlugin) p;
     return storage.getFormatPlugin(formatConfig);
   }
 
-  private StoragePlugin create(String name, StoragePluginConfig pluginConfig) throws ExecutionSetupException {
+  private StoragePlugin create(String name, StoragePluginConfig pluginConfig) throws ForemanException {
     StoragePlugin plugin = null;
     Constructor<? extends StoragePlugin> c = availablePlugins.get(pluginConfig.getClass());
     if (c == null) {
-      throw new ExecutionSetupException(String.format("Failure finding StoragePlugin constructor for config %s",
+      throw new ForemanException(String.format("Failure finding StoragePlugin constructor for config %s",
           pluginConfig));
     }
     try {
@@ -268,10 +268,10 @@ public class StoragePluginRegistry implements Iterable<Map.Entry<String, Storage
       return plugin;
     } catch (InstantiationException | IllegalAccessException | IllegalArgumentException | InvocationTargetException e) {
       Throwable t = e instanceof InvocationTargetException ? ((InvocationTargetException) e).getTargetException() : e;
-      if (t instanceof ExecutionSetupException) {
-        throw ((ExecutionSetupException) t);
+      if (t instanceof ForemanException) {
+        throw ((ForemanException) t);
       }
-      throw new ExecutionSetupException(String.format(
+      throw new ForemanException(String.format(
           "Failure setting up new storage plugin configuration for config %s", pluginConfig), t);
     }
   }
@@ -327,7 +327,7 @@ public class StoragePluginRegistry implements Iterable<Map.Entry<String, Storage
         for (StoragePlugin plugin : plugins.values()) {
           plugin.registerSchemas(session, parent);
         }
-      } catch (ExecutionSetupException e) {
+      } catch (ForemanException e) {
         throw new DrillRuntimeException("Failure while updating storage plugins", e);
       }
 

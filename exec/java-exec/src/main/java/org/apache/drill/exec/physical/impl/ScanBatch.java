@@ -25,7 +25,6 @@ import java.util.List;
 import java.util.Map;
 
 import org.apache.drill.common.config.DrillConfig;
-import org.apache.drill.common.exceptions.ExecutionSetupException;
 import org.apache.drill.common.expression.SchemaPath;
 import org.apache.drill.common.types.TypeProtos.MinorType;
 import org.apache.drill.common.types.Types;
@@ -52,6 +51,7 @@ import org.apache.drill.exec.vector.AllocationHelper;
 import org.apache.drill.exec.vector.NullableVarCharVector;
 import org.apache.drill.exec.vector.SchemaChangeCallBack;
 import org.apache.drill.exec.vector.ValueVector;
+import org.apache.drill.exec.work.foreman.ForemanException;
 
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
@@ -84,11 +84,11 @@ public class ScanBatch implements RecordBatch {
   private boolean done = false;
   private SchemaChangeCallBack callBack = new SchemaChangeCallBack();
 
-  public ScanBatch(PhysicalOperator subScanConfig, FragmentContext context, Iterator<RecordReader> readers, List<String[]> partitionColumns, List<Integer> selectedPartitionColumns) throws ExecutionSetupException {
+  public ScanBatch(PhysicalOperator subScanConfig, FragmentContext context, Iterator<RecordReader> readers, List<String[]> partitionColumns, List<Integer> selectedPartitionColumns) throws ForemanException {
     this.context = context;
     this.readers = readers;
     if (!readers.hasNext()) {
-      throw new ExecutionSetupException("A scan batch must contain at least one reader.");
+      throw new ForemanException("A scan batch must contain at least one reader.");
     }
     this.currentReader = readers.next();
     // Scan Batch is not subject to fragment memory limit
@@ -103,7 +103,7 @@ public class ScanBatch implements RecordBatch {
     addPartitionVectors();
   }
 
-  public ScanBatch(PhysicalOperator subScanConfig, FragmentContext context, Iterator<RecordReader> readers) throws ExecutionSetupException {
+  public ScanBatch(PhysicalOperator subScanConfig, FragmentContext context, Iterator<RecordReader> readers) throws ForemanException {
     this(subScanConfig, context, readers, Collections.<String[]> emptyList(), Collections.<Integer> emptyList());
   }
 
@@ -215,7 +215,7 @@ public class ScanBatch implements RecordBatch {
           } finally {
             oContext.getStats().stopSetup();
           }
-        } catch (ExecutionSetupException e) {
+        } catch (ForemanException e) {
           this.context.fail(e);
           releaseAssets();
           return IterOutcome.STOP;
@@ -245,7 +245,7 @@ public class ScanBatch implements RecordBatch {
     }
   }
 
-  private void addPartitionVectors() throws ExecutionSetupException{
+  private void addPartitionVectors() throws ForemanException{
     try {
       if (partitionVectors != null) {
         for (ValueVector v : partitionVectors) {
@@ -259,7 +259,7 @@ public class ScanBatch implements RecordBatch {
         partitionVectors.add(v);
       }
     } catch(SchemaChangeException e) {
-      throw new ExecutionSetupException(e);
+      throw new ForemanException(e);
     }
   }
 

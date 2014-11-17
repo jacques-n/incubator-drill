@@ -25,11 +25,11 @@ import java.util.regex.Pattern;
 
 import com.google.common.base.Strings;
 import com.google.common.collect.ImmutableList;
+
 import net.hydromatic.optiq.Table;
 
 import org.apache.drill.common.config.DrillConfig;
 import org.apache.drill.common.exceptions.DrillRuntimeException;
-import org.apache.drill.common.exceptions.ExecutionSetupException;
 import org.apache.drill.exec.ExecConstants;
 import org.apache.drill.exec.dotdrill.DotDrillFile;
 import org.apache.drill.exec.dotdrill.DotDrillType;
@@ -48,6 +48,7 @@ import org.apache.drill.exec.store.dfs.shim.DrillOutputStream;
 import org.apache.drill.exec.store.sys.PStore;
 import org.apache.drill.exec.store.sys.PStoreConfig;
 import org.apache.drill.exec.store.sys.PStoreProvider;
+import org.apache.drill.exec.work.foreman.ForemanException;
 import org.apache.hadoop.fs.Path;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -73,7 +74,7 @@ public class WorkspaceSchemaFactory implements ExpandingConcurrentMap.MapValueFa
 
   public WorkspaceSchemaFactory(DrillConfig drillConfig, PStoreProvider provider, FileSystemPlugin plugin, String schemaName, String storageEngineName,
       DrillFileSystem fileSystem, WorkspaceConfig config,
-      List<FormatMatcher> formatMatchers) throws ExecutionSetupException, IOException {
+      List<FormatMatcher> formatMatchers) throws ForemanException, IOException {
     this.fs = fileSystem;
     this.plugin = plugin;
     this.drillConfig = drillConfig;
@@ -110,7 +111,7 @@ public class WorkspaceSchemaFactory implements ExpandingConcurrentMap.MapValueFa
       if (formatPlugin == null) {
         final String message = String.format("Unable to find default input format[%s] for workspace[%s.%s]",
             defaultInputFormat, storageEngineName, schemaName);
-        throw new ExecutionSetupException(message);
+        throw new ForemanException(message);
       }
       final FormatMatcher fallbackMatcher = new BasicFormatMatcher(formatPlugin, fs,
           ImmutableList.of(Pattern.compile(".*")), ImmutableList.<MagicString>of());

@@ -19,11 +19,11 @@ package org.apache.drill.exec.physical.impl.union;
 
 import java.util.List;
 
-import org.apache.drill.common.exceptions.ExecutionSetupException;
 import org.apache.drill.exec.ops.FragmentContext;
 import org.apache.drill.exec.physical.config.UnionAll;
 import org.apache.drill.exec.physical.impl.BatchCreator;
 import org.apache.drill.exec.record.RecordBatch;
+import org.apache.drill.exec.work.foreman.ForemanException;
 
 import com.google.common.base.Preconditions;
 
@@ -31,7 +31,7 @@ public class UnionAllBatchCreator implements BatchCreator<UnionAll>{
   static final org.slf4j.Logger logger = org.slf4j.LoggerFactory.getLogger(UnionAllBatchCreator.class);
 
   @Override
-  public RecordBatch getBatch(FragmentContext context, UnionAll config, List<RecordBatch> children) throws ExecutionSetupException {
+  public RecordBatch getBatch(FragmentContext context, UnionAll config, List<RecordBatch> children) throws ForemanException {
     Preconditions.checkArgument(children.size() >= 1);
     return new UnionAllRecordBatch(config, children, context);
   }

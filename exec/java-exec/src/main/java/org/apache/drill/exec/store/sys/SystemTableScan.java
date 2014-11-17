@@ -21,10 +21,9 @@ import java.io.IOException;
 import java.util.Collections;
 import java.util.List;
 
-import org.apache.drill.common.exceptions.ExecutionSetupException;
-import org.apache.drill.common.exceptions.PhysicalOperatorSetupException;
 import org.apache.drill.common.expression.SchemaPath;
 import org.apache.drill.exec.physical.EndpointAffinity;
+import org.apache.drill.exec.physical.PhysicalOperatorSetupException;
 import org.apache.drill.exec.physical.base.AbstractGroupScan;
 import org.apache.drill.exec.physical.base.GroupScan;
 import org.apache.drill.exec.physical.base.PhysicalOperator;
@@ -33,6 +32,7 @@ import org.apache.drill.exec.physical.base.SubScan;
 import org.apache.drill.exec.proto.CoordinationProtos.DrillbitEndpoint;
 import org.apache.drill.exec.proto.UserBitShared.CoreOperatorType;
 import org.apache.drill.exec.store.StoragePluginRegistry;
+import org.apache.drill.exec.work.foreman.ForemanException;
 
 import parquet.org.codehaus.jackson.annotate.JsonCreator;
 
@@ -51,7 +51,7 @@ public class SystemTableScan extends AbstractGroupScan implements SubScan{
   public SystemTableScan( //
       @JsonProperty("table") SystemTable table, //
       @JacksonInject StoragePluginRegistry engineRegistry //
-      ) throws IOException, ExecutionSetupException {
+      ) throws IOException, ForemanException {
     this.table = table;
     this.plugin = (SystemTablePlugin) engineRegistry.getPlugin(SystemTablePluginConfig.INSTANCE);
   }
@@ -66,7 +66,7 @@ public class SystemTableScan extends AbstractGroupScan implements SubScan{
   }
 
   @Override
-  public PhysicalOperator getNewWithChildren(List<PhysicalOperator> children) throws ExecutionSetupException {
+  public PhysicalOperator getNewWithChildren(List<PhysicalOperator> children) throws ForemanException {
     return new SystemTableScan(table, plugin);
   }
 
@@ -75,7 +75,7 @@ public class SystemTableScan extends AbstractGroupScan implements SubScan{
   }
 
   @Override
-  public SubScan getSpecificScan(int minorFragmentId) throws ExecutionSetupException {
+  public SubScan getSpecificScan(int minorFragmentId) throws ForemanException {
     return this;
   }
 

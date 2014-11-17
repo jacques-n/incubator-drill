@@ -36,10 +36,10 @@ import javax.ws.rs.Produces;
 import javax.ws.rs.core.MediaType;
 import javax.xml.bind.annotation.XmlRootElement;
 
-import org.apache.drill.common.exceptions.ExecutionSetupException;
 import org.apache.drill.common.logical.StoragePluginConfig;
 import org.apache.drill.exec.store.StoragePlugin;
 import org.apache.drill.exec.store.StoragePluginRegistry;
+import org.apache.drill.exec.work.foreman.ForemanException;
 import org.glassfish.jersey.server.mvc.Viewable;
 
 import com.fasterxml.jackson.core.JsonParseException;
@@ -123,7 +123,7 @@ public class StorageResources {
       } else {
         return message("error (plugin does not exist)");
       }
-    } catch (ExecutionSetupException e) {
+    } catch (ForemanException e) {
       logger.debug("Error in enabling storage name: " + name + " flag: " + enable);
       return message("error (unable to enable/ disable storage)");
     }
@@ -156,7 +156,7 @@ public class StorageResources {
     try {
       plugin.createOrUpdateInStorage(storage);
       return message("success");
-    } catch (ExecutionSetupException e) {
+    } catch (ForemanException e) {
       logger.debug("Unable to create/ update plugin: " + plugin.getName());
       return message("error (unable to create/ update storage)");
     }

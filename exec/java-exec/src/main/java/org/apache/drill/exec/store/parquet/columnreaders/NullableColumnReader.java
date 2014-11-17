@@ -19,10 +19,10 @@ package org.apache.drill.exec.store.parquet.columnreaders;
 
 import java.io.IOException;
 
-import org.apache.drill.common.exceptions.ExecutionSetupException;
 import org.apache.drill.exec.vector.BaseValueVector;
 import org.apache.drill.exec.vector.NullableVectorDefinitionSetter;
 import org.apache.drill.exec.vector.ValueVector;
+import org.apache.drill.exec.work.foreman.ForemanException;
 
 import parquet.column.ColumnDescriptor;
 import parquet.format.SchemaElement;
@@ -41,7 +41,7 @@ abstract class NullableColumnReader<V extends ValueVector> extends ColumnReader<
   long totalDefinitionLevelsRead;
 
   NullableColumnReader(ParquetRecordReader parentReader, int allocateSize, ColumnDescriptor descriptor, ColumnChunkMetaData columnChunkMetaData,
-               boolean fixedLength, V v, SchemaElement schemaElement) throws ExecutionSetupException {
+               boolean fixedLength, V v, SchemaElement schemaElement) throws ForemanException {
     super(parentReader, allocateSize, descriptor, columnChunkMetaData, fixedLength, v, schemaElement);
     castedBaseVector = (BaseValueVector) v;
     castedVectorMutator = (NullableVectorDefinitionSetter) v.getMutator();

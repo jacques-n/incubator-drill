@@ -20,7 +20,6 @@ package org.apache.drill.exec.store.dfs.easy;
 import java.io.IOException;
 import java.util.List;
 
-import org.apache.drill.common.exceptions.ExecutionSetupException;
 import org.apache.drill.common.expression.SchemaPath;
 import org.apache.drill.common.logical.FormatPluginConfig;
 import org.apache.drill.common.logical.StoragePluginConfig;
@@ -39,6 +38,7 @@ import org.apache.drill.exec.store.schedule.AssignmentCreator;
 import org.apache.drill.exec.store.schedule.BlockMapBuilder;
 import org.apache.drill.exec.store.schedule.CompleteFileWork;
 import org.apache.drill.exec.store.schedule.CompleteFileWork.FileWorkImpl;
+import org.apache.drill.exec.work.foreman.ForemanException;
 
 import com.fasterxml.jackson.annotation.JacksonInject;
 import com.fasterxml.jackson.annotation.JsonCreator;
@@ -71,7 +71,7 @@ public class EasyGroupScan extends AbstractFileGroupScan{
       @JacksonInject StoragePluginRegistry engineRegistry, //
       @JsonProperty("columns") List<SchemaPath> columns,
       @JsonProperty("selectionRoot") String selectionRoot
-      ) throws IOException, ExecutionSetupException {
+      ) throws IOException, ForemanException {
         this(new FileSelection(files, true),
             (EasyFormatPlugin<?>)engineRegistry.getFormatPlugin(storageConfig, formatConfig),
             columns,
@@ -159,7 +159,7 @@ public class EasyGroupScan extends AbstractFileGroupScan{
   }
 
   @Override
-  public PhysicalOperator getNewWithChildren(List<PhysicalOperator> children) throws ExecutionSetupException {
+  public PhysicalOperator getNewWithChildren(List<PhysicalOperator> children) throws ForemanException {
     assert children == null || children.isEmpty();
     return new EasyGroupScan(this);
   }

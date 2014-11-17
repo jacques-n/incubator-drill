@@ -21,7 +21,6 @@ import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 
-import org.apache.drill.common.exceptions.ExecutionSetupException;
 import org.apache.drill.common.expression.SchemaPath;
 import org.apache.drill.common.logical.FormatPluginConfig;
 import org.apache.drill.common.logical.StoragePluginConfig;
@@ -32,6 +31,7 @@ import org.apache.drill.exec.physical.base.PhysicalVisitor;
 import org.apache.drill.exec.physical.base.SubScan;
 import org.apache.drill.exec.proto.UserBitShared.CoreOperatorType;
 import org.apache.drill.exec.store.StoragePluginRegistry;
+import org.apache.drill.exec.work.foreman.ForemanException;
 
 import com.fasterxml.jackson.annotation.JacksonInject;
 import com.fasterxml.jackson.annotation.JsonCreator;
@@ -60,7 +60,7 @@ public class ParquetRowGroupScan extends AbstractBase implements SubScan {
       @JsonProperty("entries") LinkedList<RowGroupReadEntry> rowGroupReadEntries, //
       @JsonProperty("columns") List<SchemaPath> columns, //
       @JsonProperty("selectionRoot") String selectionRoot //
-  ) throws ExecutionSetupException {
+  ) throws ForemanException {
     this((ParquetFormatPlugin) registry.getFormatPlugin(Preconditions.checkNotNull(storageConfig),
             formatConfig == null ? new ParquetFormatConfig() : formatConfig),
         rowGroupReadEntries, columns, selectionRoot);
@@ -108,7 +108,7 @@ public class ParquetRowGroupScan extends AbstractBase implements SubScan {
   }
 
   @Override
-  public PhysicalOperator getNewWithChildren(List<PhysicalOperator> children) throws ExecutionSetupException {
+  public PhysicalOperator getNewWithChildren(List<PhysicalOperator> children) throws ForemanException {
     Preconditions.checkArgument(children.isEmpty());
     return new ParquetRowGroupScan(formatPlugin, rowGroupReadEntries, columns, selectionRoot);
   }

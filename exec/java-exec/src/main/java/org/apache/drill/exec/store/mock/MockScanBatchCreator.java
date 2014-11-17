@@ -19,13 +19,13 @@ package org.apache.drill.exec.store.mock;
 
 import java.util.List;
 
-import org.apache.drill.common.exceptions.ExecutionSetupException;
 import org.apache.drill.exec.ops.FragmentContext;
 import org.apache.drill.exec.physical.impl.BatchCreator;
 import org.apache.drill.exec.physical.impl.ScanBatch;
 import org.apache.drill.exec.record.RecordBatch;
 import org.apache.drill.exec.store.RecordReader;
 import org.apache.drill.exec.store.mock.MockGroupScanPOP.MockScanEntry;
+import org.apache.drill.exec.work.foreman.ForemanException;
 
 import com.google.common.base.Preconditions;
 import com.google.common.collect.Lists;
@@ -34,7 +34,7 @@ public class MockScanBatchCreator implements BatchCreator<MockSubScanPOP>{
   static final org.slf4j.Logger logger = org.slf4j.LoggerFactory.getLogger(MockScanBatchCreator.class);
 
   @Override
-  public RecordBatch getBatch(FragmentContext context, MockSubScanPOP config, List<RecordBatch> children) throws ExecutionSetupException {
+  public RecordBatch getBatch(FragmentContext context, MockSubScanPOP config, List<RecordBatch> children) throws ForemanException {
     Preconditions.checkArgument(children.isEmpty());
     List<MockScanEntry> entries = config.getReadEntries();
     List<RecordReader> readers = Lists.newArrayList();

@@ -28,7 +28,6 @@ import net.hydromatic.optiq.SchemaPlus;
 import net.hydromatic.optiq.jdbc.SimpleOptiqSchema;
 
 import org.apache.drill.common.config.DrillConfig;
-import org.apache.drill.common.exceptions.ExecutionSetupException;
 import org.apache.drill.exec.compile.ClassTransformer;
 import org.apache.drill.exec.compile.QueryClassLoader;
 import org.apache.drill.exec.exception.ClassTransformationException;
@@ -49,6 +48,7 @@ import org.apache.drill.exec.server.options.FragmentOptionManager;
 import org.apache.drill.exec.server.options.OptionList;
 import org.apache.drill.exec.server.options.OptionManager;
 import org.apache.drill.exec.work.batch.IncomingBuffers;
+import org.apache.drill.exec.work.foreman.ForemanException;
 
 import com.carrotsearch.hppc.LongObjectOpenHashMap;
 import com.google.common.collect.Lists;
@@ -83,7 +83,7 @@ public class FragmentContext implements Closeable {
   private volatile boolean cancelled = false;
 
   public FragmentContext(DrillbitContext dbContext, PlanFragment fragment, UserClientConnection connection,
-      FunctionImplementationRegistry funcRegistry) throws OutOfMemoryException, ExecutionSetupException {
+      FunctionImplementationRegistry funcRegistry) throws OutOfMemoryException, ForemanException {
     this.stats = new FragmentStats(dbContext.getMetrics(), fragment.getAssignment());
     this.context = dbContext;
     this.connection = connection;
@@ -103,7 +103,7 @@ public class FragmentContext implements Closeable {
       }
       this.fragmentOptions = new FragmentOptionManager(context.getOptionManager(), list);
     } catch (Exception e) {
-      throw new ExecutionSetupException("Failure while reading plan options.", e);
+      throw new ForemanException("Failure while reading plan options.", e);
     }
     // Add the fragment context to the root allocator.
     // The QueryManager will call the root allocator to recalculate all the memory limits for all the fragments
@@ -111,7 +111,7 @@ public class FragmentContext implements Closeable {
       this.allocator = context.getAllocator().getChildAllocator(this, fragment.getMemInitial(), fragment.getMemMax(), true);
       assert (allocator != null);
     }catch(Throwable e){
-      throw new ExecutionSetupException("Failure while getting memory allocator for fragment.", e);
+      throw new ForemanException("Failure while getting memory allocator for fragment.", e);
     }
 
     this.loader = new QueryClassLoader(dbContext.getConfig(), fragmentOptions);
@@ -171,7 +171,7 @@ public class FragmentContext implements Closeable {
     return this.rootFragmentTimeZone;
   }
 
-  public DrillbitEndpoint getForemanDrillbitEndPoint() {return fragment.getForeman();}
+  public DrillbitEndpoint getForemanEndpoint() {return fragment.getForeman();}
 
   /**
    * The FragmentHandle for this Fragment

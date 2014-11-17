@@ -21,9 +21,9 @@ import io.netty.buffer.ByteBuf;
 
 import java.io.IOException;
 
-import org.apache.drill.common.exceptions.ExecutionSetupException;
 import org.apache.drill.exec.vector.BaseValueVector;
 import org.apache.drill.exec.vector.ValueVector;
+import org.apache.drill.exec.work.foreman.ForemanException;
 
 import parquet.column.ColumnDescriptor;
 import parquet.format.SchemaElement;
@@ -77,7 +77,7 @@ public abstract class ColumnReader<V extends ValueVector> {
   long readStartInBytes = 0, readLength = 0, readLengthInBits = 0, recordsReadInThisIteration = 0;
 
   protected ColumnReader(ParquetRecordReader parentReader, int allocateSize, ColumnDescriptor descriptor,
-      ColumnChunkMetaData columnChunkMetaData, boolean fixedLength, V v, SchemaElement schemaElement) throws ExecutionSetupException {
+      ColumnChunkMetaData columnChunkMetaData, boolean fixedLength, V v, SchemaElement schemaElement) throws ForemanException {
     this.parentReader = parentReader;
     this.columnDescriptor = descriptor;
     this.columnChunkMetaData = columnChunkMetaData;

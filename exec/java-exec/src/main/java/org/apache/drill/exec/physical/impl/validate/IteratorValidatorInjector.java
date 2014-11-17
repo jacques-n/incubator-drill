@@ -19,20 +19,20 @@ package org.apache.drill.exec.physical.impl.validate;
 
 import java.util.List;
 
-import org.apache.drill.common.exceptions.ExecutionSetupException;
 import org.apache.drill.exec.ops.FragmentContext;
 import org.apache.drill.exec.physical.base.AbstractPhysicalVisitor;
 import org.apache.drill.exec.physical.base.FragmentRoot;
 import org.apache.drill.exec.physical.base.PhysicalOperator;
 import org.apache.drill.exec.physical.config.IteratorValidator;
+import org.apache.drill.exec.work.foreman.ForemanException;
 
 import com.google.common.collect.Lists;
 
 public class IteratorValidatorInjector extends
-    AbstractPhysicalVisitor<PhysicalOperator, FragmentContext, ExecutionSetupException> {
+    AbstractPhysicalVisitor<PhysicalOperator, FragmentContext, ForemanException> {
   static final org.slf4j.Logger logger = org.slf4j.LoggerFactory.getLogger(IteratorValidatorInjector.class);
 
-  public static FragmentRoot rewritePlanWithIteratorValidator(FragmentContext context, FragmentRoot root) throws ExecutionSetupException {
+  public static FragmentRoot rewritePlanWithIteratorValidator(FragmentContext context, FragmentRoot root) throws ForemanException {
     IteratorValidatorInjector inject = new IteratorValidatorInjector();
     PhysicalOperator newOp = root.accept(inject, context);
 
@@ -52,10 +52,10 @@ public class IteratorValidatorInjector extends
    *          Fragment context
    * @return same physical operator as passed in, but its child will be a IteratorValidator operator whose child will be the
    *         original child of this operator
-   * @throws ExecutionSetupException
+   * @throws ForemanException
    */
   @Override
-  public PhysicalOperator visitOp(PhysicalOperator op, FragmentContext context) throws ExecutionSetupException {
+  public PhysicalOperator visitOp(PhysicalOperator op, FragmentContext context) throws ForemanException {
 
     List<PhysicalOperator> newChildren = Lists.newArrayList();
     PhysicalOperator newOp = op;

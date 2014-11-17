@@ -19,8 +19,8 @@ package org.apache.drill.exec.store.parquet.columnreaders;
 
 import java.io.IOException;
 
-import org.apache.drill.common.exceptions.ExecutionSetupException;
 import org.apache.drill.exec.vector.ValueVector;
+import org.apache.drill.exec.work.foreman.ForemanException;
 
 import parquet.column.ColumnDescriptor;
 import parquet.format.Encoding;
@@ -35,7 +35,7 @@ public abstract class VarLengthColumn<V extends ValueVector> extends ColumnReade
 
   VarLengthColumn(ParquetRecordReader parentReader, int allocateSize, ColumnDescriptor descriptor,
                   ColumnChunkMetaData columnChunkMetaData, boolean fixedLength, V v,
-                  SchemaElement schemaElement) throws ExecutionSetupException {
+                  SchemaElement schemaElement) throws ForemanException {
     super(parentReader, allocateSize, descriptor, columnChunkMetaData, fixedLength, v, schemaElement);
       if (columnChunkMetaData.getEncodings().contains(Encoding.PLAIN_DICTIONARY)) {
         usingDictionary = true;

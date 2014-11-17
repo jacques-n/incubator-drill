@@ -18,9 +18,9 @@
 package org.apache.drill.exec.opt;
 
 import com.google.common.collect.Lists;
+
 import org.apache.drill.common.JSONOptions;
 import org.apache.drill.common.config.DrillConfig;
-import org.apache.drill.common.exceptions.ExecutionSetupException;
 import org.apache.drill.common.logical.LogicalPlan;
 import org.apache.drill.common.logical.PlanProperties;
 import org.apache.drill.common.logical.StoragePluginConfig;
@@ -54,6 +54,7 @@ import org.apache.drill.exec.physical.config.WindowPOP;
 import org.apache.drill.exec.rpc.user.UserServer;
 import org.apache.drill.exec.server.options.OptionManager;
 import org.apache.drill.exec.store.StoragePlugin;
+import org.apache.drill.exec.work.foreman.ForemanException;
 import org.eigenbase.rel.RelFieldCollation.Direction;
 import org.eigenbase.rel.RelFieldCollation.NullDirection;
 
@@ -245,7 +246,7 @@ public class BasicOptimizer extends Optimizer{
       try {
         storagePlugin = context.getStorage().getPlugin(config);
         return storagePlugin.getPhysicalScan(scan.getSelection());
-      } catch (IOException | ExecutionSetupException e) {
+      } catch (IOException | ForemanException e) {
         throw new OptimizerException("Failure while attempting to retrieve storage engine.", e);
       }
     }

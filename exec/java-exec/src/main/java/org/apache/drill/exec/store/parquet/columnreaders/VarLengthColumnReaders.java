@@ -21,7 +21,6 @@ import io.netty.buffer.DrillBuf;
 
 import java.math.BigDecimal;
 
-import org.apache.drill.common.exceptions.ExecutionSetupException;
 import org.apache.drill.exec.expr.holders.Decimal28SparseHolder;
 import org.apache.drill.exec.expr.holders.Decimal38SparseHolder;
 import org.apache.drill.exec.expr.holders.NullableVarBinaryHolder;
@@ -36,6 +35,7 @@ import org.apache.drill.exec.vector.NullableVarBinaryVector;
 import org.apache.drill.exec.vector.NullableVarCharVector;
 import org.apache.drill.exec.vector.VarBinaryVector;
 import org.apache.drill.exec.vector.VarCharVector;
+import org.apache.drill.exec.work.foreman.ForemanException;
 
 import parquet.column.ColumnDescriptor;
 import parquet.format.SchemaElement;
@@ -50,7 +50,7 @@ public class VarLengthColumnReaders {
 
     Decimal28Column(ParquetRecordReader parentReader, int allocateSize, ColumnDescriptor descriptor,
                    ColumnChunkMetaData columnChunkMetaData, boolean fixedLength, Decimal28SparseVector v,
-                   SchemaElement schemaElement) throws ExecutionSetupException {
+                   SchemaElement schemaElement) throws ForemanException {
       super(parentReader, allocateSize, descriptor, columnChunkMetaData, fixedLength, v, schemaElement);
       this.decimal28Vector = v;
     }
@@ -79,7 +79,7 @@ public class VarLengthColumnReaders {
 
     NullableDecimal28Column(ParquetRecordReader parentReader, int allocateSize, ColumnDescriptor descriptor,
                     ColumnChunkMetaData columnChunkMetaData, boolean fixedLength, NullableDecimal28SparseVector v,
-                    SchemaElement schemaElement) throws ExecutionSetupException {
+                    SchemaElement schemaElement) throws ForemanException {
       super(parentReader, allocateSize, descriptor, columnChunkMetaData, fixedLength, v, schemaElement);
       nullableDecimal28Vector = v;
     }
@@ -109,7 +109,7 @@ public class VarLengthColumnReaders {
 
     Decimal38Column(ParquetRecordReader parentReader, int allocateSize, ColumnDescriptor descriptor,
                     ColumnChunkMetaData columnChunkMetaData, boolean fixedLength, Decimal38SparseVector v,
-                    SchemaElement schemaElement) throws ExecutionSetupException {
+                    SchemaElement schemaElement) throws ForemanException {
       super(parentReader, allocateSize, descriptor, columnChunkMetaData, fixedLength, v, schemaElement);
       decimal28Vector = v;
     }
@@ -138,7 +138,7 @@ public class VarLengthColumnReaders {
 
     NullableDecimal38Column(ParquetRecordReader parentReader, int allocateSize, ColumnDescriptor descriptor,
                             ColumnChunkMetaData columnChunkMetaData, boolean fixedLength, NullableDecimal38SparseVector v,
-                            SchemaElement schemaElement) throws ExecutionSetupException {
+                            SchemaElement schemaElement) throws ForemanException {
       super(parentReader, allocateSize, descriptor, columnChunkMetaData, fixedLength, v, schemaElement);
       nullableDecimal38Vector = v;
     }
@@ -169,7 +169,7 @@ public class VarLengthColumnReaders {
 
     VarCharColumn(ParquetRecordReader parentReader, int allocateSize, ColumnDescriptor descriptor,
                   ColumnChunkMetaData columnChunkMetaData, boolean fixedLength, VarCharVector v,
-                  SchemaElement schemaElement) throws ExecutionSetupException {
+                  SchemaElement schemaElement) throws ForemanException {
       super(parentReader, allocateSize, descriptor, columnChunkMetaData, fixedLength, v, schemaElement);
       varCharVector = v;
     }
@@ -217,7 +217,7 @@ public class VarLengthColumnReaders {
 
     NullableVarCharColumn(ParquetRecordReader parentReader, int allocateSize, ColumnDescriptor descriptor,
                           ColumnChunkMetaData columnChunkMetaData, boolean fixedLength, NullableVarCharVector v,
-                          SchemaElement schemaElement) throws ExecutionSetupException {
+                          SchemaElement schemaElement) throws ForemanException {
       super(parentReader, allocateSize, descriptor, columnChunkMetaData, fixedLength, v, schemaElement);
       vector = v;
       this.mutator = vector.getMutator();
@@ -253,7 +253,7 @@ public class VarLengthColumnReaders {
 
     VarBinaryColumn(ParquetRecordReader parentReader, int allocateSize, ColumnDescriptor descriptor,
                     ColumnChunkMetaData columnChunkMetaData, boolean fixedLength, VarBinaryVector v,
-                    SchemaElement schemaElement) throws ExecutionSetupException {
+                    SchemaElement schemaElement) throws ForemanException {
       super(parentReader, allocateSize, descriptor, columnChunkMetaData, fixedLength, v, schemaElement);
       varBinaryVector = v;
     }
@@ -300,7 +300,7 @@ public class VarLengthColumnReaders {
 
     NullableVarBinaryColumn(ParquetRecordReader parentReader, int allocateSize, ColumnDescriptor descriptor,
                             ColumnChunkMetaData columnChunkMetaData, boolean fixedLength, NullableVarBinaryVector v,
-                            SchemaElement schemaElement) throws ExecutionSetupException {
+                            SchemaElement schemaElement) throws ForemanException {
       super(parentReader, allocateSize, descriptor, columnChunkMetaData, fixedLength, v, schemaElement);
       nullableVarBinaryVector = v;
     }

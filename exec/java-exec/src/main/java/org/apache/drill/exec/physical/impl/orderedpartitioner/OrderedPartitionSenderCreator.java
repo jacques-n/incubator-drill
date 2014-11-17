@@ -19,7 +19,6 @@ package org.apache.drill.exec.physical.impl.orderedpartitioner;
 
 import java.util.List;
 
-import org.apache.drill.common.exceptions.ExecutionSetupException;
 import org.apache.drill.exec.ops.FragmentContext;
 import org.apache.drill.exec.physical.config.HashPartitionSender;
 import org.apache.drill.exec.physical.config.OrderedPartitionSender;
@@ -27,6 +26,7 @@ import org.apache.drill.exec.physical.impl.RootCreator;
 import org.apache.drill.exec.physical.impl.RootExec;
 import org.apache.drill.exec.physical.impl.partitionsender.PartitionSenderRootExec;
 import org.apache.drill.exec.record.RecordBatch;
+import org.apache.drill.exec.work.foreman.ForemanException;
 
 import com.google.common.base.Preconditions;
 import com.google.common.collect.Lists;
@@ -35,7 +35,7 @@ public class OrderedPartitionSenderCreator implements RootCreator<OrderedPartiti
 
   @Override
   public RootExec getRoot(FragmentContext context, OrderedPartitionSender config,
-      List<RecordBatch> children) throws ExecutionSetupException {
+      List<RecordBatch> children) throws ForemanException {
     Preconditions.checkArgument(children.size() == 1);
 
     List<RecordBatch> ordered_children = Lists.newArrayList();

@@ -25,7 +25,6 @@ import java.util.Set;
 import net.hydromatic.optiq.SchemaPlus;
 
 import org.apache.drill.common.JSONOptions;
-import org.apache.drill.common.exceptions.ExecutionSetupException;
 import org.apache.drill.common.expression.SchemaPath;
 import org.apache.drill.common.logical.FormatPluginConfig;
 import org.apache.drill.common.logical.StoragePluginConfig;
@@ -38,6 +37,7 @@ import org.apache.drill.exec.store.LocalSyncableFileSystem;
 import org.apache.drill.exec.store.StoragePluginOptimizerRule;
 import org.apache.drill.exec.store.dfs.shim.DrillFileSystem;
 import org.apache.drill.exec.store.dfs.shim.FileSystemCreator;
+import org.apache.drill.exec.work.foreman.ForemanException;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileSystem;
 
@@ -62,7 +62,7 @@ public class FileSystemPlugin extends AbstractStoragePlugin{
   private DrillbitContext context;
   private final DrillFileSystem fs;
 
-  public FileSystemPlugin(FileSystemConfig config, DrillbitContext context, String name) throws ExecutionSetupException{
+  public FileSystemPlugin(FileSystemConfig config, DrillbitContext context, String name) throws ForemanException{
     try {
       this.config = config;
       this.context = context;
@@ -95,7 +95,7 @@ public class FileSystemPlugin extends AbstractStoragePlugin{
 
       this.schemaFactory = new FileSystemSchemaFactory(name, factories);
     } catch (IOException e) {
-      throw new ExecutionSetupException("Failure setting up file system plugin.", e);
+      throw new ForemanException("Failure setting up file system plugin.", e);
     }
   }
 

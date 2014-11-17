@@ -24,7 +24,6 @@ import java.util.List;
 import java.util.Map;
 
 import org.apache.drill.common.exceptions.DrillRuntimeException;
-import org.apache.drill.common.exceptions.ExecutionSetupException;
 import org.apache.drill.common.expression.SchemaPath;
 import org.apache.drill.common.types.TypeProtos;
 import org.apache.drill.common.types.TypeProtos.DataMode;
@@ -43,6 +42,7 @@ import org.apache.drill.exec.vector.AllocationHelper;
 import org.apache.drill.exec.vector.NullableBitVector;
 import org.apache.drill.exec.vector.RepeatedFixedWidthVector;
 import org.apache.drill.exec.vector.ValueVector;
+import org.apache.drill.exec.work.foreman.ForemanException;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 
@@ -112,7 +112,7 @@ public class ParquetRecordReader extends AbstractRecordReader {
                              FileSystem fs, //
                              CodecFactoryExposer codecFactoryExposer, //
                              ParquetMetadata footer, //
-                             List<SchemaPath> columns) throws ExecutionSetupException {
+                             List<SchemaPath> columns) throws ForemanException {
     this(fragmentContext, DEFAULT_BATCH_LENGTH_IN_BITS, path, rowGroupIndex, fs, codecFactoryExposer, footer,
         columns);
   }
@@ -120,7 +120,7 @@ public class ParquetRecordReader extends AbstractRecordReader {
   public ParquetRecordReader(FragmentContext fragmentContext, long batchSize,
                              String path, int rowGroupIndex, FileSystem fs,
                              CodecFactoryExposer codecFactoryExposer, ParquetMetadata footer,
-                             List<SchemaPath> columns) throws ExecutionSetupException {
+                             List<SchemaPath> columns) throws ForemanException {
     this.hadoopPath = new Path(path);
     this.fileSystem = fs;
     this.codecFactoryExposer = codecFactoryExposer;
@@ -200,7 +200,7 @@ public class ParquetRecordReader extends AbstractRecordReader {
   }
 
   @Override
-  public void setup(OutputMutator output) throws ExecutionSetupException {
+  public void setup(OutputMutator output) throws ForemanException {
     if (!isStarQuery()) {
       columnsFound = new boolean[getColumns().size()];
       nullFilledVectors = new ArrayList();
@@ -319,9 +319,9 @@ public class ParquetRecordReader extends AbstractRecordReader {
         }
       }
     } catch (SchemaChangeException e) {
-      throw new ExecutionSetupException(e);
+      throw new ForemanException(e);
     } catch (Exception e) {
-      throw new ExecutionSetupException(e);
+      throw new ForemanException(e);
     }
   }
 

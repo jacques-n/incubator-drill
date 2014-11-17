@@ -19,13 +19,13 @@ package org.apache.drill.exec.planner.logical;
 
 import java.io.IOException;
 
-import org.apache.drill.common.exceptions.ExecutionSetupException;
 import org.apache.drill.common.logical.FormatPluginConfig;
 import org.apache.drill.exec.physical.base.PhysicalOperator;
 import org.apache.drill.exec.physical.base.Writer;
 import org.apache.drill.exec.store.StoragePluginRegistry;
 import org.apache.drill.exec.store.dfs.FileSystemConfig;
 import org.apache.drill.exec.store.dfs.FormatPlugin;
+import org.apache.drill.exec.work.foreman.ForemanException;
 
 import com.fasterxml.jackson.annotation.JacksonInject;
 import com.fasterxml.jackson.annotation.JsonCreator;
@@ -47,7 +47,7 @@ public class FileSystemCreateTableEntry implements CreateTableEntry {
                                     @JsonProperty("formatConfig") FormatPluginConfig formatConfig,
                                     @JsonProperty("location") String location,
                                     @JacksonInject StoragePluginRegistry engineRegistry)
-      throws ExecutionSetupException {
+      throws ForemanException {
     this.storageConfig = storageConfig;
     this.formatPlugin = engineRegistry.getFormatPlugin(storageConfig, formatConfig);
     this.location = location;

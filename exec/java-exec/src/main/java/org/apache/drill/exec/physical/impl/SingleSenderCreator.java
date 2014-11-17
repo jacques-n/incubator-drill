@@ -21,7 +21,6 @@ import io.netty.buffer.ByteBuf;
 
 import java.util.List;
 
-import org.apache.drill.common.exceptions.ExecutionSetupException;
 import org.apache.drill.exec.exception.SchemaChangeException;
 import org.apache.drill.exec.memory.OutOfMemoryException;
 import org.apache.drill.exec.ops.FragmentContext;
@@ -38,12 +37,13 @@ import org.apache.drill.exec.record.RecordBatch.IterOutcome;
 import org.apache.drill.exec.rpc.BaseRpcOutcomeListener;
 import org.apache.drill.exec.rpc.RpcException;
 import org.apache.drill.exec.rpc.data.DataTunnel;
+import org.apache.drill.exec.work.foreman.ForemanException;
 
 public class SingleSenderCreator implements RootCreator<SingleSender>{
 
   @Override
   public RootExec getRoot(FragmentContext context, SingleSender config, List<RecordBatch> children)
-      throws ExecutionSetupException {
+      throws ForemanException {
     assert children != null && children.size() == 1;
     return new SingleSenderRootExec(context, children.iterator().next(), config);
   }

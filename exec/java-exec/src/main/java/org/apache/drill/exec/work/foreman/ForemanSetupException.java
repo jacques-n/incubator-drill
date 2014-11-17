@@ -15,16 +15,31 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.drill.exec.exception;
+package org.apache.drill.exec.work.foreman;
 
-import org.apache.drill.exec.work.foreman.ForemanSetupException;
 
-public class OptimizerException extends ForemanSetupException {
-  public OptimizerException(String message, Throwable cause) {
+public class ForemanSetupException extends ForemanException {
+  static final org.slf4j.Logger logger = org.slf4j.LoggerFactory.getLogger(ForemanSetupException.class);
+
+  public ForemanSetupException() {
+    super();
+  }
+
+  public ForemanSetupException(String message, Throwable cause, boolean enableSuppression, boolean writableStackTrace) {
+    super(message, cause, enableSuppression, writableStackTrace);
+  }
+
+  public ForemanSetupException(String message, Throwable cause) {
     super(message, cause);
   }
 
-  public OptimizerException(String s) {
-        super(s);
-    }
+  public ForemanSetupException(String message) {
+    super(message);
+  }
+
+  public ForemanSetupException(Throwable cause) {
+    super(cause);
+  }
+
+
 }

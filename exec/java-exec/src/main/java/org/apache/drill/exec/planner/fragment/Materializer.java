@@ -19,24 +19,24 @@ package org.apache.drill.exec.planner.fragment;
 
 import java.util.List;
 
-import org.apache.drill.common.exceptions.ExecutionSetupException;
-import org.apache.drill.common.exceptions.PhysicalOperatorSetupException;
 import org.apache.drill.exec.exception.FragmentSetupException;
+import org.apache.drill.exec.physical.PhysicalOperatorSetupException;
 import org.apache.drill.exec.physical.base.AbstractPhysicalVisitor;
 import org.apache.drill.exec.physical.base.Exchange;
 import org.apache.drill.exec.physical.base.GroupScan;
 import org.apache.drill.exec.physical.base.PhysicalOperator;
 import org.apache.drill.exec.physical.base.Store;
 import org.apache.drill.exec.physical.base.SubScan;
+import org.apache.drill.exec.work.foreman.ForemanException;
 
 import com.google.common.collect.Lists;
 
-public class Materializer extends AbstractPhysicalVisitor<PhysicalOperator, Materializer.IndexedFragmentNode, ExecutionSetupException>{
+public class Materializer extends AbstractPhysicalVisitor<PhysicalOperator, Materializer.IndexedFragmentNode, ForemanException>{
   static final org.slf4j.Logger logger = org.slf4j.LoggerFactory.getLogger(Materializer.class);
 
 
   @Override
-  public PhysicalOperator visitExchange(Exchange exchange, IndexedFragmentNode iNode) throws ExecutionSetupException {
+  public PhysicalOperator visitExchange(Exchange exchange, IndexedFragmentNode iNode) throws ForemanException {
     iNode.addAllocation(exchange);
     if(exchange == iNode.getNode().getSendingExchange()){
 
@@ -57,21 +57,21 @@ public class Materializer extends AbstractPhysicalVisitor<PhysicalOperator, Mate
   }
 
   @Override
-  public PhysicalOperator visitGroupScan(GroupScan groupScan, IndexedFragmentNode iNode) throws ExecutionSetupException {
+  public PhysicalOperator visitGroupScan(GroupScan groupScan, IndexedFragmentNode iNode) throws ForemanException {
     PhysicalOperator child = groupScan.getSpecificScan(iNode.getMinorFragmentId());
     child.setOperatorId(Short.MAX_VALUE & groupScan.getOperatorId());
     return child;
   }
 
   @Override
-  public PhysicalOperator visitSubScan(SubScan subScan, IndexedFragmentNode value) throws ExecutionSetupException {
+  public PhysicalOperator visitSubScan(SubScan subScan, IndexedFragmentNode value) throws ForemanException {
     value.addAllocation(subScan);
     // TODO - implement this
     return super.visitOp(subScan, value);
   }
 
   @Override
-  public PhysicalOperator visitStore(Store store, IndexedFragmentNode iNode) throws ExecutionSetupException {
+  public PhysicalOperator visitStore(Store store, IndexedFragmentNode iNode) throws ForemanException {
     PhysicalOperator child = store.getChild().accept(this, iNode);
 
     iNode.addAllocation(store);
@@ -87,7 +87,7 @@ public class Materializer extends AbstractPhysicalVisitor<PhysicalOperator, Mate
   }
 
   @Override
-  public PhysicalOperator visitOp(PhysicalOperator op, IndexedFragmentNode iNode) throws ExecutionSetupException {
+  public PhysicalOperator visitOp(PhysicalOperator op, IndexedFragmentNode iNode) throws ForemanException {
     iNode.addAllocation(op);
 //    logger.debug("Visiting catch all: {}", op);
     List<PhysicalOperator> children = Lists.newArrayList();

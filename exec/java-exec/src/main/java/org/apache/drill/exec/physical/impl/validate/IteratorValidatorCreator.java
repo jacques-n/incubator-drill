@@ -19,11 +19,11 @@ package org.apache.drill.exec.physical.impl.validate;
 
 import java.util.List;
 
-import org.apache.drill.common.exceptions.ExecutionSetupException;
 import org.apache.drill.exec.ops.FragmentContext;
 import org.apache.drill.exec.physical.config.IteratorValidator;
 import org.apache.drill.exec.physical.impl.BatchCreator;
 import org.apache.drill.exec.record.RecordBatch;
+import org.apache.drill.exec.work.foreman.ForemanException;
 
 import com.google.common.base.Preconditions;
 
@@ -32,7 +32,7 @@ public class IteratorValidatorCreator implements BatchCreator<IteratorValidator>
 
   @Override
   public RecordBatch getBatch(FragmentContext context, IteratorValidator config, List<RecordBatch> children)
-      throws ExecutionSetupException {
+      throws ForemanException {
     Preconditions.checkArgument(children.size() == 1);
     return new IteratorValidatorBatchIterator(children.iterator().next());
   }

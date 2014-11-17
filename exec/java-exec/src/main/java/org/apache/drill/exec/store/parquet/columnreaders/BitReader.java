@@ -19,9 +19,9 @@ package org.apache.drill.exec.store.parquet.columnreaders;
 
 import io.netty.buffer.ByteBuf;
 
-import org.apache.drill.common.exceptions.ExecutionSetupException;
 import org.apache.drill.exec.vector.BaseDataValueVector;
 import org.apache.drill.exec.vector.ValueVector;
+import org.apache.drill.exec.work.foreman.ForemanException;
 
 import parquet.column.ColumnDescriptor;
 import parquet.format.SchemaElement;
@@ -34,7 +34,7 @@ final class BitReader extends ColumnReader {
   private ByteBuf bytebuf;
 
   BitReader(ParquetRecordReader parentReader, int allocateSize, ColumnDescriptor descriptor, ColumnChunkMetaData columnChunkMetaData,
-            boolean fixedLength, ValueVector v, SchemaElement schemaElement) throws ExecutionSetupException {
+            boolean fixedLength, ValueVector v, SchemaElement schemaElement) throws ForemanException {
     super(parentReader, allocateSize, descriptor, columnChunkMetaData, fixedLength, v, schemaElement);
   }
 

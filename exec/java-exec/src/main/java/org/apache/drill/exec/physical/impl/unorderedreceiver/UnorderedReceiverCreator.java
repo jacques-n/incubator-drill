@@ -19,20 +19,20 @@ package org.apache.drill.exec.physical.impl.unorderedreceiver;
 
 import java.util.List;
 
-import org.apache.drill.common.exceptions.ExecutionSetupException;
 import org.apache.drill.exec.ops.FragmentContext;
 import org.apache.drill.exec.physical.config.UnorderedReceiver;
 import org.apache.drill.exec.physical.impl.BatchCreator;
 import org.apache.drill.exec.record.RecordBatch;
 import org.apache.drill.exec.work.batch.IncomingBuffers;
 import org.apache.drill.exec.work.batch.RawBatchBuffer;
+import org.apache.drill.exec.work.foreman.ForemanException;
 
 public class UnorderedReceiverCreator implements BatchCreator<UnorderedReceiver>{
   static final org.slf4j.Logger logger = org.slf4j.LoggerFactory.getLogger(UnorderedReceiverCreator.class);
 
   @Override
   public RecordBatch getBatch(FragmentContext context, UnorderedReceiver receiver, List<RecordBatch> children)
-      throws ExecutionSetupException {
+      throws ForemanException {
     assert children == null || children.isEmpty();
     IncomingBuffers bufHolder = context.getBuffers();
     assert bufHolder != null : "IncomingBuffers must be defined for any place a receiver is declared.";

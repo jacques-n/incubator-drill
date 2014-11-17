@@ -19,7 +19,6 @@ package org.apache.drill.exec.store.mock;
 
 import java.util.Map;
 
-import org.apache.drill.common.exceptions.ExecutionSetupException;
 import org.apache.drill.common.expression.SchemaPath;
 import org.apache.drill.common.types.TypeProtos.MajorType;
 import org.apache.drill.exec.exception.SchemaChangeException;
@@ -36,6 +35,7 @@ import org.apache.drill.exec.store.mock.MockGroupScanPOP.MockColumn;
 import org.apache.drill.exec.store.mock.MockGroupScanPOP.MockScanEntry;
 import org.apache.drill.exec.vector.AllocationHelper;
 import org.apache.drill.exec.vector.ValueVector;
+import org.apache.drill.exec.work.foreman.ForemanException;
 
 public class MockRecordReader extends AbstractRecordReader {
   static final org.slf4j.Logger logger = org.slf4j.LoggerFactory.getLogger(MockRecordReader.class);
@@ -82,7 +82,7 @@ public class MockRecordReader extends AbstractRecordReader {
   }
 
   @Override
-  public void setup(OutputMutator output) throws ExecutionSetupException {
+  public void setup(OutputMutator output) throws ForemanException {
     try {
       this.output = output;
       int estimateRowSize = getEstimatedRecordSize(config.getTypes());
@@ -96,7 +96,7 @@ public class MockRecordReader extends AbstractRecordReader {
         valueVectors[i] = output.addField(field, vvClass);
       }
     } catch (SchemaChangeException e) {
-      throw new ExecutionSetupException("Failure while setting up fields", e);
+      throw new ForemanException("Failure while setting up fields", e);
     }
 
   }

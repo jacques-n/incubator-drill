@@ -20,10 +20,9 @@ package org.apache.drill.exec.store.direct;
 import java.util.Collections;
 import java.util.List;
 
-import org.apache.drill.common.exceptions.ExecutionSetupException;
-import org.apache.drill.common.exceptions.PhysicalOperatorSetupException;
 import org.apache.drill.common.expression.SchemaPath;
 import org.apache.drill.exec.physical.EndpointAffinity;
+import org.apache.drill.exec.physical.PhysicalOperatorSetupException;
 import org.apache.drill.exec.physical.base.AbstractGroupScan;
 import org.apache.drill.exec.physical.base.GroupScan;
 import org.apache.drill.exec.physical.base.PhysicalOperator;
@@ -31,6 +30,7 @@ import org.apache.drill.exec.physical.base.ScanStats;
 import org.apache.drill.exec.physical.base.SubScan;
 import org.apache.drill.exec.proto.CoordinationProtos.DrillbitEndpoint;
 import org.apache.drill.exec.store.RecordReader;
+import org.apache.drill.exec.work.foreman.ForemanException;
 
 public class DirectGroupScan extends AbstractGroupScan{
   static final org.slf4j.Logger logger = org.slf4j.LoggerFactory.getLogger(DirectGroupScan.class);
@@ -48,7 +48,7 @@ public class DirectGroupScan extends AbstractGroupScan{
   }
 
   @Override
-  public SubScan getSpecificScan(int minorFragmentId) throws ExecutionSetupException {
+  public SubScan getSpecificScan(int minorFragmentId) throws ForemanException {
     assert minorFragmentId == 0;
     return new DirectSubScan(reader);
   }
@@ -63,7 +63,7 @@ public class DirectGroupScan extends AbstractGroupScan{
   }
 
   @Override
-  public PhysicalOperator getNewWithChildren(List<PhysicalOperator> children) throws ExecutionSetupException {
+  public PhysicalOperator getNewWithChildren(List<PhysicalOperator> children) throws ForemanException {
     assert children == null || children.isEmpty();
     return new DirectGroupScan(reader);
   }

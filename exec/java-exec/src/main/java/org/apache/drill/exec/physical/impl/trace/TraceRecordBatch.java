@@ -21,7 +21,6 @@ package org.apache.drill.exec.physical.impl.trace;
 import java.io.IOException;
 import java.io.OutputStream;
 
-import org.apache.drill.common.exceptions.ExecutionSetupException;
 import org.apache.drill.exec.ExecConstants;
 import org.apache.drill.exec.cache.VectorAccessibleSerializable;
 import org.apache.drill.exec.exception.SchemaChangeException;
@@ -35,6 +34,7 @@ import org.apache.drill.exec.record.VectorWrapper;
 import org.apache.drill.exec.record.WritableBatch;
 import org.apache.drill.exec.record.selection.SelectionVector2;
 import org.apache.drill.exec.util.Utilities;
+import org.apache.drill.exec.work.foreman.ForemanException;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
@@ -66,7 +66,7 @@ public class TraceRecordBatch extends AbstractSingleRecordBatch<Trace> {
   /* File descriptors needed to be able to dump to log file */
   private OutputStream fos;
 
-  public TraceRecordBatch(Trace pop, RecordBatch incoming, FragmentContext context) throws ExecutionSetupException {
+  public TraceRecordBatch(Trace pop, RecordBatch incoming, FragmentContext context) throws ForemanException {
     super(pop, context, incoming);
     this.traceTag = pop.traceTag;
     logLocation = context.getConfig().getString(ExecConstants.TRACE_DUMP_DIRECTORY);
@@ -82,7 +82,7 @@ public class TraceRecordBatch extends AbstractSingleRecordBatch<Trace> {
       /* create the file */
       fos = fs.create(new Path(fileName));
     } catch (IOException e) {
-        throw new ExecutionSetupException("Unable to create file: " + fileName + " check permissions or if directory exists", e);
+        throw new ForemanException("Unable to create file: " + fileName + " check permissions or if directory exists", e);
     }
   }
 

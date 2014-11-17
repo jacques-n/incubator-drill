@@ -24,7 +24,6 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import org.apache.commons.lang3.ArrayUtils;
-import org.apache.drill.common.exceptions.ExecutionSetupException;
 import org.apache.drill.common.expression.SchemaPath;
 import org.apache.drill.common.logical.FormatPluginConfig;
 import org.apache.drill.common.logical.StoragePluginConfig;
@@ -46,6 +45,7 @@ import org.apache.drill.exec.store.dfs.FileSelection;
 import org.apache.drill.exec.store.dfs.FormatMatcher;
 import org.apache.drill.exec.store.dfs.FormatPlugin;
 import org.apache.drill.exec.store.dfs.shim.DrillFileSystem;
+import org.apache.drill.exec.work.foreman.ForemanException;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.io.compress.CompressionCodecFactory;
 
@@ -113,9 +113,9 @@ public abstract class EasyFormatPlugin<T extends FormatPluginConfig> implements 
     return compressible;
   }
 
-  public abstract RecordReader getRecordReader(FragmentContext context, FileWork fileWork, List<SchemaPath> columns) throws ExecutionSetupException;
+  public abstract RecordReader getRecordReader(FragmentContext context, FileWork fileWork, List<SchemaPath> columns) throws ForemanException;
 
-  RecordBatch getReaderBatch(FragmentContext context, EasySubScan scan) throws ExecutionSetupException {
+  RecordBatch getReaderBatch(FragmentContext context, EasySubScan scan) throws ForemanException {
     String partitionDesignator = context.getConfig().getString(ExecConstants.FILESYSTEM_PARTITION_COLUMN_LABEL);
     List<SchemaPath> columns = scan.getColumns();
     List<RecordReader> readers = Lists.newArrayList();
@@ -176,11 +176,11 @@ public abstract class EasyFormatPlugin<T extends FormatPluginConfig> implements 
   public abstract RecordWriter getRecordWriter(FragmentContext context, EasyWriter writer) throws IOException;
 
   public RecordBatch getWriterBatch(FragmentContext context, RecordBatch incoming, EasyWriter writer)
-      throws ExecutionSetupException {
+      throws ForemanException {
     try {
       return new WriterRecordBatch(writer, incoming, context, getRecordWriter(context, writer));
     } catch(IOException e) {
-      throw new ExecutionSetupException(String.format("Failed to create the WriterRecordBatch. %s", e.getMessage()), e);
+      throw new ForemanException(String.format("Failed to create the WriterRecordBatch. %s", e.getMessage()), e);
     }
   }
 

@@ -19,19 +19,19 @@ package org.apache.drill.exec.physical.impl.partitionsender;
 
 import java.util.List;
 
-import org.apache.drill.common.exceptions.ExecutionSetupException;
 import org.apache.drill.exec.ops.FragmentContext;
 import org.apache.drill.exec.physical.config.HashPartitionSender;
 import org.apache.drill.exec.physical.impl.RootCreator;
 import org.apache.drill.exec.physical.impl.RootExec;
 import org.apache.drill.exec.record.RecordBatch;
+import org.apache.drill.exec.work.foreman.ForemanException;
 
 public class PartitionSenderCreator implements RootCreator<HashPartitionSender> {
 
   @Override
   public RootExec getRoot(FragmentContext context,
                           HashPartitionSender config,
-                          List<RecordBatch> children) throws ExecutionSetupException {
+                          List<RecordBatch> children) throws ForemanException {
 
     assert children != null && children.size() == 1;
     return new PartitionSenderRootExec(context, children.iterator().next(), config);

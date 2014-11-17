@@ -25,8 +25,8 @@ import java.util.Map;
 
 import org.apache.drill.common.config.CommonConstants;
 import org.apache.drill.common.config.DrillConfig;
-import org.apache.drill.common.exceptions.ExecutionSetupException;
 import org.apache.drill.common.util.PathScanner;
+import org.apache.drill.exec.work.foreman.ForemanException;
 
 public class OperatorCreatorRegistry {
   static final org.slf4j.Logger logger = org.slf4j.LoggerFactory.getLogger(OperatorCreatorRegistry.class);
@@ -40,7 +40,7 @@ public class OperatorCreatorRegistry {
     logger.debug("Adding Operator Creator map: {}", constructorRegistry);
   }
 
-  public synchronized Object getOperatorCreator(Class<?> operator) throws ExecutionSetupException {
+  public synchronized Object getOperatorCreator(Class<?> operator) throws ForemanException {
     Object opCreator = instanceRegistry.get(operator);
     if (opCreator != null) {
       return opCreator;
@@ -48,7 +48,7 @@ public class OperatorCreatorRegistry {
 
     Constructor<?> c = constructorRegistry.get(operator);
     if(c == null) {
-      throw new ExecutionSetupException(
+      throw new ForemanException(
           String.format("Failure finding OperatorCreator constructor for config %s", operator.getCanonicalName()));
     }
     try {
@@ -56,7 +56,7 @@ public class OperatorCreatorRegistry {
       instanceRegistry.put(operator, opCreator);
       return opCreator;
     } catch (Throwable t) {
-      throw ExecutionSetupException.fromThrowable(
+      throw ForemanException.fromThrowable(
           String.format("Failure creating OperatorCreator for Operator %s", operator.getCanonicalName()), t);
     }
   }

@@ -21,13 +21,13 @@ import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
 
-import org.apache.drill.common.exceptions.ExecutionSetupException;
 import org.apache.drill.exec.ops.FragmentContext;
 import org.apache.drill.exec.physical.impl.BatchCreator;
 import org.apache.drill.exec.physical.impl.ScanBatch;
 import org.apache.drill.exec.record.RecordBatch;
 import org.apache.drill.exec.store.RecordReader;
 import org.apache.drill.exec.store.pojo.PojoRecordReader;
+import org.apache.drill.exec.work.foreman.ForemanException;
 
 public class SystemTableBatchCreator implements BatchCreator<SystemTableScan>{
   static final org.slf4j.Logger logger = org.slf4j.LoggerFactory.getLogger(SystemTableBatchCreator.class);
@@ -35,7 +35,7 @@ public class SystemTableBatchCreator implements BatchCreator<SystemTableScan>{
   @SuppressWarnings({ "rawtypes", "unchecked" })
   @Override
   public RecordBatch getBatch(FragmentContext context, SystemTableScan scan, List<RecordBatch> children)
-      throws ExecutionSetupException {
+      throws ForemanException {
     Iterator<Object> iter = scan.getPlugin().getRecordIterator(context, scan.getTable());
     PojoRecordReader reader = new PojoRecordReader(scan.getTable().getPojoClass(), iter);
 

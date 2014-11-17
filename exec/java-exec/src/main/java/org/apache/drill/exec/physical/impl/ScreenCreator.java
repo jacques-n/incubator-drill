@@ -21,7 +21,6 @@ import io.netty.buffer.ByteBuf;
 
 import java.util.List;
 
-import org.apache.drill.common.exceptions.ExecutionSetupException;
 import org.apache.drill.exec.ExecConstants;
 import org.apache.drill.exec.exception.SchemaChangeException;
 import org.apache.drill.exec.memory.OutOfMemoryException;
@@ -41,6 +40,7 @@ import org.apache.drill.exec.rpc.BaseRpcOutcomeListener;
 import org.apache.drill.exec.rpc.RpcException;
 import org.apache.drill.exec.rpc.user.UserServer.UserClientConnection;
 import org.apache.drill.exec.work.ErrorHelper;
+import org.apache.drill.exec.work.foreman.ForemanException;
 
 import com.google.common.base.Preconditions;
 
@@ -50,7 +50,7 @@ public class ScreenCreator implements RootCreator<Screen>{
 
 
   @Override
-  public RootExec getRoot(FragmentContext context, Screen config, List<RecordBatch> children) throws ExecutionSetupException {
+  public RootExec getRoot(FragmentContext context, Screen config, List<RecordBatch> children) throws ForemanException {
     Preconditions.checkNotNull(children);
     Preconditions.checkArgument(children.size() == 1);
     return new ScreenRoot(context, children.iterator().next(), config);
@@ -129,7 +129,7 @@ public class ScreenCreator implements RootCreator<Screen>{
               .setQueryId(context.getHandle().getQueryId()) //
               .setRowCount(0) //
               .setQueryState(QueryState.FAILED)
-              .addError(ErrorHelper.logAndConvertMessageError(context.getIdentity(), "Query stopeed.",
+              .addError(ErrorHelper.logAndConvertMessageError(context.getIdentity(), "Query stopped.",
                 context.getFailureCause(), logger, verbose))
               .setDef(RecordBatchDef.getDefaultInstance()) //
               .setIsLastChunk(true) //
@@ -150,6 +150,7 @@ public class ScreenCreator implements RootCreator<Screen>{
         QueryWritableBatch batch;
         QueryResult header = QueryResult.newBuilder() //
             .setQueryId(context.getHandle().getQueryId()) //
+            .setQueryState(QueryState.COMPLETED) //
             .setRowCount(0) //
             .setDef(RecordBatchDef.getDefaultInstance()) //
             .setIsLastChunk(true) //

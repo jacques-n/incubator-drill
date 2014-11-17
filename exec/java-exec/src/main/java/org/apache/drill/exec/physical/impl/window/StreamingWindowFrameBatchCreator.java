@@ -19,18 +19,19 @@
 package org.apache.drill.exec.physical.impl.window;
 
 import com.google.common.collect.Iterables;
-import org.apache.drill.common.exceptions.ExecutionSetupException;
+
 import org.apache.drill.exec.ops.FragmentContext;
 import org.apache.drill.exec.physical.config.WindowPOP;
 import org.apache.drill.exec.physical.impl.BatchCreator;
 import org.apache.drill.exec.record.RecordBatch;
+import org.apache.drill.exec.work.foreman.ForemanException;
 
 import java.util.List;
 
 public class StreamingWindowFrameBatchCreator implements BatchCreator<WindowPOP> {
 
   @Override
-  public RecordBatch getBatch(FragmentContext context, WindowPOP config, List<RecordBatch> children) throws ExecutionSetupException {
+  public RecordBatch getBatch(FragmentContext context, WindowPOP config, List<RecordBatch> children) throws ForemanException {
     return new StreamingWindowFrameRecordBatch(config, context, Iterables.getOnlyElement(children));
   }
 }

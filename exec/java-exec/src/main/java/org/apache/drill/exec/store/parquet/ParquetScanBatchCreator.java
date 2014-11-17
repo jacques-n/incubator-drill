@@ -25,7 +25,6 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import org.apache.commons.lang3.ArrayUtils;
-import org.apache.drill.common.exceptions.ExecutionSetupException;
 import org.apache.drill.common.expression.SchemaPath;
 import org.apache.drill.exec.ExecConstants;
 import org.apache.drill.exec.ops.FragmentContext;
@@ -36,6 +35,7 @@ import org.apache.drill.exec.store.AbstractRecordReader;
 import org.apache.drill.exec.store.RecordReader;
 import org.apache.drill.exec.store.parquet.columnreaders.ParquetRecordReader;
 import org.apache.drill.exec.store.parquet2.DrillParquetReader;
+import org.apache.drill.exec.work.foreman.ForemanException;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
@@ -58,7 +58,7 @@ public class ParquetScanBatchCreator implements BatchCreator<ParquetRowGroupScan
   private static final String ENABLE_TIME_READ_COUNTER = "parquet.benchmark.time.read";
 
   @Override
-  public RecordBatch getBatch(FragmentContext context, ParquetRowGroupScan rowGroupScan, List<RecordBatch> children) throws ExecutionSetupException {
+  public RecordBatch getBatch(FragmentContext context, ParquetRowGroupScan rowGroupScan, List<RecordBatch> children) throws ForemanException {
     Preconditions.checkArgument(children.isEmpty());
     String partitionDesignator = context.getConfig().getString(ExecConstants.FILESYSTEM_PARTITION_COLUMN_LABEL);
     List<SchemaPath> columns = rowGroupScan.getColumns();
@@ -134,7 +134,7 @@ public class ParquetScanBatchCreator implements BatchCreator<ParquetRowGroupScan
           partitionColumns.add(new String[] {});
         }
       } catch (IOException e1) {
-        throw new ExecutionSetupException(e1);
+        throw new ForemanException(e1);
       }
     }
 

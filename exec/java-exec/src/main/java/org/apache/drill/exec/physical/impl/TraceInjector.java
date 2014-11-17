@@ -20,17 +20,17 @@ package org.apache.drill.exec.physical.impl;
 
 import java.util.List;
 
-import org.apache.drill.common.exceptions.ExecutionSetupException;
 import org.apache.drill.exec.ops.FragmentContext;
 import org.apache.drill.exec.physical.base.AbstractPhysicalVisitor;
 import org.apache.drill.exec.physical.base.FragmentRoot;
 import org.apache.drill.exec.physical.base.PhysicalOperator;
 import org.apache.drill.exec.physical.config.Trace;
+import org.apache.drill.exec.work.foreman.ForemanException;
 
 import com.google.common.collect.Lists;
 
 
-public class TraceInjector extends AbstractPhysicalVisitor<PhysicalOperator, FragmentContext, ExecutionSetupException> {
+public class TraceInjector extends AbstractPhysicalVisitor<PhysicalOperator, FragmentContext, ForemanException> {
 
     static final org.slf4j.Logger logger = org.slf4j.LoggerFactory.getLogger(TraceInjector.class);
 
@@ -40,7 +40,7 @@ public class TraceInjector extends AbstractPhysicalVisitor<PhysicalOperator, Fra
     RootExec root = null;
     private ScreenCreator sc = new ScreenCreator();
 
-    public static PhysicalOperator getExec(FragmentContext context, FragmentRoot root) throws ExecutionSetupException {
+    public static PhysicalOperator getExec(FragmentContext context, FragmentRoot root) throws ForemanException {
         TraceInjector tI = new TraceInjector();
         PhysicalOperator newOp = root.accept(tI, context);
 
@@ -54,10 +54,10 @@ public class TraceInjector extends AbstractPhysicalVisitor<PhysicalOperator, Fra
      * @param context Fragment context
      * @return same physical operator as passed in, but its child will be a trace operator
      *         whose child will be the original child of this operator
-     * @throws ExecutionSetupException
+     * @throws ForemanException
      */
     @Override
-    public PhysicalOperator visitOp(PhysicalOperator op, FragmentContext context) throws ExecutionSetupException{
+    public PhysicalOperator visitOp(PhysicalOperator op, FragmentContext context) throws ForemanException{
 
         List<PhysicalOperator> newChildren = Lists.newArrayList();
         List<PhysicalOperator> list = null;

@@ -19,13 +19,13 @@ package org.apache.drill.exec.store.parquet;
 
 import java.io.IOException;
 
-import org.apache.drill.common.exceptions.ExecutionSetupException;
 import org.apache.drill.common.logical.FormatPluginConfig;
 import org.apache.drill.common.logical.StoragePluginConfig;
 import org.apache.drill.exec.physical.base.AbstractWriter;
 import org.apache.drill.exec.physical.base.PhysicalOperator;
 import org.apache.drill.exec.proto.UserBitShared.CoreOperatorType;
 import org.apache.drill.exec.store.StoragePluginRegistry;
+import org.apache.drill.exec.work.foreman.ForemanException;
 
 import com.fasterxml.jackson.annotation.JacksonInject;
 import com.fasterxml.jackson.annotation.JsonCreator;
@@ -46,7 +46,7 @@ public class ParquetWriter extends AbstractWriter {
           @JsonProperty("child") PhysicalOperator child,
           @JsonProperty("location") String location,
           @JsonProperty("storage") StoragePluginConfig storageConfig,
-          @JacksonInject StoragePluginRegistry engineRegistry) throws IOException, ExecutionSetupException {
+          @JacksonInject StoragePluginRegistry engineRegistry) throws IOException, ForemanException {
 
     super(child);
     this.formatPlugin = (ParquetFormatPlugin) engineRegistry.getFormatPlugin(storageConfig, new ParquetFormatConfig());

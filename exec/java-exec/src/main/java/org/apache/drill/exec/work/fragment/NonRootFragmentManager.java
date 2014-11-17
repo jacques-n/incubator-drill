@@ -21,7 +21,6 @@ import java.io.IOException;
 import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
 
-import org.apache.drill.common.exceptions.ExecutionSetupException;
 import org.apache.drill.exec.exception.FragmentSetupException;
 import org.apache.drill.exec.ops.FragmentContext;
 import org.apache.drill.exec.physical.base.FragmentRoot;
@@ -32,6 +31,7 @@ import org.apache.drill.exec.rpc.RemoteConnection;
 import org.apache.drill.exec.server.DrillbitContext;
 import org.apache.drill.exec.work.WorkManager.WorkerBee;
 import org.apache.drill.exec.work.batch.IncomingBuffers;
+import org.apache.drill.exec.work.foreman.ForemanException;
 
 /**
  * This managers determines when to run a non-root fragment node.
@@ -58,7 +58,7 @@ public class NonRootFragmentManager implements FragmentManager {
       this.context.setBuffers(buffers);
       this.runnerListener = new NonRootStatusReporter(this.context, context.getController().getTunnel(fragment.getForeman()));
 
-    } catch (ExecutionSetupException | IOException e) {
+    } catch (ForemanException | IOException e) {
       throw new FragmentSetupException("Failure while decoding fragment.", e);
     }
   }

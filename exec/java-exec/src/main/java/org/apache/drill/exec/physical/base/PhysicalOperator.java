@@ -19,10 +19,10 @@ package org.apache.drill.exec.physical.base;
 
 import java.util.List;
 
-import org.apache.drill.common.exceptions.ExecutionSetupException;
 import org.apache.drill.common.graph.GraphValue;
 import org.apache.drill.exec.planner.physical.PhysicalPlanCreator;
 import org.apache.drill.exec.record.BatchSchema.SelectionVectorMode;
+import org.apache.drill.exec.work.foreman.ForemanException;
 
 import com.fasterxml.jackson.annotation.JsonIdentityInfo;
 import com.fasterxml.jackson.annotation.JsonIgnore;
@@ -71,7 +71,7 @@ public interface PhysicalOperator extends GraphValue<PhysicalOperator> {
    * @return
    */
   @JsonIgnore
-  public PhysicalOperator getNewWithChildren(List<PhysicalOperator> children) throws ExecutionSetupException;
+  public PhysicalOperator getNewWithChildren(List<PhysicalOperator> children) throws ForemanException;
 
   /**
    * @return The memory to preallocate for this operator

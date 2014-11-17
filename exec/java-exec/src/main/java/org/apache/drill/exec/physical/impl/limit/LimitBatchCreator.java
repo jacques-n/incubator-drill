@@ -19,17 +19,17 @@ package org.apache.drill.exec.physical.impl.limit;
 
 import java.util.List;
 
-import org.apache.drill.common.exceptions.ExecutionSetupException;
 import org.apache.drill.exec.ops.FragmentContext;
 import org.apache.drill.exec.physical.config.Limit;
 import org.apache.drill.exec.physical.impl.BatchCreator;
 import org.apache.drill.exec.record.RecordBatch;
+import org.apache.drill.exec.work.foreman.ForemanException;
 
 import com.google.common.collect.Iterables;
 
 public class LimitBatchCreator implements BatchCreator<Limit> {
   @Override
-  public RecordBatch getBatch(FragmentContext context, Limit config, List<RecordBatch> children) throws ExecutionSetupException {
+  public RecordBatch getBatch(FragmentContext context, Limit config, List<RecordBatch> children) throws ForemanException {
     return new LimitRecordBatch(config, context, Iterables.getOnlyElement(children));
   }
 }

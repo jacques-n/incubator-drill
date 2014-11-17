@@ -21,7 +21,6 @@ import java.io.IOException;
 import java.util.List;
 import java.util.Map;
 
-import org.apache.drill.common.exceptions.ExecutionSetupException;
 import org.apache.drill.common.expression.SchemaPath;
 import org.apache.drill.common.logical.FormatPluginConfig;
 import org.apache.drill.common.logical.StoragePluginConfig;
@@ -37,6 +36,7 @@ import org.apache.drill.exec.store.dfs.easy.EasyWriter;
 import org.apache.drill.exec.store.dfs.easy.FileWork;
 import org.apache.drill.exec.store.dfs.shim.DrillFileSystem;
 import org.apache.drill.exec.store.easy.json.JSONFormatPlugin.JSONFormatConfig;
+import org.apache.drill.exec.work.foreman.ForemanException;
 import org.apache.hadoop.fs.FileSystem;
 
 import com.fasterxml.jackson.annotation.JsonTypeName;
@@ -55,7 +55,7 @@ public class JSONFormatPlugin extends EasyFormatPlugin<JSONFormatConfig> {
 
   @Override
   public RecordReader getRecordReader(FragmentContext context, FileWork fileWork,
-      List<SchemaPath> columns) throws ExecutionSetupException {
+      List<SchemaPath> columns) throws ForemanException {
     return new JSONRecordReader2(context, fileWork.getPath(), this.getFileSystem().getUnderlying(), columns);
   }
 

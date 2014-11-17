@@ -25,9 +25,9 @@ import java.util.ArrayList;
 import java.util.List;
 
 import org.apache.drill.common.exceptions.DrillRuntimeException;
-import org.apache.drill.common.exceptions.ExecutionSetupException;
 import org.apache.drill.exec.store.parquet.ColumnDataReader;
 import org.apache.drill.exec.store.parquet.ParquetFormatPlugin;
+import org.apache.drill.exec.work.foreman.ForemanException;
 import org.apache.hadoop.fs.FSDataInputStream;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
@@ -94,7 +94,7 @@ final class PageReader {
   List<ByteBuf> allocatedDictionaryBuffers;
 
   PageReader(ColumnReader parentStatus, FileSystem fs, Path path, ColumnChunkMetaData columnChunkMetaData)
-    throws ExecutionSetupException{
+    throws ForemanException{
     this.parentColumnReader = parentStatus;
     allocatedBuffers = new ArrayList<ByteBuf>();
     allocatedDictionaryBuffers = new ArrayList<ByteBuf>();
@@ -136,7 +136,7 @@ final class PageReader {
         this.dictionary = page.getEncoding().initDictionary(parentStatus.columnDescriptor, page);
       }
     } catch (IOException e) {
-      throw new ExecutionSetupException("Error opening or reading metadata for parquet file at location: "
+      throw new ForemanException("Error opening or reading metadata for parquet file at location: "
         + path.getName(), e);
     }
 

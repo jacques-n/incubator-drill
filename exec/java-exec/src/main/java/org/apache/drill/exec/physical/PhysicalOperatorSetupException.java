@@ -15,9 +15,12 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.drill.common.exceptions;
+package org.apache.drill.exec.physical;
 
-public class PhysicalOperatorSetupException extends ExecutionSetupException{
+import org.apache.drill.exec.work.foreman.ForemanException;
+
+
+public class PhysicalOperatorSetupException extends ForemanException {
   static final org.slf4j.Logger logger = org.slf4j.LoggerFactory.getLogger(PhysicalOperatorSetupException.class);
 
   public PhysicalOperatorSetupException() {

@@ -21,9 +21,9 @@ import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
 
 import org.apache.drill.common.config.DrillConfig;
-import org.apache.drill.common.exceptions.ExecutionSetupException;
 import org.apache.drill.exec.ExecConstants;
 import org.apache.drill.exec.coord.ClusterCoordinator;
+import org.apache.drill.exec.work.foreman.ForemanException;
 
 import com.typesafe.config.ConfigException;
 
@@ -47,7 +47,7 @@ public class PStoreRegistry {
   }
 
   @SuppressWarnings("unchecked")
-  public PStoreProvider newPStoreProvider() throws ExecutionSetupException {
+  public PStoreProvider newPStoreProvider() throws ForemanException {
     try {
       String storeProviderClassName = config.getString(ExecConstants.SYS_STORE_PROVIDER_CLASS);
       logger.info("Using the configured PStoreProvider class: '{}'.", storeProviderClassName);
@@ -57,7 +57,7 @@ public class PStoreRegistry {
     } catch (ConfigException.Missing | ClassNotFoundException | NoSuchMethodException | SecurityException
         | InstantiationException | IllegalAccessException | IllegalArgumentException | InvocationTargetException e) {
       logger.error(e.getMessage(), e);
-      throw new ExecutionSetupException("A System Table provider was either not specified or could not be found or instantiated", e);
+      throw new ForemanException("A System Table provider was either not specified or could not be found or instantiated", e);
     }
   }
 

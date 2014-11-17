@@ -24,7 +24,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import org.apache.drill.common.exceptions.ExecutionSetupException;
 import org.apache.drill.common.expression.PathSegment;
 import org.apache.drill.common.expression.SchemaPath;
 import org.apache.drill.exec.ExecConstants;
@@ -40,6 +39,7 @@ import org.apache.drill.exec.vector.BaseValueVector;
 import org.apache.drill.exec.vector.ValueVector;
 import org.apache.drill.exec.vector.VariableWidthVector;
 import org.apache.drill.exec.vector.complex.impl.VectorContainerWriter;
+import org.apache.drill.exec.work.foreman.ForemanException;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
@@ -139,7 +139,7 @@ public class DrillParquetReader extends AbstractRecordReader {
   }
 
   @Override
-  public void setup(OutputMutator output) throws ExecutionSetupException {
+  public void setup(OutputMutator output) throws ForemanException {
 
     try {
       schema = footer.getFileMetaData().getSchema();
@@ -188,7 +188,7 @@ public class DrillParquetReader extends AbstractRecordReader {
       primitiveVectors = writer.getMapVector().getPrimitiveVectors();
       recordReader = columnIO.getRecordReader(pageReadStore, recordMaterializer);
     } catch (Exception e) {
-      throw new ExecutionSetupException(e);
+      throw new ForemanException(e);
     }
   }
 

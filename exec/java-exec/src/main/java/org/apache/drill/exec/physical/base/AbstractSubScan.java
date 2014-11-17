@@ -20,9 +20,9 @@ package org.apache.drill.exec.physical.base;
 import java.util.Iterator;
 import java.util.List;
 
-import org.apache.drill.common.exceptions.ExecutionSetupException;
 import org.apache.drill.common.graph.GraphVisitor;
 import org.apache.drill.exec.record.BatchSchema.SelectionVectorMode;
+import org.apache.drill.exec.work.foreman.ForemanException;
 
 import com.google.common.collect.Iterators;
 
@@ -40,7 +40,7 @@ public abstract class AbstractSubScan extends AbstractBase implements SubScan{
   }
 
   @Override
-  public PhysicalOperator getNewWithChildren(List<PhysicalOperator> children) throws ExecutionSetupException {
+  public PhysicalOperator getNewWithChildren(List<PhysicalOperator> children) throws ForemanException {
     assert children == null || children.isEmpty();
     return this;
   }

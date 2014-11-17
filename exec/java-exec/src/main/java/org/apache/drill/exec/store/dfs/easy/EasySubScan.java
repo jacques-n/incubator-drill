@@ -20,7 +20,6 @@ package org.apache.drill.exec.store.dfs.easy;
 import java.io.IOException;
 import java.util.List;
 
-import org.apache.drill.common.exceptions.ExecutionSetupException;
 import org.apache.drill.common.expression.SchemaPath;
 import org.apache.drill.common.logical.FormatPluginConfig;
 import org.apache.drill.common.logical.StoragePluginConfig;
@@ -28,6 +27,7 @@ import org.apache.drill.exec.physical.base.AbstractSubScan;
 import org.apache.drill.exec.store.StoragePluginRegistry;
 import org.apache.drill.exec.store.dfs.NamedFormatPluginConfig;
 import org.apache.drill.exec.store.schedule.CompleteFileWork.FileWorkImpl;
+import org.apache.drill.exec.work.foreman.ForemanException;
 
 import com.fasterxml.jackson.annotation.JacksonInject;
 import com.fasterxml.jackson.annotation.JsonCreator;
@@ -53,7 +53,7 @@ public class EasySubScan extends AbstractSubScan{
       @JacksonInject StoragePluginRegistry engineRegistry, //
       @JsonProperty("columns") List<SchemaPath> columns, //
       @JsonProperty("selectionRoot") String selectionRoot
-      ) throws IOException, ExecutionSetupException {
+      ) throws IOException, ForemanException {
 
     this.formatPlugin = (EasyFormatPlugin<?>) engineRegistry.getFormatPlugin(storageConfig, formatConfig);
     Preconditions.checkNotNull(this.formatPlugin);

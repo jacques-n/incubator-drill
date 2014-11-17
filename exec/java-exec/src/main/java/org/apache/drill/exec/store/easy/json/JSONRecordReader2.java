@@ -22,7 +22,6 @@ import java.io.InputStream;
 import java.util.List;
 
 import org.apache.drill.common.exceptions.DrillRuntimeException;
-import org.apache.drill.common.exceptions.ExecutionSetupException;
 import org.apache.drill.common.expression.PathSegment;
 import org.apache.drill.common.expression.SchemaPath;
 import org.apache.drill.exec.memory.OutOfMemoryException;
@@ -36,6 +35,7 @@ import org.apache.drill.exec.vector.complex.fn.JsonRecordSplitter;
 import org.apache.drill.exec.vector.complex.fn.UTF8JsonRecordSplitter;
 import org.apache.drill.exec.vector.complex.impl.VectorContainerWriter;
 import org.apache.drill.exec.vector.complex.writer.BaseWriter;
+import org.apache.drill.exec.work.foreman.ForemanException;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 
@@ -66,7 +66,7 @@ public class JSONRecordReader2 extends AbstractRecordReader {
   }
 
   @Override
-  public void setup(OutputMutator output) throws ExecutionSetupException {
+  public void setup(OutputMutator output) throws ForemanException {
     try{
       stream = fileSystem.open(hadoopPath);
       JsonRecordSplitter splitter = new UTF8JsonRecordSplitter(stream);

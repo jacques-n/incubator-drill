@@ -17,11 +17,11 @@
  ******************************************************************************/
 package org.apache.drill.exec.store.parquet.columnreaders;
 
-import org.apache.drill.common.exceptions.ExecutionSetupException;
 import org.apache.drill.exec.vector.BigIntVector;
 import org.apache.drill.exec.vector.Float4Vector;
 import org.apache.drill.exec.vector.Float8Vector;
 import org.apache.drill.exec.vector.IntVector;
+import org.apache.drill.exec.work.foreman.ForemanException;
 
 import parquet.column.ColumnDescriptor;
 import parquet.format.SchemaElement;
@@ -35,7 +35,7 @@ public class ParquetFixedWidthDictionaryReaders {
 
     DictionaryIntReader(ParquetRecordReader parentReader, int allocateSize, ColumnDescriptor descriptor,
                                 ColumnChunkMetaData columnChunkMetaData, boolean fixedLength, IntVector v,
-                                SchemaElement schemaElement) throws ExecutionSetupException {
+                                SchemaElement schemaElement) throws ForemanException {
       super(parentReader, allocateSize, descriptor, columnChunkMetaData, fixedLength, v, schemaElement);
       castedVector = v;
     }
@@ -61,7 +61,7 @@ public class ParquetFixedWidthDictionaryReaders {
 
     DictionaryBigIntReader(ParquetRecordReader parentReader, int allocateSize, ColumnDescriptor descriptor,
                                    ColumnChunkMetaData columnChunkMetaData, boolean fixedLength, BigIntVector v,
-                                   SchemaElement schemaElement) throws ExecutionSetupException {
+                                   SchemaElement schemaElement) throws ForemanException {
       super(parentReader, allocateSize, descriptor, columnChunkMetaData, fixedLength, v, schemaElement);
       castedVector = v;
     }
@@ -89,7 +89,7 @@ public class ParquetFixedWidthDictionaryReaders {
 
     DictionaryFloat4Reader(ParquetRecordReader parentReader, int allocateSize, ColumnDescriptor descriptor,
                                    ColumnChunkMetaData columnChunkMetaData, boolean fixedLength, Float4Vector v,
-                                   SchemaElement schemaElement) throws ExecutionSetupException {
+                                   SchemaElement schemaElement) throws ForemanException {
       super(parentReader, allocateSize, descriptor, columnChunkMetaData, fixedLength, v, schemaElement);
       castedVector = v;
     }
@@ -112,7 +112,7 @@ public class ParquetFixedWidthDictionaryReaders {
 
     DictionaryFloat8Reader(ParquetRecordReader parentReader, int allocateSize, ColumnDescriptor descriptor,
                                    ColumnChunkMetaData columnChunkMetaData, boolean fixedLength, Float8Vector v,
-                                   SchemaElement schemaElement) throws ExecutionSetupException {
+                                   SchemaElement schemaElement) throws ForemanException {
       super(parentReader, allocateSize, descriptor, columnChunkMetaData, fixedLength, v, schemaElement);
       castedVector = v;
     }

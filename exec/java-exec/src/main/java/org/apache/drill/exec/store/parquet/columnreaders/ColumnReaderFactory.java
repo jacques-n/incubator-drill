@@ -17,7 +17,6 @@
  ******************************************************************************/
 package org.apache.drill.exec.store.parquet.columnreaders;
 
-import org.apache.drill.common.exceptions.ExecutionSetupException;
 import org.apache.drill.exec.exception.SchemaChangeException;
 import org.apache.drill.exec.vector.BigIntVector;
 import org.apache.drill.exec.vector.Decimal28SparseVector;
@@ -37,6 +36,7 @@ import org.apache.drill.exec.vector.ValueVector;
 import org.apache.drill.exec.vector.VarBinaryVector;
 import org.apache.drill.exec.vector.VarCharVector;
 import org.apache.drill.exec.vector.VariableWidthVector;
+import org.apache.drill.exec.work.foreman.ForemanException;
 
 import parquet.column.ColumnDescriptor;
 import parquet.column.Encoding;
@@ -91,7 +91,7 @@ public class ColumnReaderFactory {
             case DOUBLE:
               return new ParquetFixedWidthDictionaryReaders.DictionaryFloat8Reader(recordReader, allocateSize, descriptor, columnChunkMetaData, fixedLength, (Float8Vector) v, schemaElement);
             default:
-              throw new ExecutionSetupException("Unsupported dictionary column type " + descriptor.getType().name() );
+              throw new ForemanException("Unsupported dictionary column type " + descriptor.getType().name() );
           }
 
         } else {
@@ -124,7 +124,7 @@ public class ColumnReaderFactory {
   static VarLengthValuesColumn getReader(ParquetRecordReader parentReader, int allocateSize, ColumnDescriptor descriptor,
                                           ColumnChunkMetaData columnChunkMetaData, boolean fixedLength, ValueVector v,
                                           SchemaElement schemaElement
-  ) throws ExecutionSetupException {
+  ) throws ForemanException {
     ConvertedType convertedType = schemaElement.getConverted_type();
     switch (descriptor.getMaxDefinitionLevel()) {
       case 0:
@@ -166,7 +166,7 @@ public class ColumnReaderFactory {
                                                              ColumnChunkMetaData columnChunkMetaData,
                                                              boolean fixedLength,
                                                              ValueVector valueVec,
-                                                             SchemaElement schemaElement) throws ExecutionSetupException {
+                                                             SchemaElement schemaElement) throws ForemanException {
     if (! columnChunkMetaData.getEncodings().contains(Encoding.PLAIN_DICTIONARY)) {
       return new NullableFixedByteAlignedReaders.NullableFixedByteAlignedReader(parentReader, allocateSize, columnDescriptor, columnChunkMetaData,
           fixedLength, valueVec, schemaElement);
@@ -188,7 +188,7 @@ public class ColumnReaderFactory {
             fixedLength, (NullableFloat8Vector)valueVec, schemaElement);
       }
       else{
-        throw new ExecutionSetupException("Unsupported nullable column type " + columnDescriptor.getType().name() );
+        throw new ForemanException("Unsupported nullable column type " + columnDescriptor.getType().name() );
       }
     }
   }

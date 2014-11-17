@@ -21,9 +21,9 @@ import io.netty.buffer.DrillBuf;
 
 import java.io.IOException;
 
-import org.apache.drill.common.exceptions.ExecutionSetupException;
 import org.apache.drill.exec.vector.ValueVector;
 import org.apache.drill.exec.vector.VariableWidthVector;
+import org.apache.drill.exec.work.foreman.ForemanException;
 
 import parquet.column.ColumnDescriptor;
 import parquet.format.Encoding;
@@ -39,7 +39,7 @@ public abstract class VarLengthValuesColumn<V extends ValueVector> extends VarLe
 
   VarLengthValuesColumn(ParquetRecordReader parentReader, int allocateSize, ColumnDescriptor descriptor,
                         ColumnChunkMetaData columnChunkMetaData, boolean fixedLength, V v,
-                        SchemaElement schemaElement) throws ExecutionSetupException {
+                        SchemaElement schemaElement) throws ForemanException {
     super(parentReader, allocateSize, descriptor, columnChunkMetaData, fixedLength, v, schemaElement);
     variableWidthVector = (VariableWidthVector) valueVec;
     if (columnChunkMetaData.getEncodings().contains(Encoding.PLAIN_DICTIONARY)) {

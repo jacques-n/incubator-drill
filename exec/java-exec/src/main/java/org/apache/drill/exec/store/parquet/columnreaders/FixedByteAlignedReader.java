@@ -22,7 +22,6 @@ import io.netty.buffer.DrillBuf;
 
 import java.math.BigDecimal;
 
-import org.apache.drill.common.exceptions.ExecutionSetupException;
 import org.apache.drill.exec.expr.holders.Decimal28SparseHolder;
 import org.apache.drill.exec.expr.holders.Decimal38SparseHolder;
 import org.apache.drill.exec.store.ParquetOutputRecordWriter;
@@ -32,6 +31,7 @@ import org.apache.drill.exec.vector.Decimal28SparseVector;
 import org.apache.drill.exec.vector.Decimal38SparseVector;
 import org.apache.drill.exec.vector.ValueVector;
 import org.apache.drill.exec.vector.VariableWidthVector;
+import org.apache.drill.exec.work.foreman.ForemanException;
 import org.joda.time.DateTimeUtils;
 
 import parquet.column.ColumnDescriptor;
@@ -44,7 +44,7 @@ class FixedByteAlignedReader extends ColumnReader {
 
 
   FixedByteAlignedReader(ParquetRecordReader parentReader, int allocateSize, ColumnDescriptor descriptor, ColumnChunkMetaData columnChunkMetaData,
-                         boolean fixedLength, ValueVector v, SchemaElement schemaElement) throws ExecutionSetupException {
+                         boolean fixedLength, ValueVector v, SchemaElement schemaElement) throws ForemanException {
     super(parentReader, allocateSize, descriptor, columnChunkMetaData, fixedLength, v, schemaElement);
   }
 
@@ -74,7 +74,7 @@ class FixedByteAlignedReader extends ColumnReader {
     VariableWidthVector castedVector;
 
     FixedBinaryReader(ParquetRecordReader parentReader, int allocateSize, ColumnDescriptor descriptor, ColumnChunkMetaData columnChunkMetaData,
-                    VariableWidthVector v, SchemaElement schemaElement) throws ExecutionSetupException {
+                    VariableWidthVector v, SchemaElement schemaElement) throws ForemanException {
       super(parentReader, allocateSize, descriptor, columnChunkMetaData, true, v, schemaElement);
       castedVector = v;
     }
@@ -98,7 +98,7 @@ class FixedByteAlignedReader extends ColumnReader {
     protected int dataTypeLengthInBytes;
 
     ConvertedReader(ParquetRecordReader parentReader, int allocateSize, ColumnDescriptor descriptor, ColumnChunkMetaData columnChunkMetaData,
-                           boolean fixedLength, ValueVector v, SchemaElement schemaElement) throws ExecutionSetupException {
+                           boolean fixedLength, ValueVector v, SchemaElement schemaElement) throws ForemanException {
       super(parentReader, allocateSize, descriptor, columnChunkMetaData, fixedLength, v, schemaElement);
     }
 
@@ -123,7 +123,7 @@ class FixedByteAlignedReader extends ColumnReader {
     DateVector dateVector;
 
     DateReader(ParquetRecordReader parentReader, int allocateSize, ColumnDescriptor descriptor, ColumnChunkMetaData columnChunkMetaData,
-                    boolean fixedLength, ValueVector v, SchemaElement schemaElement) throws ExecutionSetupException {
+                    boolean fixedLength, ValueVector v, SchemaElement schemaElement) throws ForemanException {
       super(parentReader, allocateSize, descriptor, columnChunkMetaData, fixedLength, v, schemaElement);
       dateVector = (DateVector) v;
     }
@@ -151,7 +151,7 @@ class FixedByteAlignedReader extends ColumnReader {
     Decimal28SparseVector decimal28Vector;
 
     Decimal28Reader(ParquetRecordReader parentReader, int allocateSize, ColumnDescriptor descriptor, ColumnChunkMetaData columnChunkMetaData,
-                    boolean fixedLength, ValueVector v, SchemaElement schemaElement) throws ExecutionSetupException {
+                    boolean fixedLength, ValueVector v, SchemaElement schemaElement) throws ForemanException {
       super(parentReader, allocateSize, descriptor, columnChunkMetaData, fixedLength, v, schemaElement);
       decimal28Vector = (Decimal28SparseVector) v;
     }
@@ -170,7 +170,7 @@ class FixedByteAlignedReader extends ColumnReader {
     Decimal38SparseVector decimal38Vector;
 
     Decimal38Reader(ParquetRecordReader parentReader, int allocateSize, ColumnDescriptor descriptor, ColumnChunkMetaData columnChunkMetaData,
-                    boolean fixedLength, ValueVector v, SchemaElement schemaElement) throws ExecutionSetupException {
+                    boolean fixedLength, ValueVector v, SchemaElement schemaElement) throws ForemanException {
       super(parentReader, allocateSize, descriptor, columnChunkMetaData, fixedLength, v, schemaElement);
       decimal38Vector = (Decimal38SparseVector) v;
     }

@@ -19,12 +19,12 @@ package org.apache.drill.exec.physical.impl.project;
 
 import java.util.List;
 
-import org.apache.drill.common.exceptions.ExecutionSetupException;
 import org.apache.drill.exec.ops.FragmentContext;
 import org.apache.drill.exec.physical.config.ComplexToJson;
 import org.apache.drill.exec.physical.config.Project;
 import org.apache.drill.exec.physical.impl.BatchCreator;
 import org.apache.drill.exec.record.RecordBatch;
+import org.apache.drill.exec.work.foreman.ForemanException;
 
 import com.google.common.base.Preconditions;
 
@@ -32,7 +32,7 @@ public class ComplexToJsonBatchCreator implements BatchCreator<ComplexToJson> {
   static final org.slf4j.Logger logger = org.slf4j.LoggerFactory.getLogger(ComplexToJsonBatchCreator.class);
 
   @Override
-  public RecordBatch getBatch(FragmentContext context, ComplexToJson flatten, List<RecordBatch> children) throws ExecutionSetupException {
+  public RecordBatch getBatch(FragmentContext context, ComplexToJson flatten, List<RecordBatch> children) throws ForemanException {
     Preconditions.checkArgument(children.size() == 1);
     return new ProjectRecordBatch(new Project(null, flatten.getChild()),
                                   children.iterator().next(),
