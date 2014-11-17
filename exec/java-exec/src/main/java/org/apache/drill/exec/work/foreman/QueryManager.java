@@ -136,18 +136,18 @@ public class QueryManager implements FragmentStatusListener, DrillbitStatusListe
     status.add(new FragmentData(handle, node, isRoot));
   }
 
-  public RootStatusHandler getRootStatusHandler(FragmentContext context, PlanFragment fragment){
-    return new RootStatusHandler(context, fragment);
+  public RootStatusReporter getRootStatusHandler(FragmentContext context, PlanFragment fragment){
+    return new RootStatusReporter(context, fragment);
   }
 
-  class RootStatusHandler extends AbstractStatusReporter{
+  class RootStatusReporter extends AbstractStatusReporter{
 
-    private RootStatusHandler(FragmentContext context, PlanFragment fragment){
+    private RootStatusReporter(FragmentContext context, PlanFragment fragment){
       super(context);
     }
 
     @Override
-    protected void statusChange(FragmentHandle handle, FragmentStatus status) {
+    protected void reportStatus(FragmentStatus status) {
       statusUpdate(status);
     }
 

@@ -378,18 +378,6 @@ public class Foreman implements Runnable, Closeable, Comparable<Object> {
         initiatingClient.getSession());
   }
 
-
-//DrillPBError error = ErrorHelper.logAndConvertError(context.getCurrentEndpoint(), message, t, logger);
-//QueryResult result = QueryResult //
-//    .newBuilder() //
-//    .addError(error) //
-//    .setIsLastChunk(true) //
-//    .setQueryState(QueryState.FAILED) //
-//    .setQueryId(queryId) //
-//    .build();
-//cleanupAndSendResult(result);
-
-
   /**
    * Tells the foreman to move to a new state.  Note that
    * @param state
@@ -432,13 +420,13 @@ public class Foreman implements Runnable, Closeable, Comparable<Object> {
       case COMPLETED: {
         assert exception == null;
         recordNewState(QueryState.COMPLETED);
-        QueryResult result = QueryResult //
-            .newBuilder() //
-            .setIsLastChunk(true) //
-            .setQueryState(QueryState.COMPLETED) //
-            .setQueryId(queryId) //
-            .build();
-        cleanup(result);
+//        QueryResult result = QueryResult //
+//            .newBuilder() //
+//            .setIsLastChunk(true) //
+//            .setQueryState(QueryState.COMPLETED) //
+//            .setQueryId(queryId) //
+//            .build();
+        cleanup(null);
         return true;
       }
 
