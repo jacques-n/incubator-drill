@@ -147,7 +147,7 @@ public class QueryManager implements FragmentStatusListener, DrillbitStatusListe
     }
 
     @Override
-    protected void reportStatus(FragmentStatus status) {
+    protected void statusChange(FragmentHandle handle, FragmentStatus status) {
       statusUpdate(status);
     }
 
