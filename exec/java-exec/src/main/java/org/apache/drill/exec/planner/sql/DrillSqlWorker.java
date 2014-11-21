@@ -112,7 +112,7 @@ public class DrillSqlWorker {
     try {
       sqlNode = planner.parse(sql);
     } catch (SqlParseException e) {
-      throw new QueryInputException("Failure parsing SQL.", e);
+      throw new QueryInputException("Failure parsing SQL. " + e.getMessage(), e);
     }
 
     AbstractSqlHandler handler;
@@ -139,7 +139,7 @@ public class DrillSqlWorker {
     try{
       return handler.getPlan(sqlNode);
     }catch(ValidationException e){
-      throw new QueryInputException("Failure validating SQL.", e);
+      throw new QueryInputException("Failure validating SQL. " + e.getMessage(), e);
     } catch (IOException | RelConversionException e) {
       throw new QueryInputException("Failure handling SQL.", e);
     }
