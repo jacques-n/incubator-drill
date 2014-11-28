@@ -104,7 +104,7 @@ public class JSONRecordReader extends AbstractRecordReader {
     writer.reset();
 
     recordCount = 0;
-    Stopwatch p = new Stopwatch().start();
+//    Stopwatch p = new Stopwatch().start();
     try{
       outside: while(recordCount < BaseValueVector.INITIAL_VALUE_ALLOCATION){
         writer.setPosition(recordCount);
@@ -120,20 +120,11 @@ public class JSONRecordReader extends AbstractRecordReader {
 
       }
 
-
-//      for (SchemaPath sp :jsonReader.getNullColumns() ) {
-//        PathSegment root = sp.getRootSegment();
-//        BaseWriter.MapWriter fieldWriter = writer.rootAsMap();
-//        while (root.getChild() != null && ! root.getChild().isArray()) {
-//          fieldWriter = fieldWriter.map(root.getNameSegment().getPath());
-//          root = root.getChild();
-//        }
-//        fieldWriter.integer(root.getNameSegment().getPath());
-//      }
+      jsonReader.ensureAtLeastOneField(writer);
 
       writer.setValueCount(recordCount);
-      p.stop();
-      System.out.println(String.format("Wrote %d records in %dms.", recordCount, p.elapsed(TimeUnit.MILLISECONDS)));
+//      p.stop();
+//      System.out.println(String.format("Wrote %d records in %dms.", recordCount, p.elapsed(TimeUnit.MILLISECONDS)));
 
       return recordCount;
 

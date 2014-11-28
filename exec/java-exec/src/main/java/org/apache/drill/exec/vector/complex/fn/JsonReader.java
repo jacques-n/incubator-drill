@@ -34,6 +34,7 @@ import org.apache.drill.exec.expr.holders.VarCharHolder;
 import org.apache.drill.exec.physical.base.GroupScan;
 import org.apache.drill.exec.store.AbstractRecordReader;
 import org.apache.drill.exec.store.easy.json.RewindableUtf8Reader;
+import org.apache.drill.exec.vector.complex.writer.BaseWriter;
 import org.apache.drill.exec.vector.complex.writer.BaseWriter.ComplexWriter;
 import org.apache.drill.exec.vector.complex.writer.BaseWriter.ListWriter;
 import org.apache.drill.exec.vector.complex.writer.BaseWriter.MapWriter;
@@ -57,8 +58,9 @@ public class JsonReader {
 
   private final RewindableUtf8Reader parser;
   private DrillBuf workBuf;
-
-  private boolean allTextMode;
+  private final List<SchemaPath> columns;
+  private final boolean allTextMode;
+  private boolean atLeastOneWrite = false;
 
   private FieldSelection selection;
 
@@ -93,10 +95,21 @@ public class JsonReader {
     this.selection = FieldSelection.getFieldSelection(columns);
     this.workBuf = managedBuf;
     this.allTextMode = allTextMode;
+    this.columns = columns;
   }
 
-  public boolean readAtLeastOneColumn(){
-    return true;
+  public void ensureAtLeastOneField(ComplexWriter writer){
+    if(!atLeastOneWrite){
+      // if we had no columns, create one empty one so we can return some data for count purposes.
+      SchemaPath sp = columns.get(0);
+      PathSegment root = sp.getRootSegment();
+      BaseWriter.MapWriter fieldWriter = writer.rootAsMap();
+      while (root.getChild() != null && ! root.getChild().isArray()) {
+        fieldWriter = fieldWriter.map(root.getNameSegment().getPath());
+        root = root.getChild();
+      }
+      fieldWriter.integer(root.getNameSegment().getPath());
+    }
   }
 
   public void setSource(FSDataInputStream is) throws IOException{
@@ -106,6 +119,10 @@ public class JsonReader {
 
   public void setSource(int start, int end, DrillBuf buf) throws IOException{
     parser.setInputStream(DrillBufInputStream.getStream(start, end, buf));
+  }
+
+  public void setSource(String data) throws IOException {
+    setSource(data.getBytes(Charsets.UTF_8));
   }
 
   public void setSource(byte[] bytes) throws IOException{
@@ -244,10 +261,12 @@ public class JsonReader {
       case VALUE_EMBEDDED_OBJECT:
       case VALUE_FALSE: {
         map.bit(fieldName).writeBit(0);
+        atLeastOneWrite = true;
         break;
       }
       case VALUE_TRUE: {
         map.bit(fieldName).writeBit(1);
+        atLeastOneWrite = true;
         break;
       }
       case VALUE_NULL:
@@ -259,12 +278,15 @@ public class JsonReader {
         break;
       case VALUE_NUMBER_FLOAT:
         map.float8(fieldName).writeFloat8(parser.getDoubleValue());
+        atLeastOneWrite = true;
         break;
       case VALUE_NUMBER_INT:
         map.bigInt(fieldName).writeBigInt(parser.getLongValue());
+        atLeastOneWrite = true;
         break;
       case VALUE_STRING:
         handleString(parser, map, fieldName);
+        atLeastOneWrite = true;
         break;
 
       default:
@@ -316,6 +338,7 @@ public class JsonReader {
       case VALUE_NUMBER_INT:
       case VALUE_STRING:
         handleString(parser, map, fieldName);
+        atLeastOneWrite = true;
         break;
       case VALUE_NULL:
         // do check value capacity only if vector is allocated.
@@ -376,10 +399,12 @@ public class JsonReader {
       case VALUE_EMBEDDED_OBJECT:
       case VALUE_FALSE:{
         list.bit().writeBit(0);
+        atLeastOneWrite = true;
         break;
       }
       case VALUE_TRUE: {
         list.bit().writeBit(1);
+        atLeastOneWrite = true;
         break;
       }
       case VALUE_NULL:
@@ -388,12 +413,15 @@ public class JsonReader {
             "Be advised that this will treat JSON null values as string containing the word 'null'.");
       case VALUE_NUMBER_FLOAT:
         list.float8().writeFloat8(parser.getDoubleValue());
+        atLeastOneWrite = true;
         break;
       case VALUE_NUMBER_INT:
         list.bigInt().writeBigInt(parser.getLongValue());
+        atLeastOneWrite = true;
         break;
       case VALUE_STRING:
         handleString(parser, list);
+        atLeastOneWrite = true;
         break;
       default:
         throw new IllegalStateException("Unexpected token " + parser.getCurrentToken());
@@ -429,6 +457,7 @@ public class JsonReader {
       case VALUE_NUMBER_INT:
       case VALUE_STRING:
         handleString(parser, list);
+        atLeastOneWrite = true;
         break;
       default:
         throw new IllegalStateException("Unexpected token " + parser.getCurrentToken());
