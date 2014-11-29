@@ -34,7 +34,7 @@ import org.apache.drill.exec.ops.FragmentContext;
 import org.apache.drill.exec.ops.OperatorContext;
 import org.apache.drill.exec.util.AssertionUtil;
 
-public final class DrillBuf extends AbstractByteBuf {
+public final class DrillBuf extends AbstractByteBuf implements AutoCloseable {
   static final org.slf4j.Logger logger = org.slf4j.LoggerFactory.getLogger(DrillBuf.class);
 
   private final ByteBuf b;
@@ -555,6 +555,15 @@ public final class DrillBuf extends AbstractByteBuf {
     return this;
   }
 
+  public void setByte(int index, byte b){
+    PlatformDependent.putByte(addr(index), b);
+  }
+
+  public void writeByteUnsafe(byte b){
+    PlatformDependent.putByte(addr(readerIndex), b);
+    readerIndex++;
+  }
+
   @Override
   protected byte _getByte(int index) {
     return getByte(index);
@@ -674,5 +683,12 @@ public final class DrillBuf extends AbstractByteBuf {
     }
 
   }
+
+  @Override
+  public void close() throws Exception {
+    release();
+  }
+
+
 
 }

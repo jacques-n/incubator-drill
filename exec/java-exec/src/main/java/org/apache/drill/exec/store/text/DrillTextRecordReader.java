@@ -187,7 +187,7 @@ public class DrillTextRecordReader extends AbstractRecordReader {
         v.getMutator().setValueCount(recordCount);
       }
       vector.getMutator().setValueCount(recordCount);
-      logger.debug("text scan batch size {}", batchSize);
+//      logger.debug("text scan batch size {}", batchSize);
       return recordCount;
     } catch (IOException e) {
       cleanup();
