@@ -35,6 +35,7 @@ import org.apache.drill.exec.expr.TypeHelper;
 import org.apache.drill.exec.memory.OutOfMemoryException;
 import org.apache.drill.exec.ops.FragmentContext;
 import org.apache.drill.exec.ops.OperatorContext;
+import org.apache.drill.exec.ops.OperatorStats.Processing;
 import org.apache.drill.exec.physical.base.PhysicalOperator;
 import org.apache.drill.exec.record.BatchSchema;
 import org.apache.drill.exec.record.BatchSchema.SelectionVectorMode;
@@ -92,14 +93,11 @@ public class ScanBatch implements RecordBatch {
     }
     this.currentReader = readers.next();
     this.oContext = oContext;
-    this.currentReader.setOperatorContext(this.oContext);
 
-    try {
-      oContext.getStats().startProcessing();
-      this.currentReader.setup(mutator);
-    } finally {
-      oContext.getStats().stopProcessing();
+    try(Processing p = oContext.getStats().startProcessing()) {
+      this.currentReader.setup(oContext, mutator);
     }
+
     this.partitionColumns = partitionColumns.iterator();
     this.partitionValues = this.partitionColumns.hasNext() ? this.partitionColumns.next() : null;
     this.selectedPartitionColumns = selectedPartitionColumns;
@@ -178,8 +176,7 @@ public class ScanBatch implements RecordBatch {
           currentReader.cleanup();
           currentReader = readers.next();
           partitionValues = partitionColumns.hasNext() ? partitionColumns.next() : null;
-          currentReader.setup(mutator);
-          currentReader.setOperatorContext(oContext);
+          currentReader.setup(oContext, mutator);
           try {
             currentReader.allocate(fieldVectorMap);
           } catch (OutOfMemoryException e) {

@@ -74,15 +74,9 @@ public class JSONRecordReader extends AbstractRecordReader {
   }
 
   @Override
-  public void setup(OutputMutator output) throws ExecutionSetupException {
+  public void setup(OperatorContext context, OutputMutator output) throws ExecutionSetupException {
     try{
-      CompressionCodecFactory factory = new CompressionCodecFactory(new Configuration());
-      CompressionCodec codec = factory.getCodec(hadoopPath); // infers from file ext.
-      if (codec != null) {
-        this.stream = codec.createInputStream(fileSystem.open(hadoopPath));
-      } else {
-        this.stream = fileSystem.open(hadoopPath);
-      }
+      this.stream = fileSystem.openPossiblyCompressedStream(hadoopPath);
       this.writer = new VectorContainerWriter(output);
       this.mutator = output;
       this.jsonReader = new JsonReader(fragmentContext.getManagedBuffer(), columns, enableAllTextMode);

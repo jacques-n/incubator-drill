@@ -145,7 +145,9 @@ public abstract class EasyFormatPlugin<T extends FormatPluginConfig> implements 
         newColumns.add(AbstractRecordReader.STAR_COLUMN);
       }
       // Create a new sub scan object with the new set of columns;
-      scan = new EasySubScan(scan.getWorkUnits(), scan.getFormatPlugin(), newColumns, scan.getSelectionRoot());
+      EasySubScan newScan = new EasySubScan(scan.getWorkUnits(), scan.getFormatPlugin(), newColumns, scan.getSelectionRoot());
+      newScan.setOperatorId(scan.getOperatorId());
+      scan = newScan;
     }
 
     int numParts = 0;

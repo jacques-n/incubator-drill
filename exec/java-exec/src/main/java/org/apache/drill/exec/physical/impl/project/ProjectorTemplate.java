@@ -43,7 +43,7 @@ public abstract class ProjectorTemplate implements Projector {
   }
 
   @Override
-  public final int projectRecords(int startIndex, final int recordCount, int firstOutputIndex) {
+  public final int projectRecords(final int startIndex, final int recordCount, int firstOutputIndex) {
     switch (svMode) {
     case FOUR_BYTE:
       throw new UnsupportedOperationException();

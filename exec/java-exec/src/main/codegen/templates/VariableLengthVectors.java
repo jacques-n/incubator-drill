@@ -149,6 +149,10 @@ public final class ${minor.class}Vector extends BaseDataValueVector implements V
     return offsetVector.getDataAddr();
   }
   
+  public UInt${type.width}Vector getOffsetVector(){
+    return offsetVector;
+  }
+  
   public TransferPair getTransferPair(){
     return new TransferImpl(getField());
   }
@@ -282,24 +286,24 @@ public final class ${minor.class}Vector extends BaseDataValueVector implements V
     offsetVector.zeroVector();
   }
 
-    public void reAlloc() {
-      allocationTotalByteCount *= 2;
-      DrillBuf newBuf = allocator.buffer(allocationTotalByteCount);
-      newBuf.setBytes(0, data, 0, data.capacity());
-      data.release();
-      data = newBuf;
-    }
+  public void reAlloc() {
+    allocationTotalByteCount *= 2;
+    DrillBuf newBuf = allocator.buffer(allocationTotalByteCount);
+    newBuf.setBytes(0, data, 0, data.capacity());
+    data.release();
+    data = newBuf;
+  }
 
-    private void decrementAllocationMonitor() {
-      if (allocationMonitor > 0) {
-        allocationMonitor = 0;
-      }
-      --allocationMonitor;
+  public void decrementAllocationMonitor() {
+    if (allocationMonitor > 0) {
+      allocationMonitor = 0;
     }
+    --allocationMonitor;
+  }
 
-    private void incrementAllocationMonitor() {
-      ++allocationMonitor;
-    }
+  private void incrementAllocationMonitor() {
+    ++allocationMonitor;
+  }
 
   public Accessor getAccessor(){
     return accessor;

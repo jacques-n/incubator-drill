@@ -161,7 +161,8 @@ public class MongoRecordReader extends AbstractRecordReader {
   }
 
   @Override
-  public void setup(OutputMutator output) throws ExecutionSetupException {
+  public void setup(OperatorContext context, OutputMutator output) throws ExecutionSetupException {
+    this.operatorContext = context;
     if (isStarQuery()) {
       try {
         SchemaPath startColumn = SchemaPath.getSimplePath("*");
@@ -257,13 +258,5 @@ public class MongoRecordReader extends AbstractRecordReader {
   public void cleanup() {
   }
 
-  public OperatorContext getOperatorContext() {
-    return operatorContext;
-  }
-
-  @Override
-  public void setOperatorContext(OperatorContext operatorContext) {
-    this.operatorContext = operatorContext;
-  }
 
 }

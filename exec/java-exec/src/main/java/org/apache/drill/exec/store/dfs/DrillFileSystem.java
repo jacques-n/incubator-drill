@@ -19,13 +19,13 @@ package org.apache.drill.exec.store.dfs;
 
 import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.io.InputStream;
 import java.net.URI;
 import java.util.EnumSet;
 import java.util.List;
 
-import com.google.common.annotations.VisibleForTesting;
-import com.google.common.collect.Lists;
 import org.apache.drill.exec.ops.OperatorStats;
+import org.apache.drill.exec.ops.OperatorStats.Wait;
 import org.apache.hadoop.classification.InterfaceAudience.LimitedPrivate;
 import org.apache.hadoop.classification.InterfaceAudience.Private;
 import org.apache.hadoop.conf.Configuration;
@@ -50,10 +50,15 @@ import org.apache.hadoop.fs.UnsupportedFileSystemException;
 import org.apache.hadoop.fs.permission.AclEntry;
 import org.apache.hadoop.fs.permission.AclStatus;
 import org.apache.hadoop.fs.permission.FsPermission;
+import org.apache.hadoop.io.compress.CompressionCodec;
+import org.apache.hadoop.io.compress.CompressionCodecFactory;
 import org.apache.hadoop.security.AccessControlException;
 import org.apache.hadoop.security.Credentials;
 import org.apache.hadoop.security.token.Token;
 import org.apache.hadoop.util.Progressable;
+
+import com.google.common.annotations.VisibleForTesting;
+import com.google.common.collect.Lists;
 
 /**
  * DrillFileSystem is the wrapper around the actual FileSystem implementation.
@@ -66,14 +71,17 @@ public class DrillFileSystem extends FileSystem {
 
   private final FileSystem underlyingFs;
   private final OperatorStats operatorStats;
+  private final CompressionCodecFactory codecFactory;
 
   public DrillFileSystem(Configuration fsConf) throws IOException {
     this.underlyingFs = FileSystem.get(fsConf);
+    this.codecFactory = new CompressionCodecFactory(fsConf);
     this.operatorStats = null;
   }
 
   public DrillFileSystem(FileSystem fs, OperatorStats operatorStats) {
     this.underlyingFs = fs;
+    this.codecFactory = new CompressionCodecFactory(fs.getConf());
     this.operatorStats = operatorStats;
   }
 
@@ -675,6 +683,15 @@ public class DrillFileSystem extends FileSystem {
       }
     } else {
       listToFill.add(parent);
+    }
+  }
+
+  public InputStream openPossiblyCompressedStream(Path path) throws IOException {
+    CompressionCodec codec = codecFactory.getCodec(path); // infers from file ext.
+    if (codec != null) {
+      return codec.createInputStream(open(path));
+    } else {
+      return open(path);
     }
   }
 
