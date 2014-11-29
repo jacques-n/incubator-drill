@@ -24,6 +24,7 @@ import java.util.Arrays;
 import java.util.List;
 
 import org.apache.drill.BaseTestQuery;
+import org.apache.drill.exec.ExecConstants;
 import org.apache.drill.exec.exception.SchemaChangeException;
 import org.apache.drill.exec.record.RecordBatchLoader;
 import org.apache.drill.exec.record.VectorWrapper;
@@ -40,16 +41,26 @@ public class TestTextColumn extends BaseTestQuery{
   }
 
   @Test
+  public void bigFile() throws Exception {
+//    test("select * from dfs.`/Users/jnadeau/Documents/Yelp/star2002-full.csv` where 1=0;");
+    test(String.format("alter session set `%s` = 4; ", ExecConstants.MAX_WIDTH_PER_NODE_KEY) + "select * from dfs.`/Users/jnadeau/Documents/Yelp/star2002-full.csv` where 1 = 0;");
+//    test("select * from dfs.`/Users/jnadeau/Documents/Yelp/5m.csv` where 1 = 0;");
+    // sleep for two minutes to allow grabbing profile.
+    Thread.sleep(2*60*1000);
+  }
+
+  @Test
   public void testDefaultDelimiterColumnSelection() throws Exception {
     List<QueryResultBatch> batches = testSqlWithResults("SELECT columns[0] as entire_row " +
       "from dfs_test.`[WORKING_PATH]/src/test/resources/store/text/data/letters.txt`");
 
     List<List<String>> expectedOutput = Arrays.asList(
-      Arrays.asList("\"a, b,\",\"c\",\"d,, \\n e\""),
-      Arrays.asList("\"d, e,\",\"f\",\"g,, \\n h\""),
-      Arrays.asList("\"g, h,\",\"i\",\"j,, \\n k\""));
+      Arrays.asList("a, b,\",\"c\",\"d,, \\n e"),
+      Arrays.asList("d, e,\",\"f\",\"g,, \\n h"),
+      Arrays.asList("g, h,\",\"i\",\"j,, \\n k"));
 
     List<List<String>> actualOutput = getOutput(batches);
+    System.out.println(actualOutput);
     validateOutput(expectedOutput, actualOutput);
   }
 
@@ -59,9 +70,9 @@ public class TestTextColumn extends BaseTestQuery{
       "columns[3] as col4 from dfs_test.`[WORKING_PATH]/src/test/resources/store/text/data/letters.csv`");
 
     List<List<String>> expectedOutput = Arrays.asList(
-      Arrays.asList("\"a, b,\"", "\"c\"", "\"d,, \\n e\"","\"f\\\"g\""),
-      Arrays.asList("\"d, e,\"", "\"f\"", "\"g,, \\n h\"","\"i\\\"j\""),
-      Arrays.asList("\"g, h,\"", "\"i\"", "\"j,, \\n k\"","\"l\\\"m\""));
+      Arrays.asList("a, b,", "c", "d,, \\n e","f\\\"g"),
+      Arrays.asList("d, e,", "f", "g,, \\n h","i\\\"j"),
+      Arrays.asList("g, h,", "i", "j,, \\n k","l\\\"m"));
 
     List<List<String>> actualOutput = getOutput(batches);
     validateOutput(expectedOutput, actualOutput);
@@ -79,7 +90,8 @@ public class TestTextColumn extends BaseTestQuery{
           output.add(new ArrayList<String>());
           for (VectorWrapper<?> vw: loader) {
             ValueVector.Accessor accessor = vw.getValueVector().getAccessor();
-            output.get(last).add(accessor.getObject(i).toString());
+            Object o = accessor.getObject(i);
+            output.get(last).add(o == null ? null: o.toString());
           }
           ++last;
         }
