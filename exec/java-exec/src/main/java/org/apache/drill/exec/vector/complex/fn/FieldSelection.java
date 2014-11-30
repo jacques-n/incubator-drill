@@ -21,6 +21,7 @@ package org.apache.drill.exec.vector.complex.fn;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.TreeMap;
 
 import org.apache.drill.common.expression.PathSegment;
 import org.apache.drill.common.expression.SchemaPath;
@@ -38,6 +39,7 @@ class FieldSelection {
   private enum ValidityMode {CHECK_CHILDREN, NEVER_VALID, ALWAYS_VALID}
 
   private final Map<String, FieldSelection> children;
+  private final Map<String, FieldSelection> childrenInsensitive;
   private final ValidityMode mode;
 
   private FieldSelection(){
@@ -46,6 +48,12 @@ class FieldSelection {
 
   private FieldSelection(Map<String, FieldSelection> children, ValidityMode mode){
     this.children = children;
+    if(children != null){
+      childrenInsensitive = new TreeMap<String, FieldSelection>(String.CASE_INSENSITIVE_ORDER);
+      childrenInsensitive.putAll(children);
+    }else{
+      childrenInsensitive = null;
+    }
     this.mode = mode;
   }
 
@@ -57,14 +65,12 @@ class FieldSelection {
       return ALL_VALID;
     }else{
       ImmutableMap.Builder<String, FieldSelection> newMap = ImmutableMap.builder();
-      for(Map.Entry<String, FieldSelection> entry : children.entrySet()){
-        newMap.put(entry.getKey(), entry.getValue().fixNodes());
-      }
-      return new FieldSelection(newMap.build(), ValidityMode.CHECK_CHILDREN);
+      return new FieldSelection(children, ValidityMode.CHECK_CHILDREN);
     }
   }
 
   private FieldSelection addChild(String name){
+    name = name.toLowerCase();
     if(children.containsKey(name)){
       return children.get(name);
     }
@@ -93,6 +99,14 @@ class FieldSelection {
       return ALL_VALID;
     case CHECK_CHILDREN:
       FieldSelection n = children.get(name);
+
+      // if we don't find, check to see if the lower case version of this path is available, if so, we'll add it with the new case to the original map.
+      if(n == null){
+        n = childrenInsensitive.get(name);
+        if(n != null){
+          children.put(name, n);
+        }
+      }
       if(n == null){
         return INVALID_NODE;
       }else{
