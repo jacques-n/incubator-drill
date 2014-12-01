@@ -52,18 +52,8 @@ public class DrillBufInputStream extends ByteBufInputStream implements Seekable 
     return false;
   }
 
-
-  private static DrillBuf sliceStart(int start, int end, DrillBuf buffer){
-    if(start == 0){
-      return buffer;
-    }else{
-      return buffer.slice(start, end - start);
-    }
-  }
-
-
   public static DrillBufInputStream getStream(int start, int end, DrillBuf buffer){
-    DrillBuf buf = sliceStart(start, end, buffer);
+    DrillBuf buf = buffer.slice(start, end - start);
     return new DrillBufInputStream(buf, end - start);
   }
 }

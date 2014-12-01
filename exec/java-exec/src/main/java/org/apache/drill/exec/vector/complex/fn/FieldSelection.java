@@ -21,12 +21,14 @@ package org.apache.drill.exec.vector.complex.fn;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.TreeMap;
 
 import org.apache.drill.common.expression.PathSegment;
 import org.apache.drill.common.expression.SchemaPath;
 
-import com.google.common.collect.ImmutableMap;
+import com.google.common.collect.Maps;
+
 
 /**
  * This class manages the projection pushdown for a complex path.
@@ -64,8 +66,11 @@ class FieldSelection {
     if(children.isEmpty()){
       return ALL_VALID;
     }else{
-      ImmutableMap.Builder<String, FieldSelection> newMap = ImmutableMap.builder();
-      return new FieldSelection(children, ValidityMode.CHECK_CHILDREN);
+      Map<String, FieldSelection> newMap = Maps.newHashMap();
+      for(Entry<String, FieldSelection> e : children.entrySet()){
+        newMap.put(e.getKey(), e.getValue().fixNodes());
+      }
+      return new FieldSelection(newMap, ValidityMode.CHECK_CHILDREN);
     }
   }
 

@@ -58,6 +58,7 @@ public class JsonConvertFrom {
 
       try {
         jsonReader.setSource(in.start, in.end, in.buffer);
+        jsonReader.write(writer);
         buffer = jsonReader.getWorkBuf();
 
       } catch (Exception e) {
@@ -82,6 +83,7 @@ public class JsonConvertFrom {
     public void eval(){
       try {
         jsonReader.setSource(in.start, in.end, in.buffer);
+        jsonReader.write(writer);
         buffer = jsonReader.getWorkBuf();
 
       } catch (Exception e) {
