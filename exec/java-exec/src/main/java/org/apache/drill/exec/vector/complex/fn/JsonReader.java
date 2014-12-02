@@ -70,7 +70,10 @@ public class JsonReader {
    */
   private boolean onReset = false;
 
-  public static enum ReadState {WRITE_FAILURE, END_OF_STREAM, WRITE_SUCCEED}
+  public static enum ReadState {
+    WRITE_FAILURE,
+    END_OF_STREAM,
+    WRITE_SUCCEED}
 
   public JsonReader() throws IOException {
     this(null, false);
@@ -131,7 +134,7 @@ public class JsonReader {
   }
 
 
-  public boolean write(ComplexWriter writer) throws JsonParseException, IOException {
+  public ReadState write(ComplexWriter writer) throws JsonParseException, IOException {
 
     JsonToken t = onReset ? parser.getCurrentToken() : parser.nextToken();
 
@@ -140,7 +143,7 @@ public class JsonReader {
     }
 
     if(!parser.hasCurrentToken()){
-      return false;
+      return ReadState.END_OF_STREAM;
     }
 
     if(onReset){
@@ -153,18 +156,22 @@ public class JsonReader {
 
     switch(readState){
     case END_OF_STREAM:
-      return false;
+      break;
     case WRITE_FAILURE:
       logger.debug("Ran out of space while writing object, rewinding to object start.");
       parser.resetToMark();
       onReset = true;
-      return false;
+      break;
 
     case WRITE_SUCCEED:
-      return true;
+      break;
+
+    default:
+      throw new IllegalStateException();
 
     }
-    throw new IllegalStateException();
+
+    return readState;
 
   }
 
