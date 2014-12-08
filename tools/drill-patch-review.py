@@ -58,10 +58,10 @@ def main():
     st = datetime.datetime.fromtimestamp(ts).strftime('%Y-%m-%d_%H:%M:%S')
     patch_file=tempfile.gettempdir() + "/" + opt.jira + '_' + st + '.patch'
   
-  git_remote_update="git remote update"
-  print "Updating your remote branches to pull the latest changes"
-  p=os.popen(git_remote_update)
-  p.close()
+  #git_remote_update="git remote update"
+  #print "Updating your remote branches to pull the latest changes"
+  #p=os.popen(git_remote_update)
+  #p.close()
 
   rb_command="post-review --publish --tracking-branch " + opt.branch + " --target-groups=drill-git --bugs-closed=" + opt.jira
   rb_command=rb_command + " --username " + opt.reviewboard_user + " --password " + opt.reviewboard_password
@@ -98,7 +98,7 @@ def main():
   if opt.debug: 
     print 'rb url=',rb_url
  
-  git_command="git diff " + opt.branch + " > " + patch_file
+  git_command="git format-patch --full-index --stdout " + opt.branch + " > " + patch_file
   if opt.debug:
     print git_command
   p=os.popen(git_command)
