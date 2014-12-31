@@ -152,7 +152,7 @@ public class OperatorStats {
         .setWaitNanos(waitNanos);
 
     if(allocator != null){
-      b.setLocalMemoryAllocated(allocator.getAllocatedMemory());
+      b.setPeakLocalMemoryAllocated(allocator.getPeakMemoryAllocation());
     }
 
 
