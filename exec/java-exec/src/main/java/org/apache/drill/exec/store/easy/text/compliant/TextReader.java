@@ -125,8 +125,9 @@ public final class TextReader {
     int fieldsWritten = 0;
 
     try{
+      boolean earlyTerm = false;
       while (ch != newLine) {
-        parseField();
+        earlyTerm = !parseField();
         fieldsWritten++;
         if (ch != newLine) {
           ch = input.nextChar();
@@ -134,6 +135,12 @@ public final class TextReader {
             output.endEmptyField();
             break;
           }
+        }
+        if(earlyTerm){
+          if(ch != newLine){
+            input.skipLines(1);
+          }
+          break;
         }
       }
     }catch(StreamFinishedPseudoException e){
@@ -232,7 +239,7 @@ public final class TextReader {
     }
   }
 
-  private final void parseField() throws IOException {
+  private final boolean parseField() throws IOException {
 
     output.startField(fieldIndex++);
 
@@ -241,7 +248,7 @@ public final class TextReader {
     }
 
     if (ch == delimiter) {
-      output.endEmptyField();
+      return output.endEmptyField();
     } else {
       if (ch == quote) {
         parseQuotedValue(NULL_BYTE);
@@ -249,7 +256,7 @@ public final class TextReader {
         parseValue();
       }
 
-      output.endField();
+      return output.endField();
     }
 
   }

@@ -23,8 +23,8 @@ public abstract class TextOutput {
   private static final byte SPACE = (byte) ' ';
 
   public abstract void startField(int index);
-  public abstract void endField();
-  public abstract void endEmptyField();
+  public abstract boolean endField();
+  public abstract boolean endEmptyField();
 
   public void appendIgnoringWhitespace(byte data){
     if(TextReader.isWhite(data)){

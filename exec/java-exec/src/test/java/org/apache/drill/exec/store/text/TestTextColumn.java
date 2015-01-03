@@ -43,7 +43,10 @@ public class TestTextColumn extends BaseTestQuery{
   @Test
   public void bigFile() throws Exception {
 //    test("select * from dfs.`/Users/jnadeau/Documents/Yelp/star2002-full.csv` where 1=0;");
-    test(String.format("alter session set `%s` = 4; ", ExecConstants.MAX_WIDTH_PER_NODE_KEY) + "select * from dfs.`/Users/jnadeau/Documents/Yelp/star2002-full.csv` where 1 = 0;");
+//    test(String.format("alter session set `%s` = 1; ", ExecConstants.MAX_WIDTH_PER_NODE_KEY) + "select * from dfs.`/Users/jnadeau/Documents/Yelp/star2002-full.csv` where 1 = 0;");
+//    test(String.format("alter session set `%s` = 1; ", ExecConstants.MAX_WIDTH_PER_NODE_KEY) + "select count(columns[0]) from dfs.`/Users/jnadeau/Documents/Yelp/star2002-full.csv`;");
+//  test(String.format("alter session set `%s` = 1; ", ExecConstants.MAX_WIDTH_PER_NODE_KEY) + "use dfs.tmp; alter session set `store.format` = 'csv'; create table newStar as select columns[0], columns[1], columns[2], columns[3], columns[4], columns[5], columns[6], columns[7], columns[8], columns[9], columns[10], columns[11], columns[12], columns[13], columns[14], columns[15] from dfs.`/Users/jnadeau/Documents/Yelp/star2002-50k.csv`;");
+  test(String.format("alter session set `%s` = 1; ", ExecConstants.MAX_WIDTH_PER_NODE_KEY) + "use dfs.tmp; alter session set `store.format` = 'csv'; create table newStar as select columns[0], columns[1], columns[2], columns[3], columns[4], columns[5], columns[6], columns[7], columns[8], columns[9], columns[10], columns[11], columns[12], columns[13], columns[14], columns[15] from dfs.`/Users/jnadeau/Documents/Yelp/star2002-full.csv`;");
 //    test("select * from dfs.`/Users/jnadeau/Documents/Yelp/5m.csv` where 1 = 0;");
     // sleep for two minutes to allow grabbing profile.
     Thread.sleep(2*60*1000);

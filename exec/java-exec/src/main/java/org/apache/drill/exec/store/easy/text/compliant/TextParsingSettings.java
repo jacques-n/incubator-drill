@@ -35,8 +35,8 @@ public class TextParsingSettings {
   private long maxCharsPerColumn = Character.MAX_VALUE;
   private byte normalizedNewLine = b('\n');
   private byte[] newLineDelimiter = {normalizedNewLine};
-  private boolean ignoreLeadingWhitespaces = true;
-  private boolean ignoreTrailingWhitespaces = true;
+  private boolean ignoreLeadingWhitespaces = false;
+  private boolean ignoreTrailingWhitespaces = false;
   private String lineSeparatorString;
 
   public byte getComment(){

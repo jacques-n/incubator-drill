@@ -194,7 +194,7 @@ public final class TextInput {
       updateBuffer();
     }
 
-    bufferPtr = bufferMark;
+    bufferPtr = bufferMark-1;
     return charMark;
   }
 

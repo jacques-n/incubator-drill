@@ -49,12 +49,14 @@ public class RepeatedVarCharOutput extends TextOutput {
   private int batchIndex;
   private boolean collect;
   private boolean fieldOpen;
+  private final int maxField;
 
-  public RepeatedVarCharOutput(RepeatedVarCharVector vector, boolean[] collectedFields) {
+  public RepeatedVarCharOutput(RepeatedVarCharVector vector, boolean[] collectedFields, int maxField) {
     super();
     this.vector = vector;
     this.mutator = vector.getMutator();
     this.collectedFields = collectedFields;
+    this.maxField = maxField;
   }
 
   public void startBatch() {
@@ -106,30 +108,35 @@ public class RepeatedVarCharOutput extends TextOutput {
 
 
   @Override
-  public void endField() {
+  public boolean endField() {
     fieldOpen = false;
 
     if(charLengthOffset < charLengthOffsetMax){
       int newOffset = (int) (characterData - characterDataOriginal);
       PlatformDependent.putInt(charLengthOffset, newOffset);
       charLengthOffset += 4;
+      return fieldIndex < maxField;
     }else{
       if(decrementMonitor){
         vector.getValuesVector().getOffsetVector().decrementAllocationMonitor();
         decrementMonitor = false;
       }
       ok = false;
+      return false;
     }
+
   }
 
   @Override
-  public void endEmptyField() {
-    endField();
+  public boolean endEmptyField() {
+    return endField();
   }
 
   @Override
   public void append(byte data) {
-    if(collect && characterData < characterDataMax){
+    if(!collect){
+      return;
+    }else if(characterData < characterDataMax){
       PlatformDependent.putByte(characterData, data);
       characterData++;
     }else{
