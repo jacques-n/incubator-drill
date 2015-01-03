@@ -50,9 +50,13 @@ import com.univocity.parsers.common.Format;
 public final class TextInput {
 
   private static final byte NULL_BYTE = (byte) '\0';
-  private final byte lineSeparator1;
-  private final byte lineSeparator2;
-  private final byte normalizedLineSeparator;
+//  private final byte lineSeparator1;
+//  private final byte lineSeparator2;
+//  private final byte normalizedLineSeparator;
+
+  private static final byte lineSeparator1 = TextParsingSettings.DEFAULT.getNewLineDelimiter()[0];
+  private static final byte lineSeparator2 = TextParsingSettings.DEFAULT.getNewLineDelimiter().length == 2 ? TextParsingSettings.DEFAULT.getNewLineDelimiter()[1] : NULL_BYTE;;
+  private static final byte normalizedLineSeparator = TextParsingSettings.DEFAULT.getNormalizedNewLine();
 
   private long lineCount;
   private long charCount;
@@ -104,9 +108,10 @@ public final class TextInput {
     this.input = input;
     this.buffer = buffer;
     this.underlyingBuffer = buffer.nioBuffer(0, buffer.capacity());
-    this.lineSeparator1 = lineSeparator[0];
-    this.lineSeparator2 = lineSeparator.length == 2 ? lineSeparator[1] : NULL_BYTE;
-    this.normalizedLineSeparator = normalizedLineSeparator;
+
+//    this.lineSeparator1 = lineSeparator[0];
+//    this.lineSeparator2 = lineSeparator.length == 2 ? lineSeparator[1] : NULL_BYTE;
+//    this.normalizedLineSeparator = normalizedLineSeparator;
   }
 
   public final void start() throws IOException {

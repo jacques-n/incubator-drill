@@ -22,6 +22,8 @@ import com.univocity.parsers.common.TextParsingException;
 public class TextParsingSettings {
   static final org.slf4j.Logger logger = org.slf4j.LoggerFactory.getLogger(TextParsingSettings.class);
 
+  public static final TextParsingSettings DEFAULT = new TextParsingSettings();
+
   private String emptyValue = null;
   private boolean parseUnescapedQuotes = true;
   private byte quote = b('"');
