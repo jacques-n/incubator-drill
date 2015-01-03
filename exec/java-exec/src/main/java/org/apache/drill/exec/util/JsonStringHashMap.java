@@ -22,6 +22,7 @@ import java.util.Map;
 
 import org.apache.hadoop.io.Text;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.module.SimpleModule;
@@ -30,8 +31,9 @@ import com.fasterxml.jackson.databind.module.SimpleModule;
  * Simple class that extends the regular java.util.HashMap but overrides the
  * toString() method of the HashMap class to produce a JSON string instead
  */
-public class JsonStringHashMap<K, V> extends LinkedHashMap<K, V> {
+public class JsonStringHashMap extends LinkedHashMap<String, Object> implements Comparable<Object> {
 
+  @JsonIgnore
   private static ObjectMapper mapper;
 
   static {
@@ -56,7 +58,7 @@ public class JsonStringHashMap<K, V> extends LinkedHashMap<K, V> {
     if (this.size() != other.size()) {
       return false;
     }
-    for (K key : this.keySet()) {
+    for (String key : this.keySet()) {
       if (this.get(key) == null ) {
         if (other.get(key) == null) {
           continue;
@@ -70,6 +72,16 @@ public class JsonStringHashMap<K, V> extends LinkedHashMap<K, V> {
     }
     return true;
   }
+
+
+  @Override
+  public int compareTo(Object o) {
+    if(o == null){
+      return -1;
+    }
+    return this.hashCode() - o.hashCode();
+  }
+
 
   @Override
   public final String toString() {

@@ -44,19 +44,25 @@ public class SqlCreateTable extends DrillSqlCall {
   public static final SqlSpecialOperator OPERATOR = new SqlSpecialOperator("CREATE_TABLE", SqlKind.OTHER) {
     @Override
     public SqlCall createCall(SqlLiteral functionQualifier, SqlParserPos pos, SqlNode... operands) {
-      return new SqlCreateTable(pos, (SqlIdentifier) operands[0], (SqlNodeList) operands[1], operands[2]);
+      return new SqlCreateTable(pos, (SqlIdentifier) operands[0], (SqlNodeList) operands[1], operands[2], (SqlNodeList) operands[3], (SqlNodeList) operands[4], ((SqlLiteral)operands[5]).booleanValue());
     }
   };
 
   private SqlIdentifier tblName;
   private SqlNodeList fieldList;
   private SqlNode query;
+  private SqlNodeList distList;
+  private SqlNodeList sortList;
+  private boolean globalSort;
 
-  public SqlCreateTable(SqlParserPos pos, SqlIdentifier tblName, SqlNodeList fieldList, SqlNode query) {
+  public SqlCreateTable(SqlParserPos pos, SqlIdentifier tblName, SqlNodeList fieldList, SqlNode query, SqlNodeList distList, SqlNodeList sortList, Boolean globalSort) {
     super(pos);
     this.tblName = tblName;
     this.fieldList = fieldList;
     this.query = query;
+    this.distList = distList;
+    this.sortList = sortList;
+    this.globalSort = globalSort == null ? true : globalSort;
   }
 
   @Override
@@ -70,7 +76,21 @@ public class SqlCreateTable extends DrillSqlCall {
     ops.add(tblName);
     ops.add(fieldList);
     ops.add(query);
+    ops.add(distList);
+    ops.add(sortList);
+    ops.add(SqlLiteral.createBoolean(globalSort, null));
     return ops;
+  }
+
+  private static void unparseFieldList(SqlWriter writer, int leftPrec, int rightPrec, SqlNodeList list){
+    writer.keyword("(");
+    list.get(0).unparse(writer, leftPrec, rightPrec);
+    for (int i=1; i < list.size(); i++) {
+      writer.keyword(",");
+      list.get(i).unparse(writer, leftPrec, rightPrec);
+    }
+    writer.keyword(")");
+
   }
 
   @Override
@@ -79,17 +99,18 @@ public class SqlCreateTable extends DrillSqlCall {
     writer.keyword("TABLE");
     tblName.unparse(writer, leftPrec, rightPrec);
     if (fieldList != null && fieldList.size() > 0) {
-      writer.keyword("(");
-      fieldList.get(0).unparse(writer, leftPrec, rightPrec);
-      for (int i=1; i<fieldList.size(); i++) {
-        writer.keyword(",");
-        fieldList.get(i).unparse(writer, leftPrec, rightPrec);
-      }
+      unparseFieldList(writer, leftPrec, rightPrec, fieldList);
       writer.keyword(")");
     }
     writer.keyword("AS");
     query.unparse(writer, leftPrec, rightPrec);
-  }
+
+    if (distList != null && fieldList.size() > 0) {
+      writer.keyword("DISTRITRUBED BY");
+      unparseFieldList(writer, leftPrec, rightPrec, distList);
+    }
+
+}
 
   @Override
   public AbstractSqlHandler getSqlHandler(SqlHandlerConfig config) {
@@ -112,17 +133,27 @@ public class SqlCreateTable extends DrillSqlCall {
     return tblName.names.get(tblName.names.size() - 1);
   }
 
-  public List<String> getFieldNames() {
-    if (fieldList == null) {
+  private static List<String> getNamesFromList(SqlNodeList list){
+    if (list == null) {
       return ImmutableList.of();
     }
 
     List<String> columnNames = Lists.newArrayList();
-    for(SqlNode node : fieldList.getList()) {
+    for(SqlNode node : list.getList()) {
       columnNames.add(node.toString());
     }
     return columnNames;
+
+  }
+  public List<String> getFieldNames() {
+    return getNamesFromList(fieldList);
   }
 
-  public SqlNode getQuery() { return query; }
+  public List<String> getDistFieldNames() {
+    return getNamesFromList(distList);
+  }
+
+  public SqlNode getQuery() {
+    return query;
+  }
 }

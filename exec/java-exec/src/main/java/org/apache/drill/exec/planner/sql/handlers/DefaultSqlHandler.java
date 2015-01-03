@@ -162,8 +162,12 @@ public class DefaultSqlHandler extends AbstractSqlHandler {
   }
 
   protected Prel convertToPrel(RelNode drel) throws RelConversionException {
-    Preconditions.checkArgument(drel.getConvention() == DrillRel.DRILL_LOGICAL);
     RelTraitSet traits = drel.getTraitSet().plus(Prel.DRILL_PHYSICAL).plus(DrillDistributionTrait.SINGLETON);
+    return convertToPrel(drel, traits);
+  }
+
+  protected Prel convertToPrel(RelNode drel, RelTraitSet traits) throws RelConversionException {
+    Preconditions.checkArgument(drel.getConvention() == DrillRel.DRILL_LOGICAL);
     Prel phyRelNode = (Prel) planner.transform(DrillSqlWorker.PHYSICAL_MEM_RULES, traits, drel);
     OptionManager queryOptions = context.getOptions();
 

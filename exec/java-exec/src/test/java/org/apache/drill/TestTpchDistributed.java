@@ -29,6 +29,11 @@ public class TestTpchDistributed extends BaseTestQuery{
   }
 
   @Test
+  public void xyz() throws Exception{
+    test("select {\"hello\"   :   \"blue\"} from cp.`employee.json`");
+  }
+
+  @Test
   public void tpch01() throws Exception{
     testDistributed("queries/tpch/01.sql");
   }

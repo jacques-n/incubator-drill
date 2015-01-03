@@ -43,7 +43,7 @@ public class TestTextColumn extends BaseTestQuery{
   @Test
   public void bigFile() throws Exception {
 //    test("select * from dfs.`/Users/jnadeau/Documents/Yelp/star2002-full.csv` where 1=0;");
-    test(String.format("alter session set `%s` = 4; ", ExecConstants.MAX_WIDTH_PER_NODE_KEY) + "select * from dfs.`/Users/jnadeau/Documents/Yelp/star2002-full.csv` where 1 = 0;");
+    test(String.format("alter session set `%s` = 1; ", ExecConstants.MAX_WIDTH_PER_NODE_KEY) + "select * from dfs.`/Users/jnadeau/Documents/Yelp/star2002-full.csv` where 1 = 0;");
 //    test("select * from dfs.`/Users/jnadeau/Documents/Yelp/5m.csv` where 1 = 0;");
     // sleep for two minutes to allow grabbing profile.
     Thread.sleep(2*60*1000);

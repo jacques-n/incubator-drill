@@ -18,6 +18,7 @@
 package org.apache.drill.exec.planner.logical;
 
 import java.math.BigDecimal;
+import java.util.Collections;
 import java.util.GregorianCalendar;
 import java.util.List;
 
@@ -484,6 +485,9 @@ public class DrillOptiq {
         return (ValueExpressions.getIntervalDay(((BigDecimal) (literal.getValue())).longValue()));
       case NULL:
         return NullExpression.INSTANCE;
+      case MAP:
+        LogicalExpression stringValue = ValueExpressions.getChar(literal.getValue().toString());
+        return FunctionCallFactory.createExpression("convert_fromJSON", ExpressionPosition.UNKNOWN, Collections.singletonList(stringValue));
       case ANY:
         if (isLiteralNull(literal)) {
           return NullExpression.INSTANCE;

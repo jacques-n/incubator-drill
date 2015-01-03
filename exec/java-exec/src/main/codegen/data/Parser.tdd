@@ -23,6 +23,7 @@
   imports: [
     "org.apache.drill.exec.planner.sql.parser.*",
     "org.eigenbase.util.*",
+    "org.apache.drill.exec.util.*",
     "java.util.*"
   ]
 
@@ -34,7 +35,11 @@
     "SHOW",
     "TABLES",
     "USE",
-    "FILES"
+    "FILES",
+    "DISTRIBUTED",
+    "LOCALLY",
+    "GLOBALLY",
+    "ORDERED"
   ]
 
   # List of methods for parsing custom SQL statements.
@@ -52,6 +57,7 @@
   # List of methods for parsing custom literals.
   # Example: ParseJsonLiteral().
   literalParserMethods: [
+    "JsonLiteral()"
   ]
 
   # List of methods for parsing custom data types.
@@ -63,11 +69,13 @@
   # given as part of "statementParserMethods", "literalParserMethods" or
   # "dataTypeParserMethods".
   implementationFiles: [
-    "parserImpls.ftl"
+    "parserImpls.ftl",
+    "json.ftl"
   ]
   
   includeCompoundIdentifier: false,
-
+  includeBraces: false,
+  includeAdditionalDeclarations: true,
   identifierMaxLength: 1024
 
 }

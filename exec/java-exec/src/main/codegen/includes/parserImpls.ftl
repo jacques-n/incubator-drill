@@ -201,14 +201,23 @@ SqlNode SqlDropView() :
 
 /**
  * Parses a CTAS statement.
- * CREATE TABLE tblname [ (field1, field2, ...) ] AS select_statement.
+ * CREATE TABLE tblname [ (field1, field2, ...) ] AS select_statement 
+ * [ DISTRIBUTED BY (field1, field2)] 
+ * [ [LOCALLY|GLOBALLY] ORDERED BY (field1, field2 desc)].
  */
 SqlNode SqlCreateTable() :
 {
     SqlParserPos pos;
     SqlIdentifier tblName;
-    SqlNodeList fieldList;
     SqlNode query;
+    SqlNodeList fieldList;
+    SqlNodeList distList = null;
+    SqlNodeList sortList = null;
+    Boolean globalSort = null;
+    
+    List<SqlNode> list;
+    SqlNode e;
+    
 }
 {
     <CREATE> { pos = getPos(); }
@@ -217,7 +226,34 @@ SqlNode SqlCreateTable() :
     fieldList = ParseFieldList("Table")
     <AS>
     query = OrderedQueryOrExpr(ExprContext.ACCEPT_QUERY)
+    [ 
+      <DISTRIBUTED>
+      <BY> 
+      distList = ParseFieldList("Table") 
+    ]
+    
+    [ 
+      (<LOCALLY> {globalSort = false;} | <GLOBALLY> {globalSort = true;})
+      <ORDERED>
+      <BY>
+      e = OrderItem()
+      {
+          pos = getPos();
+          list = startList(e);
+      }
+      (
+          // NOTE jvs 6-Feb-2004:  See comments at top of file for why
+          // hint is necessary here.
+          LOOKAHEAD(2) <COMMA> e = OrderItem() { list.add(e); }
+      ) *
+      {
+        sortList = new SqlNodeList(list, pos);
+      }      
+    ]
     {
-        return new SqlCreateTable(pos, tblName, fieldList, query);
+        return new SqlCreateTable(pos, tblName, fieldList, query, distList, sortList, globalSort);
     }
 }
+
+
+

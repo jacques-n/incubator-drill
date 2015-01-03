@@ -60,12 +60,12 @@ public class CreateTableHandler extends DefaultSqlHandler {
       SqlNode validatedQuery = validateNode(sqlCreateTable.getQuery());
       RelNode relQuery = convertToRel(validatedQuery);
 
-      List<String> tblFiledNames = sqlCreateTable.getFieldNames();
+      List<String> tblFieldNames = sqlCreateTable.getFieldNames();
       RelDataType queryRowType = relQuery.getRowType();
 
-      if (tblFiledNames.size() > 0) {
+      if (tblFieldNames.size() > 0) {
         // Field count should match.
-        if (tblFiledNames.size() != queryRowType.getFieldCount()) {
+        if (tblFieldNames.size() != queryRowType.getFieldCount()) {
           return DirectPlan.createDirectPlan(context, false,
               "Table's field list and the table's query field list have different counts.");
         }
@@ -82,9 +82,9 @@ public class CreateTableHandler extends DefaultSqlHandler {
       // if the CTAS statement has table fields lists (ex. below), add a project rel to rename the query fields.
       // Ex. CREATE TABLE tblname(col1, medianOfCol2, avgOfCol3) AS
       //        SELECT col1, median(col2), avg(col3) FROM sourcetbl GROUP BY col1 ;
-      if (tblFiledNames.size() > 0) {
+      if (tblFieldNames.size() > 0) {
         // create rowtype to which the select rel needs to be casted.
-        RelDataType rowType = new DrillFixedRelDataTypeImpl(planner.getTypeFactory(), tblFiledNames);
+        RelDataType rowType = new DrillFixedRelDataTypeImpl(planner.getTypeFactory(), tblFieldNames);
 
         relQuery = RelOptUtil.createCastRel(relQuery, rowType, true);
       }

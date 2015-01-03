@@ -172,7 +172,7 @@ public final class TextInput {
 
 
     charCount += bufferPtr;
-    bufferPtr = 0;
+    bufferPtr = 1;
 
     buffer.writerIndex(underlyingBuffer.limit());
     buffer.readerIndex(underlyingBuffer.position());
