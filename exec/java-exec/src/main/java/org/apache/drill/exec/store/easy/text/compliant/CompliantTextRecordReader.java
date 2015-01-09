@@ -116,15 +116,19 @@ public class CompliantTextRecordReader extends AbstractRecordReader {
       TextInput input = new TextInput(settings.getNewLineDelimiter(), settings.getNormalizedNewLine(),  stream, readBuffer, split.getStart(), split.getStart() + split.getLength());
       boolean[] fields = new boolean[1000];
 
+      int maxField = fields.length;
+
       if(this.isStarQuery()){
         Arrays.fill(fields, true);
       }else{
         for(Integer i : columnIds){
+          maxField = 0;
+          maxField = Math.max(maxField, i);
           fields[i] = true;
         }
       }
 
-      RepeatedVarCharOutput output = new RepeatedVarCharOutput(vector, fields);
+      RepeatedVarCharOutput output = new RepeatedVarCharOutput(vector, fields, maxField);
       this.reader = new TextReader(new TextParsingSettings(), input, output, whitespaceBuffer);
       reader.start();
     } catch (SchemaChangeException | IOException e) {
