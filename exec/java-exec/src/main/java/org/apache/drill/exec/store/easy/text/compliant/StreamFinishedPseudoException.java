@@ -21,8 +21,8 @@ class StreamFinishedPseudoException extends RuntimeException {
 
   public static final StreamFinishedPseudoException INSTANCE = new StreamFinishedPseudoException();
 
-  private StreamFinishedPseudoException() {
-    super("", null, false, false);
+  public StreamFinishedPseudoException() {
+    super("", null, false, true);
 
   }
 

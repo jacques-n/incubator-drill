@@ -50,29 +50,29 @@ public final class TextReader {
   private byte ch;
   private int fieldIndex;
 
-//  /** Behavior settings **/
-//  private final boolean ignoreTrailingWhitespace;
-//  private final boolean ignoreLeadingWhitespace;
-//  private final boolean parseUnescapedQuotes;
-//
-//  /** Key Characters **/
-//  private final byte comment;
-//  private final byte delimiter;
-//  private final byte quote;
-//  private final byte quoteEscape;
-//  private final byte newLine;
-
   /** Behavior settings **/
-  private static final boolean ignoreTrailingWhitespace = TextParsingSettings.DEFAULT.isIgnoreTrailingWhitespaces();
-  private static final boolean ignoreLeadingWhitespace = TextParsingSettings.DEFAULT.isIgnoreLeadingWhitespaces();
-  private static final boolean parseUnescapedQuotes = TextParsingSettings.DEFAULT.isParseUnescapedQuotes();
+  private final boolean ignoreTrailingWhitespace;
+  private final boolean ignoreLeadingWhitespace;
+  private final boolean parseUnescapedQuotes;
 
   /** Key Characters **/
-  private static final byte comment = TextParsingSettings.DEFAULT.getComment();
-  private static final byte delimiter = TextParsingSettings.DEFAULT.getDelimiter();
-  private static final byte quote = TextParsingSettings.DEFAULT.getQuote();
-  private static final byte quoteEscape = TextParsingSettings.DEFAULT.getQuoteEscape();
-  private static final byte newLine = TextParsingSettings.DEFAULT.getNormalizedNewLine();
+  private final byte comment;
+  private final byte delimiter;
+  private final byte quote;
+  private final byte quoteEscape;
+  private final byte newLine;
+
+//  /** Behavior settings **/
+//  private static final boolean ignoreTrailingWhitespace = TextParsingSettings.DEFAULT.isIgnoreTrailingWhitespaces();
+//  private static final boolean ignoreLeadingWhitespace = TextParsingSettings.DEFAULT.isIgnoreLeadingWhitespaces();
+//  private static final boolean parseUnescapedQuotes = TextParsingSettings.DEFAULT.isParseUnescapedQuotes();
+//
+//  /** Key Characters **/
+//  private static final byte comment = TextParsingSettings.DEFAULT.getComment();
+//  private static final byte delimiter = TextParsingSettings.DEFAULT.getDelimiter();
+//  private static final byte quote = TextParsingSettings.DEFAULT.getQuote();
+//  private static final byte quoteEscape = TextParsingSettings.DEFAULT.getQuoteEscape();
+//  private static final byte newLine = TextParsingSettings.DEFAULT.getNormalizedNewLine();
 
   /**
    * The CsvParser supports all settings provided by {@link CsvParserSettings}, and requires this configuration to be
@@ -88,14 +88,14 @@ public final class TextReader {
 
     this.recordsToRead = settings.getNumberOfRecordsToRead() == -1 ? Long.MAX_VALUE : settings.getNumberOfRecordsToRead();
 
-//    this.ignoreTrailingWhitespace = settings.isIgnoreTrailingWhitespaces();
-//    this.ignoreLeadingWhitespace = settings.isIgnoreLeadingWhitespaces();
-//    this.parseUnescapedQuotes = settings.isParseUnescapedQuotes();
-//    this.delimiter = settings.getDelimiter();
-//    this.quote = settings.getQuote();
-//    this.quoteEscape = settings.getQuoteEscape();
-//    this.newLine = settings.getNormalizedNewLine();
-//    this.comment = settings.getComment();
+    this.ignoreTrailingWhitespace = settings.isIgnoreTrailingWhitespaces();
+    this.ignoreLeadingWhitespace = settings.isIgnoreLeadingWhitespaces();
+    this.parseUnescapedQuotes = settings.isParseUnescapedQuotes();
+    this.delimiter = settings.getDelimiter();
+    this.quote = settings.getQuote();
+    this.quoteEscape = settings.getQuoteEscape();
+    this.newLine = settings.getNormalizedNewLine();
+    this.comment = settings.getComment();
 
     this.input = input;
     this.output = output;
@@ -115,6 +115,8 @@ public final class TextReader {
   }
 
   private boolean parseRecord() throws IOException {
+    final byte newLine = this.newLine;
+
     input.mark(ch);
 
     fieldIndex = 0;
@@ -159,6 +161,11 @@ public final class TextReader {
   }
 
   private void parseValue() throws IOException {
+    final byte newLine = this.newLine;
+    final byte delimiter = this.delimiter;
+    final RepeatedVarCharOutput output = this.output;
+    final TextInput input = this.input;
+
     if (ignoreTrailingWhitespace) {
       while (ch != delimiter && ch != newLine) {
         output.appendIgnoringWhitespace(ch);
@@ -173,6 +180,12 @@ public final class TextReader {
   }
 
   private void parseQuotedValue(byte prev) throws IOException {
+    final byte newLine = this.newLine;
+    final byte delimiter = this.delimiter;
+    final RepeatedVarCharOutput output = this.output;
+    final TextInput input = this.input;
+    final byte quote = this.quote;
+
     ch = input.nextChar();
 
     while (!(prev == quote && (ch == delimiter || ch == newLine || isWhite(ch)))) {
@@ -262,6 +275,10 @@ public final class TextReader {
   }
 
   private void skipWhitespace() throws IOException {
+    final byte delimiter = this.delimiter;
+    final byte newLine = this.newLine;
+    final TextInput input = this.input;
+
     while (isWhite(ch) && ch != delimiter && ch != newLine) {
       ch = input.nextChar();
     }

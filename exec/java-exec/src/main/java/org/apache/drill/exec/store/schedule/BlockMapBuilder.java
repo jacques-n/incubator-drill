@@ -47,7 +47,7 @@ public class BlockMapBuilder {
   static final MetricRegistry metrics = DrillMetrics.getInstance();
   static final String BLOCK_MAP_BUILDER_TIMER = MetricRegistry.name(BlockMapBuilder.class, "blockMapBuilderTimer");
 
-  private static final long MAX_BLOCK_SIZE = 128*1024*1024;
+  private static final long MAX_BLOCK_SIZE = 500;
   private HashMap<Path,ImmutableRangeMap<Long,BlockLocation>> blockMapMap = new HashMap<>();
   private Collection<DrillbitEndpoint> endpoints;
   private FileSystem fs;

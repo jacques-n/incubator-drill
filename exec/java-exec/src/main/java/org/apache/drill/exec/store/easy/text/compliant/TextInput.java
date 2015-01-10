@@ -50,13 +50,9 @@ import com.univocity.parsers.common.Format;
 public final class TextInput {
 
   private static final byte NULL_BYTE = (byte) '\0';
-//  private final byte lineSeparator1;
-//  private final byte lineSeparator2;
-//  private final byte normalizedLineSeparator;
-
-  private static final byte lineSeparator1 = TextParsingSettings.DEFAULT.getNewLineDelimiter()[0];
-  private static final byte lineSeparator2 = TextParsingSettings.DEFAULT.getNewLineDelimiter().length == 2 ? TextParsingSettings.DEFAULT.getNewLineDelimiter()[1] : NULL_BYTE;;
-  private static final byte normalizedLineSeparator = TextParsingSettings.DEFAULT.getNormalizedNewLine();
+  private final byte lineSeparator1;
+  private final byte lineSeparator2;
+  private final byte normalizedLineSeparator;
 
   private long lineCount;
   private long charCount;
@@ -89,6 +85,8 @@ public final class TextInput {
    */
   public int length = -1;
 
+  private boolean endFound = false;
+
   /**
    * Creates a new instance with the mandatory characters for handling newlines transparently.
    * @param lineSeparator the sequence of characters that represent a newline, as defined in {@link Format#getLineSeparator()}
@@ -109,9 +107,9 @@ public final class TextInput {
     this.buffer = buffer;
     this.underlyingBuffer = buffer.nioBuffer(0, buffer.capacity());
 
-//    this.lineSeparator1 = lineSeparator[0];
-//    this.lineSeparator2 = lineSeparator.length == 2 ? lineSeparator[1] : NULL_BYTE;
-//    this.normalizedLineSeparator = normalizedLineSeparator;
+    this.lineSeparator1 = lineSeparator[0];
+    this.lineSeparator2 = lineSeparator.length == 2 ? lineSeparator[1] : NULL_BYTE;
+    this.normalizedLineSeparator = normalizedLineSeparator;
   }
 
   public final void start() throws IOException {
@@ -126,8 +124,9 @@ public final class TextInput {
       if(startPos > 0){
         // move to next full record.
         skipLines(1);
+      }else{
+        bufferPtr++;
       }
-      bufferPtr++;
     }
   }
 
@@ -158,6 +157,11 @@ public final class TextInput {
     streamPos = input.getPos();
     underlyingBuffer.clear();
 
+    if(endFound){
+      length = -1;
+      return;
+    }
+
     if(bufferReadable){
       length = input.read(underlyingBuffer);
     }else{
@@ -167,12 +171,47 @@ public final class TextInput {
     }
 
     // make sure we haven't run over our allottment.
-    if(streamPos + length > this.endPos){
-      if(streamPos > this.endPos){
-        length = -1;
-      }else{
-        length = (int) (endPos - streamPos);
+    if(streamPos + length >= this.endPos){
+      final byte lineSeparator1 = this.lineSeparator1;
+      final byte lineSeparator2 = this.lineSeparator2;
+
+      // find the next line separator:
+      for(int i =0; i < length; i++){
+        if(underlyingBuffer.get(i) == lineSeparator1){
+          if(lineSeparator2 == NULL_BYTE){
+            // we found a line separator and don't need to consult the next byte.
+            length = i;
+            endFound = true;
+            break;
+          }else{
+            // this is a two byte line separator.
+            if(i+1 < length){
+              // we can check next byte and see if the second lineSeparator is correct.
+              if(lineSeparator2 == underlyingBuffer.get(i+1)){
+                length = i+1;
+                endFound = true;
+                break;
+              }else{
+                // this was a partial line break.
+                continue;
+              }
+            }else{
+              // we need to read one more byte and see if it is lineSeparator
+              if(lineSeparator2 == input.readByte()){
+                // if it is: we actually reset the stream so that it read one byte short this time so it can read both line separators next time.
+                length = i - 1;
+                input.seek(streamPos + length - 1);
+                break;
+              }else{
+                // this was a partial line break, we don't need to manage next but do need to reset stream to previous position.
+                input.seek(streamPos + length);
+                break;
+              }
+            }
+          }
+        }
       }
+
     }
 
 
@@ -199,8 +238,12 @@ public final class TextInput {
   }
 
   public final byte nextChar() throws IOException {
+    final byte lineSeparator1 = this.lineSeparator1;
+    final byte lineSeparator2 = this.lineSeparator2;
+    final DrillBuf buffer = this.buffer;
+
     if (length == -1) {
-      throw StreamFinishedPseudoException.INSTANCE;
+      throw new StreamFinishedPseudoException();
     }
 
 
@@ -213,7 +256,7 @@ public final class TextInput {
       if (length != -1) {
         updateBuffer();
       } else {
-        throw StreamFinishedPseudoException.INSTANCE;
+        throw new StreamFinishedPseudoException();
       }
     }
 
@@ -230,7 +273,7 @@ public final class TextInput {
           if (length != -1) {
             updateBuffer();
           } else {
-            throw StreamFinishedPseudoException.INSTANCE;
+            throw new StreamFinishedPseudoException();
           }
         }
 
