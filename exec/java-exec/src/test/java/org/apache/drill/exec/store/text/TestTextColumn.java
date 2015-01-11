@@ -21,16 +21,47 @@ import static org.junit.Assert.assertEquals;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collection;
+import java.util.Collections;
 import java.util.List;
 
+import mockit.Injectable;
+import mockit.NonStrictExpectations;
+
 import org.apache.drill.BaseTestQuery;
+import org.apache.drill.common.config.DrillConfig;
+import org.apache.drill.common.expression.SchemaPath;
 import org.apache.drill.exec.ExecConstants;
+import org.apache.drill.exec.compile.CodeCompiler;
 import org.apache.drill.exec.exception.SchemaChangeException;
+import org.apache.drill.exec.expr.fn.FunctionImplementationRegistry;
+import org.apache.drill.exec.memory.TopLevelAllocator;
+import org.apache.drill.exec.ops.FragmentContext;
+import org.apache.drill.exec.physical.impl.OperatorCreatorRegistry;
+import org.apache.drill.exec.physical.impl.ScanBatch;
+import org.apache.drill.exec.proto.BitControl.PlanFragment;
+import org.apache.drill.exec.proto.CoordinationProtos.DrillbitEndpoint;
+import org.apache.drill.exec.record.RecordBatch.IterOutcome;
 import org.apache.drill.exec.record.RecordBatchLoader;
 import org.apache.drill.exec.record.VectorWrapper;
 import org.apache.drill.exec.rpc.user.QueryResultBatch;
+import org.apache.drill.exec.server.DrillbitContext;
+import org.apache.drill.exec.store.RecordReader;
+import org.apache.drill.exec.store.easy.text.TextFormatPlugin.TextFormatConfig;
+import org.apache.drill.exec.store.easy.text.compliant.CompliantTextRecordReader;
+import org.apache.drill.exec.store.mock.MockSubScanPOP;
+import org.apache.drill.exec.store.schedule.BlockMapBuilder;
+import org.apache.drill.exec.store.schedule.CompleteFileWork;
+import org.apache.drill.exec.util.VectorUtil;
 import org.apache.drill.exec.vector.ValueVector;
+import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.fs.FileSystem;
+import org.apache.hadoop.fs.Path;
+import org.apache.hadoop.mapred.FileSplit;
 import org.junit.Test;
+
+import com.beust.jcommander.internal.Lists;
+import com.codahale.metrics.MetricRegistry;
 
 public class TestTextColumn extends BaseTestQuery{
   static final org.slf4j.Logger logger = org.slf4j.LoggerFactory.getLogger(TestTextColumn.class);
@@ -43,14 +74,47 @@ public class TestTextColumn extends BaseTestQuery{
   @Test
   public void bigFile() throws Exception {
 //    test("select * from dfs.`/Users/jnadeau/Documents/Yelp/star2002-full.csv` where 1=0;");
-//    test(String.format("alter session set `%s` = 4; ", ExecConstants.MAX_WIDTH_PER_NODE_KEY) + "select count(*) from dfs.`/Users/jnadeau/Documents/Yelp/star2002-full.csv`;");
-//    test(String.format("alter session set `%s` = 1; ", ExecConstants.MAX_WIDTH_PER_NODE_KEY) + "select count(columns[0]) from dfs.`/Users/jnadeau/Documents/Yelp/star2002-full.csv`;");
-//    test(String.format("alter session set `%s` = 1; ", ExecConstants.MAX_WIDTH_PER_NODE_KEY) + "use dfs.tmp; alter session set `store.format` = 'csv'; create table newStar as select columns[0], columns[1], columns[2], columns[3], columns[4], columns[5], columns[6], columns[7], columns[8], columns[9], columns[10], columns[11], columns[12], columns[13], columns[14], columns[15] from dfs.`/Users/jnadeau/Documents/Yelp/star2002-10k.csv`;");
-      test(String.format("select columns[0], columns[1], columns[2], columns[3], columns[4], columns[5], columns[6], columns[7], columns[8], columns[9], columns[10], columns[11], columns[12], columns[13], columns[14], columns[15] from dfs.`/Users/jnadeau/Documents/Yelp/star2002-50.csv` order by columns[3];"));
+//    test(String.format("alter session set `%s` = 1; ", ExecConstants.MAX_WIDTH_PER_NODE_KEY) + "select count(*) from dfs.`/Users/jnadeau/Documents/Yelp/star2002-full.csv`;");
+    test(String.format("alter session set `%s` = 1; ", ExecConstants.MAX_WIDTH_PER_NODE_KEY) + "select count(columns[0]) from dfs.`/Users/jnadeau/Documents/Yelp/star2002-full.csv`;");
+//    test(String.format("alter session set `%s` = 1; ", ExecConstants.MAX_WIDTH_PER_NODE_KEY) + "use dfs.tmp; alter session set `store.format` = 'csv'; create table newStar as select columns[0], columns[1], columns[2], columns[3], columns[4], columns[5], columns[6], columns[7], columns[8], columns[9], columns[10], columns[11], columns[12], columns[13], columns[14], columns[15] from dfs.`/Users/jnadeau/Documents/Yelp/1m.csv`;");
+//      test(String.format("select columns[0], columns[1], columns[2], columns[3], columns[4], columns[5], columns[6], columns[7], columns[8], columns[9], columns[10], columns[11], columns[12], columns[13], columns[14], columns[15] from dfs.`/Users/jnadeau/Documents/Yelp/star2002-50.csv` order by columns[3];"));
 //  test(String.format("alter session set `%s` = 1; ", ExecConstants.MAX_WIDTH_PER_NODE_KEY) + "use dfs.tmp; alter session set `store.format` = 'csv'; create table newStar as select columns[0], columns[1], columns[2], columns[3], columns[4], columns[5], columns[6], columns[7], columns[8], columns[9], columns[10], columns[11], columns[12], columns[13], columns[14], columns[15] from dfs.`/Users/jnadeau/Documents/Yelp/star2002-full.csv`;");
 //    test("select * from dfs.`/Users/jnadeau/Documents/Yelp/5m.csv` where 1 = 0;");
     // sleep for two minutes to allow grabbing profile.
     Thread.sleep(2*60*1000);
+  }
+
+  @Test
+  public void testTextReader(@Injectable final DrillbitContext bitContext) throws Exception {
+    final DrillConfig c = DrillConfig.createClient();
+
+    new NonStrictExpectations(){{
+      bitContext.getMetrics(); result = new MetricRegistry();
+      bitContext.getAllocator(); result = new TopLevelAllocator();
+      bitContext.getOperatorCreatorRegistry(); result = new OperatorCreatorRegistry(c);
+      bitContext.getConfig(); result = c;
+      bitContext.getCompiler(); result = CodeCompiler.getTestCompiler(c);
+    }};
+    FunctionImplementationRegistry registry = bitContext.getFunctionImplementationRegistry();
+    FragmentContext context = new FragmentContext(bitContext, PlanFragment.getDefaultInstance(), null, registry);
+
+    TextFormatConfig format = new TextFormatConfig();
+    FileSystem fs = FileSystem.get(new Configuration());
+    Collection<DrillbitEndpoint> endpoints = Collections.emptyList();
+    BlockMapBuilder b = new BlockMapBuilder(fs, endpoints);
+    Path path = new Path("/Users/jnadeau/Documents/Yelp/star2002-50.csv");
+    List<CompleteFileWork> works = b.generateFileWork(Collections.singletonList(fs.getFileStatus(path)), true);
+    List<RecordReader> readers = Lists.newArrayList();
+    for(CompleteFileWork work : works){
+      FileSplit split = new FileSplit(path, work.getStart(), work.getLength(), new String[]{""});
+      readers.add(new CompliantTextRecordReader(split, context, format.getDelimiter().charAt(0), Collections.singletonList(SchemaPath.getSimplePath("*"))));
+    }
+    ScanBatch batch = new ScanBatch(new MockSubScanPOP(null, null), context, readers.iterator());
+    while(batch.next() != IterOutcome.NONE){
+      VectorUtil.showVectorAccessibleContent(batch);
+    }
+
+
   }
 
   @Test

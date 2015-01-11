@@ -20,6 +20,7 @@ package org.apache.drill.exec.store.schedule;
 
 import java.io.IOException;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -47,7 +48,7 @@ public class BlockMapBuilder {
   static final MetricRegistry metrics = DrillMetrics.getInstance();
   static final String BLOCK_MAP_BUILDER_TIMER = MetricRegistry.name(BlockMapBuilder.class, "blockMapBuilderTimer");
 
-  private static final long MAX_BLOCK_SIZE = 500;
+  private static final long MAX_BLOCK_SIZE = 128*1024*1024;
   private HashMap<Path,ImmutableRangeMap<Long,BlockLocation>> blockMapMap = new HashMap<>();
   private Collection<DrillbitEndpoint> endpoints;
   private FileSystem fs;
@@ -73,9 +74,12 @@ public class BlockMapBuilder {
       if (blockify && !compressed(f)) {
         try {
           ImmutableRangeMap<Long, BlockLocation> rangeMap = getBlockMap(f);
+          List<CompleteFileWork> localWork = Lists.newArrayList();
           for (Entry<Range<Long>, BlockLocation> l : rangeMap.asMapOfRanges().entrySet()) {
-            work.add(new CompleteFileWork(getEndpointByteMap(new FileStatusWork(f)), l.getValue().getOffset(), l.getValue().getLength(), f.getPath().toString()));
+            localWork.add(new CompleteFileWork(getEndpointByteMap(new FileStatusWork(f)), l.getValue().getOffset(), l.getValue().getLength(), f.getPath().toString()));
           }
+          Collections.sort(localWork);
+          work.addAll(localWork);
         } catch (IOException e) {
           logger.warn("failure while generating file work.", e);
           error = true;

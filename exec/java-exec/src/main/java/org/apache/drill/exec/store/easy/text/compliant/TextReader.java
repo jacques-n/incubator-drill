@@ -62,18 +62,6 @@ public final class TextReader {
   private final byte quoteEscape;
   private final byte newLine;
 
-//  /** Behavior settings **/
-//  private static final boolean ignoreTrailingWhitespace = TextParsingSettings.DEFAULT.isIgnoreTrailingWhitespaces();
-//  private static final boolean ignoreLeadingWhitespace = TextParsingSettings.DEFAULT.isIgnoreLeadingWhitespaces();
-//  private static final boolean parseUnescapedQuotes = TextParsingSettings.DEFAULT.isParseUnescapedQuotes();
-//
-//  /** Key Characters **/
-//  private static final byte comment = TextParsingSettings.DEFAULT.getComment();
-//  private static final byte delimiter = TextParsingSettings.DEFAULT.getDelimiter();
-//  private static final byte quote = TextParsingSettings.DEFAULT.getQuote();
-//  private static final byte quoteEscape = TextParsingSettings.DEFAULT.getQuoteEscape();
-//  private static final byte newLine = TextParsingSettings.DEFAULT.getNormalizedNewLine();
-
   /**
    * The CsvParser supports all settings provided by {@link CsvParserSettings}, and requires this configuration to be
    * properly initialized.

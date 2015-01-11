@@ -36,6 +36,7 @@ import org.apache.drill.common.types.Types;
 import org.apache.drill.exec.exception.SchemaChangeException;
 import org.apache.drill.exec.ops.FragmentContext;
 import org.apache.drill.exec.ops.OperatorContext;
+import org.apache.drill.exec.ops.OperatorStats;
 import org.apache.drill.exec.physical.impl.OutputMutator;
 import org.apache.drill.exec.record.MaterializedField;
 import org.apache.drill.exec.store.AbstractRecordReader;
@@ -49,7 +50,7 @@ import com.google.common.base.Preconditions;
 import com.google.common.base.Predicate;
 import com.google.common.collect.Iterables;
 
-public class CompliantTextRecordReader extends AbstractRecordReader {
+public class CompliantTextRecordReader extends AbstractRecordReader implements AutoCloseable {
   static final org.slf4j.Logger logger = org.slf4j.LoggerFactory.getLogger(CompliantTextRecordReader.class);
 
   private static final String COL_NAME = "columns";
@@ -59,7 +60,6 @@ public class CompliantTextRecordReader extends AbstractRecordReader {
   private TextParsingSettings settings;
   private RepeatedVarCharVector vector;
   private final FragmentContext context;
-  private OperatorContext operatorContext;
   private FileSplit split;
   private List<Integer> columnIds = new ArrayList<Integer>();
   private TextReader reader;
@@ -102,18 +102,18 @@ public class CompliantTextRecordReader extends AbstractRecordReader {
   }
 
   @Override
-  public void setup(OutputMutator outputMutator) throws ExecutionSetupException {
+  public void setup(OperatorContext context, OutputMutator outputMutator) throws ExecutionSetupException {
     MaterializedField field = MaterializedField.create(ref, Types.repeated(TypeProtos.MinorType.VARCHAR));
 
-    readBuffer = operatorContext.getManagedBuffer(64*1024);
-    whitespaceBuffer = operatorContext.getManagedBuffer(64*1024);
+    readBuffer = context.getManagedBuffer(1024*1024);
+    whitespaceBuffer = context.getManagedBuffer(64*1024);
 
     try {
       vector = outputMutator.addField(field, RepeatedVarCharVector.class);
       FileSystem fs = split.getPath().getFileSystem(new Configuration());
       FSDataInputStream stream = fs.open(split.getPath());
 
-      TextInput input = new TextInput(settings.getNewLineDelimiter(), settings.getNormalizedNewLine(),  stream, readBuffer, split.getStart(), split.getStart() + split.getLength());
+      TextInput input = new TextInput(context.getStats(), settings.getNewLineDelimiter(), settings.getNormalizedNewLine(),  stream, readBuffer, split.getStart(), split.getStart() + split.getLength());
       boolean[] fields = new boolean[1000];
 
       int maxField = fields.length;
@@ -134,11 +134,6 @@ public class CompliantTextRecordReader extends AbstractRecordReader {
     } catch (SchemaChangeException | IOException e) {
       throw new ExecutionSetupException(e);
     }
-  }
-
-
-  public void setOperatorContext(OperatorContext operatorContext) {
-    this.operatorContext = operatorContext;
   }
 
   @Override
@@ -164,5 +159,10 @@ public class CompliantTextRecordReader extends AbstractRecordReader {
     } catch (IOException e) {
       logger.warn("Exception while closing stream.", e);
     }
+  }
+
+  @Override
+  public void close() {
+    cleanup();
   }
 }

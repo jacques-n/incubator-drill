@@ -56,6 +56,7 @@ public class TopLevelAllocator implements BufferAllocator {
     this(null, maximumAllocation, true);
   }
 
+
   private TopLevelAllocator(DrillConfig config, long maximumAllocation, boolean errorOnLeak){
     this.config=(config!=null) ? config : DrillConfig.create();
     this.errorOnLeak = errorOnLeak;

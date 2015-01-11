@@ -34,11 +34,14 @@ package org.apache.drill.exec.store.easy.text.compliant;
  ******************************************************************************/
 
 import io.netty.buffer.DrillBuf;
+import io.netty.util.internal.PlatformDependent;
 
 import java.io.EOFException;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 
+import org.apache.drill.exec.ops.OperatorStats;
+import org.apache.drill.exec.util.AssertionUtil;
 import org.apache.hadoop.fs.AbstractFileSystem;
 import org.apache.hadoop.fs.ByteBufferReadable;
 import org.apache.hadoop.fs.FSDataInputStream;
@@ -53,6 +56,7 @@ public final class TextInput {
   private final byte lineSeparator1;
   private final byte lineSeparator2;
   private final byte normalizedLineSeparator;
+  private final OperatorStats stats;
 
   private long lineCount;
   private long charCount;
@@ -72,6 +76,8 @@ public final class TextInput {
   private final FSDataInputStream input;
   private final DrillBuf buffer;
   private final ByteBuffer underlyingBuffer;
+  private final long bStart;
+  private final long bStartMinus1;
 
   private final boolean bufferReadable;
 
@@ -92,19 +98,21 @@ public final class TextInput {
    * @param lineSeparator the sequence of characters that represent a newline, as defined in {@link Format#getLineSeparator()}
    * @param normalizedLineSeparator the normalized newline character (as defined in {@link Format#getNormalizedNewline()}) that is used to replace any lineSeparator sequence found in the input.
    */
-  public TextInput(byte[] lineSeparator, byte normalizedLineSeparator, FSDataInputStream input, DrillBuf buffer, long startPos, long endPos) {
+  public TextInput(OperatorStats stats, byte[] lineSeparator, byte normalizedLineSeparator, FSDataInputStream input, DrillBuf buffer, long startPos, long endPos) {
     if (lineSeparator == null || lineSeparator.length == 0) {
       throw new IllegalArgumentException("Invalid line separator. Expected 1 to 2 characters");
     }
     if (lineSeparator.length > 2) {
       throw new IllegalArgumentException("Invalid line separator. Up to 2 characters are expected. Got " + lineSeparator.length + " characters.");
     }
-
+    this.stats = stats;
     this.bufferReadable = input.getWrappedStream() instanceof ByteBufferReadable;
     this.startPos = startPos;
     this.endPos = endPos;
     this.input = input;
     this.buffer = buffer;
+    this.bStart = buffer.memoryAddress();
+    this.bStartMinus1 = bStart -1;
     this.underlyingBuffer = buffer.nioBuffer(0, buffer.capacity());
 
     this.lineSeparator1 = lineSeparator[0];
@@ -122,10 +130,9 @@ public final class TextInput {
     updateBuffer();
     if (length > 0) {
       if(startPos > 0){
+
         // move to next full record.
         skipLines(1);
-      }else{
-        bufferPtr++;
       }
     }
   }
@@ -153,6 +160,16 @@ public final class TextInput {
     charMark = c;
   }
 
+  private final void read() throws IOException {
+    if(bufferReadable){
+      length = input.read(underlyingBuffer);
+    }else{
+      byte[] b = new byte[underlyingBuffer.capacity()];
+      length = input.read(b);
+      underlyingBuffer.put(b);
+    }
+  }
+
   private final void updateBuffer() throws IOException {
     streamPos = input.getPos();
     underlyingBuffer.clear();
@@ -162,33 +179,33 @@ public final class TextInput {
       return;
     }
 
-    if(bufferReadable){
-      length = input.read(underlyingBuffer);
-    }else{
-      byte[] b = new byte[underlyingBuffer.capacity()];
-      length = input.read(b);
-      underlyingBuffer.put(b);
-    }
+    read();
 
-    // make sure we haven't run over our allottment.
+    // check our data read allowance.
     if(streamPos + length >= this.endPos){
+      // we've run over our alotted data.
       final byte lineSeparator1 = this.lineSeparator1;
       final byte lineSeparator2 = this.lineSeparator2;
 
       // find the next line separator:
-      for(int i =0; i < length; i++){
-        if(underlyingBuffer.get(i) == lineSeparator1){
+      final long max = bStart + length;
+
+      for(long m = this.bStart + (endPos - streamPos); m < max; m++){
+        if(PlatformDependent.getByte(m) == lineSeparator1){
+          // we found a potential line break.
+
           if(lineSeparator2 == NULL_BYTE){
             // we found a line separator and don't need to consult the next byte.
-            length = i;
+            length = (int)(m - bStart);
             endFound = true;
             break;
           }else{
             // this is a two byte line separator.
-            if(i+1 < length){
+            long mPlus = m+1;
+            if(mPlus < max){
               // we can check next byte and see if the second lineSeparator is correct.
-              if(lineSeparator2 == underlyingBuffer.get(i+1)){
-                length = i+1;
+              if(lineSeparator2 == PlatformDependent.getByte(mPlus)){
+                length = (int)(mPlus - bStart);
                 endFound = true;
                 break;
               }else{
@@ -199,8 +216,9 @@ public final class TextInput {
               // we need to read one more byte and see if it is lineSeparator
               if(lineSeparator2 == input.readByte()){
                 // if it is: we actually reset the stream so that it read one byte short this time so it can read both line separators next time.
-                length = i - 1;
+                length = (int)(m - bStart - 1);
                 input.seek(streamPos + length - 1);
+                streamPos--;
                 break;
               }else{
                 // this was a partial line break, we don't need to manage next but do need to reset stream to previous position.
@@ -208,6 +226,7 @@ public final class TextInput {
                 break;
               }
             }
+
           }
         }
       }
@@ -216,7 +235,7 @@ public final class TextInput {
 
 
     charCount += bufferPtr;
-    bufferPtr = 0;
+    bufferPtr = 1;
 
     buffer.writerIndex(underlyingBuffer.limit());
     buffer.readerIndex(underlyingBuffer.position());
@@ -240,21 +259,21 @@ public final class TextInput {
   public final byte nextChar() throws IOException {
     final byte lineSeparator1 = this.lineSeparator1;
     final byte lineSeparator2 = this.lineSeparator2;
-    final DrillBuf buffer = this.buffer;
+    final long mem = this.bStart;
 
     if (length == -1) {
       throw new StreamFinishedPseudoException();
     }
 
-
-    byte byteChar = buffer.getByte(bufferPtr - 1);
-//    System.out.print(byteChar);
-//    System.out.print((char) (byteChar & 0xFF));
-
+    if(AssertionUtil.BOUNDS_CHECKING_ENABLED){
+      buffer.checkBytes(bufferPtr - 1, bufferPtr);
+    }
+    byte byteChar = PlatformDependent.getByte(bStartMinus1 + bufferPtr);
 
     if (bufferPtr >= length) {
       if (length != -1) {
         updateBuffer();
+        bufferPtr--;
       } else {
         throw new StreamFinishedPseudoException();
       }
@@ -277,9 +296,9 @@ public final class TextInput {
           }
         }
 
-        if (bufferPtr < length) {
-          bufferPtr++;
-        }
+//        if (bufferPtr < length) {
+//          bufferPtr++;
+//        }
       }
 
       streamMark = streamPos;
