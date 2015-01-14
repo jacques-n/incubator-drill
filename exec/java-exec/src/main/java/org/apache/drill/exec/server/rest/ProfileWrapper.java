@@ -125,7 +125,7 @@ public class ProfileWrapper {
   }
 
   public String majorFragmentTimingProfile(MajorFragmentProfile major) {
-    final String[] columns = {"Minor Fragment", "Start", "End", "Total Time", "Max Records", "Max Batches"};
+    final String[] columns = {"Minor Fragment", "Host", "Start", "End", "Total Time", "Max Records", "Max Batches", "Peak Memory", "State"};
     TableBuilder builder = new TableBuilder(columns);
 
     ArrayList<MinorFragmentProfile> complete, incomplete;
@@ -154,24 +154,27 @@ public class ProfileWrapper {
       }
 
       builder.appendCell(new OperatorPathBuilder().setMajor(major).setMinor(minor).build(), null);
+      builder.appendCell(minor.getEndpoint().getAddress(), null);
       builder.appendMillis(minor.getStartTime() - t0, null);
       builder.appendMillis(minor.getEndTime() - t0, null);
       builder.appendMillis(minor.getEndTime() - minor.getStartTime(), null);
 
       builder.appendInteger(biggestIncomingRecords, null);
       builder.appendInteger(biggestBatches, null);
+      builder.appendInteger(minor.getMaxMemoryUsed(), null);
+      builder.appendCell(minor.getState().name(), null);
     }
     for (MinorFragmentProfile m : incomplete) {
       builder.appendCell(
           major.getMajorFragmentId() + "-"
               + m.getMinorFragmentId(), null);
-      builder.appendRepeated(m.getState().toString(), null, 5);
+      builder.appendRepeated(m.getState().toString(), null, 6);
     }
     return builder.toString();
   }
 
   public String getOperatorsOverview() {
-    final String [] columns = {"Operator", "Type", "Setup (min)", "Setup (avg)", "Setup (max)", "Process (min)", "Process (avg)", "Process (max)", "Wait (min)", "Wait (avg)", "Wait (max)"};
+    final String [] columns = {"Operator", "Type", "Setup (min)", "Setup (avg)", "Setup (max)", "Process (min)", "Process (avg)", "Process (max)", "Wait (min)", "Wait (avg)", "Wait (max)", "Mem (avg)", "Mem (max)"};
     TableBuilder tb = new TableBuilder(columns);
     for (OperatorWrapper ow : getOperatorProfiles()) {
       ow.addSummary(tb);
@@ -335,7 +338,7 @@ public class ProfileWrapper {
     }
 
     public String getContent() {
-      final String [] columns = {"Minor Fragment", "Setup", "Process", "Wait", "Max Batches", "Max Records"};
+      final String [] columns = {"Minor Fragment", "Setup", "Process", "Wait", "Max Batches", "Max Records", "Peak Mem"};
       TableBuilder builder = new TableBuilder(columns);
 
       for (ImmutablePair<OperatorProfile, Integer> ip : ops) {
@@ -357,6 +360,7 @@ public class ProfileWrapper {
 
         builder.appendInteger(maxBatches, null);
         builder.appendInteger(maxRecords, null);
+        builder.appendInteger(op.getPeakLocalMemoryAllocated(), null);
       }
       return builder.toString();
     }
@@ -374,10 +378,12 @@ public class ProfileWrapper {
       double setupSum = 0.0;
       double processSum = 0.0;
       double waitSum = 0.0;
+      double memSum = 0.0;
       for (ImmutablePair<OperatorProfile, Integer> ip : ops) {
         setupSum += ip.getLeft().getSetupNanos();
         processSum += ip.getLeft().getProcessNanos();
         waitSum += ip.getLeft().getWaitNanos();
+        memSum += ip.getLeft().getPeakLocalMemoryAllocated();
       }
 
       Collections.sort(ops, Comparators.setupTimeSort);
@@ -394,6 +400,11 @@ public class ProfileWrapper {
       tb.appendNanos(ops.get(0).getLeft().getWaitNanos(), String.format(fmt, ops.get(0).getRight()));
       tb.appendNanos((long) (waitSum / ops.size()), null);
       tb.appendNanos(ops.get(li).getLeft().getWaitNanos(), String.format(fmt, ops.get(li).getRight()));
+
+      Collections.sort(ops, Comparators.opPeakMem);
+      //tb.appendNanos(ops.get(0).getLeft().getPeakLocalMemoryAllocated(), String.format(fmt, ops.get(0).getRight()));
+      tb.appendNanos((long) (memSum / ops.size()), null);
+      tb.appendNanos(ops.get(li).getLeft().getPeakLocalMemoryAllocated(), String.format(fmt, ops.get(li).getRight()));
     }
   }
 
@@ -419,6 +430,12 @@ public class ProfileWrapper {
     final static Comparator<MinorFragmentProfile> endTimeCompare = new Comparator<MinorFragmentProfile>() {
       public int compare(MinorFragmentProfile o1, MinorFragmentProfile o2) {
         return Long.compare(o1.getEndTime(), o2.getEndTime());
+      }
+    };
+
+    final static Comparator<MinorFragmentProfile> fragPeakMemAllocated = new Comparator<MinorFragmentProfile>() {
+      public int compare(MinorFragmentProfile o1, MinorFragmentProfile o2) {
+        return Long.compare(o1.getMaxMemoryUsed(), o2.getMaxMemoryUsed());
       }
     };
 
@@ -449,6 +466,12 @@ public class ProfileWrapper {
     final static Comparator<Pair<OperatorProfile, Integer>> waitTimeSort = new Comparator<Pair<OperatorProfile, Integer>>() {
       public int compare(Pair<OperatorProfile, Integer> o1, Pair<OperatorProfile, Integer> o2) {
         return Long.compare(o1.getLeft().getWaitNanos(), o2.getLeft().getWaitNanos());
+      }
+    };
+
+    final static Comparator<Pair<OperatorProfile, Integer>> opPeakMem = new Comparator<Pair<OperatorProfile, Integer>>() {
+      public int compare(Pair<OperatorProfile, Integer> o1, Pair<OperatorProfile, Integer> o2) {
+        return Long.compare(o1.getLeft().getPeakLocalMemoryAllocated(), o2.getLeft().getPeakLocalMemoryAllocated());
       }
     };
   }
