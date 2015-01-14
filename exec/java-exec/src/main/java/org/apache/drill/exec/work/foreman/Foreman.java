@@ -81,8 +81,9 @@ import org.apache.drill.exec.work.WorkManager.WorkerBee;
 import org.apache.drill.exec.work.batch.IncomingBuffers;
 import org.apache.drill.exec.work.fragment.FragmentExecutor;
 import org.apache.drill.exec.work.fragment.RootFragmentManager;
-import org.codehaus.jackson.map.ObjectMapper;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.SerializationFeature;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.ArrayListMultimap;
 import com.google.common.collect.Multimap;
@@ -541,11 +542,11 @@ public class Foreman implements Runnable {
 
         String jsonString = "<<malformed JSON>>";
         sb.append("  fragment_json: ");
-        final ObjectMapper objectMapper = new ObjectMapper();
+        final ObjectMapper objectMapper = new ObjectMapper().enable(SerializationFeature.INDENT_OUTPUT);
         try
         {
           final Object json = objectMapper.readValue(planFragment.getFragmentJson(), Object.class);
-          jsonString = objectMapper.defaultPrettyPrintingWriter().writeValueAsString(json);
+          jsonString = objectMapper.writeValueAsString(json);
         } catch(final Exception e) {
           // we've already set jsonString to a fallback value
         }
