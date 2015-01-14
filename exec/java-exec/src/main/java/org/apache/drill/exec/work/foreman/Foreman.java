@@ -71,6 +71,7 @@ import org.apache.drill.exec.server.DrillbitContext;
 import org.apache.drill.exec.util.Pointer;
 import org.apache.drill.exec.work.EndpointListener;
 import org.apache.drill.exec.work.ErrorHelper;
+import org.apache.drill.exec.work.ErrorInjector;
 import org.apache.drill.exec.work.QueryWorkUnit;
 import org.apache.drill.exec.work.WorkManager.WorkerBee;
 import org.apache.drill.exec.work.batch.IncomingBuffers;
@@ -143,6 +144,8 @@ public class Foreman implements Runnable, Closeable, Comparable<Object> {
         stateListener, this);
     this.bee = bee;
 
+    ErrorInjector.inject("constructor");
+
     recordNewState(QueryState.PENDING);
   }
 
@@ -155,6 +158,8 @@ public class Foreman implements Runnable, Closeable, Comparable<Object> {
   }
 
   private void cleanup(QueryResult result) {
+    ErrorInjector.inject("cleanup");
+
     bee.retireForeman(this);
     context.getWorkBus().removeFragmentStatusListener(queryId);
     context.getClusterCoordinator().removeDrillbitStatusListener(queryManager);
@@ -168,36 +173,41 @@ public class Foreman implements Runnable, Closeable, Comparable<Object> {
    * Called by execution pool to do foreman setup. Actual query execution is a separate phase (and can be scheduled).
    */
   public void run() {
-
     final String originalThread = Thread.currentThread().getName();
     Thread.currentThread().setName(QueryIdHelper.getQueryId(queryId) + ":foreman");
     getStatus().markStart();
+
+
     // convert a run query request into action
     try {
+      ErrorInjector.inject("run1");
       switch (queryRequest.getType()) {
+      case SQL:
+        runSQL(queryRequest.getPlan());
+        break;
       case LOGICAL:
         parseAndRunLogicalPlan(queryRequest.getPlan());
         break;
       case PHYSICAL:
         parseAndRunPhysicalPlan(queryRequest.getPlan());
         break;
-      case SQL:
-        runSQL(queryRequest.getPlan());
-        break;
       default:
         throw new IllegalStateException();
       }
+
+      ErrorInjector.inject("run2").t(ForemanException.class);
+
     } catch (ForemanException e) {
       moveToState(QueryState.FAILED, e);
-
-    } catch (AssertionError | Exception ex) {
-      moveToState(QueryState.FAILED, new ForemanException("Unexpected exception during fragment initialization: " + ex.getMessage(), ex));
 
     } catch (OutOfMemoryError e) {
       System.out.println("Out of memory, exiting.");
       e.printStackTrace();
       System.out.flush();
       System.exit(-1);
+
+    } catch (Error | Exception ex) {
+      moveToState(QueryState.FAILED, new ForemanException("Unexpected exception during fragment initialization: " + ex.getMessage(), ex));
 
     } finally {
       Thread.currentThread().setName(originalThread);

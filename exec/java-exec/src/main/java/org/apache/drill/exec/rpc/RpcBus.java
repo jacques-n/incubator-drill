@@ -199,6 +199,13 @@ public abstract class RpcBus<T extends EnumLite, C extends RemoteConnection> imp
             logger.debug("Adding message to outbound buffer. {}", outMessage);
           }
           connection.getChannel().writeAndFlush(outMessage);
+        } catch(Error | Exception e){
+          DrillPBError error = ErrorHelper.logAndConvertError(DrillbitEndpoint.newBuilder().setAddress("unknown").build(), "unknown error while", e, logger);
+          OutboundRpcMessage outMessage = new OutboundRpcMessage(RpcMode.RESPONSE_FAILURE, 0, msg.coordinationId, error);
+          if (RpcConstants.EXTRA_DEBUGGING) {
+            logger.debug("Adding message to outbound buffer. {}", outMessage);
+          }
+          connection.getChannel().writeAndFlush(outMessage);
         }
         msg.release();  // we release our ownership.  Handle could have taken over ownership.
         break;
@@ -206,17 +213,17 @@ public abstract class RpcBus<T extends EnumLite, C extends RemoteConnection> imp
 
       case RESPONSE:
         try{
-        MessageLite m = getResponseDefaultInstance(msg.rpcType);
-        assert rpcConfig.checkReceive(msg.rpcType, m.getClass());
-        RpcOutcome<?> rpcFuture = queue.getFuture(msg.rpcType, msg.coordinationId, m.getClass());
-        Parser<?> parser = m.getParserForType();
-        Object value = parser.parseFrom(new ByteBufInputStream(msg.pBody, msg.pBody.readableBytes()));
-        rpcFuture.set(value, msg.dBody);
-        msg.release();  // we release our ownership.  Handle could have taken over ownership.
-        if (RpcConstants.EXTRA_DEBUGGING) {
-          logger.debug("Updated rpc future {} with value {}", rpcFuture, value);
-        }
-        }catch(Exception ex) {
+          MessageLite m = getResponseDefaultInstance(msg.rpcType);
+          assert rpcConfig.checkReceive(msg.rpcType, m.getClass());
+          RpcOutcome<?> rpcFuture = queue.getFuture(msg.rpcType, msg.coordinationId, m.getClass());
+          Parser<?> parser = m.getParserForType();
+          Object value = parser.parseFrom(new ByteBufInputStream(msg.pBody, msg.pBody.readableBytes()));
+          rpcFuture.set(value, msg.dBody);
+          msg.release();  // we release our ownership.  Handle could have taken over ownership.
+          if (RpcConstants.EXTRA_DEBUGGING) {
+            logger.debug("Updated rpc future {} with value {}", rpcFuture, value);
+          }
+        }catch(Error | Exception ex) {
           logger.error("Failure while handling response.", ex);
           throw ex;
         }
