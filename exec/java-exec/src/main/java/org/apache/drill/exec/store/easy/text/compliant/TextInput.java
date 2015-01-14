@@ -301,8 +301,6 @@ public final class TextInput {
 //        }
       }
 
-      streamMark = streamPos;
-      charMark = byteChar;
     }
 
     return byteChar;
