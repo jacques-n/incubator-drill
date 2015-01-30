@@ -19,12 +19,16 @@ package org.apache.drill.exec.ops;
 
 import java.util.Collection;
 
+import io.netty.buffer.DrillBuf;
 import net.hydromatic.optiq.SchemaPlus;
 import net.hydromatic.optiq.jdbc.SimpleOptiqSchema;
 
 import org.apache.drill.common.config.DrillConfig;
+import org.apache.drill.common.exceptions.DrillRuntimeException;
 import org.apache.drill.exec.coord.ClusterCoordinator;
 import org.apache.drill.exec.expr.fn.FunctionImplementationRegistry;
+import org.apache.drill.exec.memory.BufferAllocator;
+import org.apache.drill.exec.memory.OutOfMemoryException;
 import org.apache.drill.exec.planner.PhysicalPlanReader;
 import org.apache.drill.exec.planner.physical.PlannerSettings;
 import org.apache.drill.exec.planner.sql.DrillOperatorTable;
@@ -39,7 +43,9 @@ import org.apache.drill.exec.server.options.QueryOptionManager;
 import org.apache.drill.exec.store.StoragePluginRegistry;
 import org.apache.drill.exec.store.sys.PStoreProvider;
 
-public class QueryContext{
+// TODO - consider re-name to PlanningContext, as the query execution context actually appears
+// in fragment contexts
+public class QueryContext implements UdfUtilities{
   static final org.slf4j.Logger logger = org.slf4j.LoggerFactory.getLogger(QueryContext.class);
 
   private final QueryId queryId;
@@ -50,6 +56,14 @@ public class QueryContext{
   public final Multitimer<QuerySetup> timer;
   private final PlannerSettings plannerSettings;
   private final DrillOperatorTable table;
+
+  // most of the memory consumed by planning is on-heap, as the calcite planning library
+  // represents plans as graphs of POJOs. An allocator is created for the QueryContext (
+  // which is used for planning time constant expression evaluation)
+  private final BufferAllocator allocator;
+  private static final int INITIAL_OFF_HEAP_ALLOCATION = 1024;
+  private static final int MAX_OFF_HEAP_ALLOCATION = 16 * 1024;
+
 
   public QueryContext(UserSession session, QueryId queryId, DrillbitContext drllbitContext) {
     super();
@@ -62,6 +76,11 @@ public class QueryContext{
     this.plannerSettings = new PlannerSettings(queryOptions, getFunctionRegistry());
     this.plannerSettings.setNumEndPoints(this.getActiveEndpoints().size());
     this.table = new DrillOperatorTable(getFunctionRegistry());
+    try {
+      this.allocator = drllbitContext.getAllocator().getChildAllocator(null, INITIAL_OFF_HEAP_ALLOCATION, MAX_OFF_HEAP_ALLOCATION, false);
+    } catch (OutOfMemoryException e) {
+      throw new DrillRuntimeException("Error creating off-heap allocator for planning context.",e);
+    }
   }
 
   public PStoreProvider getPersistentStoreProvider(){
@@ -74,6 +93,10 @@ public class QueryContext{
 
   public UserSession getSession(){
     return session;
+  }
+
+  public BufferAllocator getAllocator() {
+    return allocator;
   }
 
   public SchemaPlus getNewDefaultSchema(){
@@ -142,5 +165,21 @@ public class QueryContext{
 
   public ClusterCoordinator getClusterCoordinator() {
     return drillbitContext.getClusterCoordinator();
+  }
+
+  /**
+   * TODO - generate the query start time and record the current timezone
+   * at the start of planning instead of the start of physical plan materialization.
+   *
+   * @return
+   */
+  @Override
+  public QueryDateTimeInfo getQueryDateTimeInfo() {
+    throw new UnsupportedOperationException("Query start time not currently available during planning.");
+  }
+
+  @Override
+  public DrillBuf getManagedBuffer() {
+    return allocator.buffer(100, MAX_OFF_HEAP_ALLOCATION);
   }
 }

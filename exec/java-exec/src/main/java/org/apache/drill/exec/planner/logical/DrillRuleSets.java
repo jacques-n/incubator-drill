@@ -120,6 +120,7 @@ public class DrillRuleSets {
       DrillSortRule.INSTANCE,
       DrillJoinRule.INSTANCE,
       DrillUnionRule.INSTANCE,
+      OptiqForkedConstantReduxRule.createFilterInstance(new DrillConstExecutor(context.getFunctionRegistry(), context.getAllocator(), context)),
       DrillReduceAggregatesRule.INSTANCE
       ));
     }
