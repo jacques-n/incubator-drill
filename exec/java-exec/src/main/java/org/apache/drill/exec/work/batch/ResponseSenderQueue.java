@@ -44,7 +44,7 @@ public class ResponseSenderQueue {
    * @return
    */
   public int flushResponses(int count){
-    logger.debug("queue.size: {}, count: {}", q.size(), count);
+    logger.trace("queue.size: {}, count: {}", q.size(), count);
     int i = 0;
     while(!q.isEmpty() && i < count){
       ResponseSender s = q.poll();

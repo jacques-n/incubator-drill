@@ -87,7 +87,7 @@ public class TestBitRpc extends ExecTest {
 
     port = server.bind(port, false);
     DrillbitEndpoint ep = DrillbitEndpoint.newBuilder().setAddress("localhost").setDataPort(port).build();
-    DataConnectionManager manager = new DataConnectionManager(FragmentHandle.getDefaultInstance(), ep, c2);
+    DataConnectionManager manager = new DataConnectionManager(ep, c2);
     DataTunnel tunnel = new DataTunnel(manager);
     AtomicLong max = new AtomicLong(0);
     for (int i = 0; i < 40; i++) {

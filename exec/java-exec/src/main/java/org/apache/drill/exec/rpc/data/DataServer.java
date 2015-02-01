@@ -19,6 +19,7 @@ package org.apache.drill.exec.rpc.data;
 
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.DrillBuf;
+import io.netty.buffer.UnsafeDirectLittleEndian;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelFuture;
 import io.netty.util.concurrent.GenericFutureListener;
@@ -41,6 +42,7 @@ import org.apache.drill.exec.rpc.ResponseSender;
 import org.apache.drill.exec.rpc.RpcException;
 import org.apache.drill.exec.rpc.control.WorkEventBus;
 import org.apache.drill.exec.server.BootStrapContext;
+import org.apache.drill.exec.util.Pointer;
 import org.apache.drill.exec.work.fragment.FragmentManager;
 
 import com.google.protobuf.MessageLite;
@@ -100,32 +102,72 @@ public class DataServer extends BasicServer<RpcType, BitServerConnection> {
 
   private final static FragmentRecordBatch OOM_FRAGMENT = FragmentRecordBatch.newBuilder().setIsOutOfMemory(true).build();
 
+
+  private FragmentHandle getHandle(FragmentRecordBatch batch, int index){
+    return FragmentHandle.newBuilder()
+        .setQueryId(batch.getQueryId())
+        .setMajorFragmentId(batch.getReceivingMajorFragmentId())
+        .setMinorFragmentId(batch.getReceivingMinorFragmentId(index))
+        .build();
+  }
+
+
   @Override
   protected void handle(BitServerConnection connection, int rpcType, ByteBuf pBody, ByteBuf body, ResponseSender sender) throws RpcException {
     assert rpcType == RpcType.REQ_RECORD_BATCH_VALUE;
 
-    FragmentRecordBatch fragmentBatch = get(pBody, FragmentRecordBatch.PARSER);
-    FragmentHandle handle = fragmentBatch.getHandle();
+    final FragmentRecordBatch fragmentBatch = get(pBody, FragmentRecordBatch.PARSER);
+    final int targetCount = fragmentBatch.getReceivingMinorFragmentIdCount();
+
+    Pointer<DrillBuf> out = new Pointer<DrillBuf>();
 
     try {
-      FragmentManager manager = workBus.getFragmentManager(fragmentBatch.getHandle());
-      if (manager == null) {
-        if (body != null) {
-          body.release();
-        }
-      }else{
-        BufferAllocator allocator = manager.getFragmentContext().getAllocator();
-        if (body != null && !manager.getFragmentContext().isCancelled()) {
-          if (!allocator.takeOwnership((DrillBuf) body.unwrap())) {
-            dataHandler.handle(connection, manager, OOM_FRAGMENT, null, null);
+
+      if(body == null){
+
+        for(int minor = 0; minor < targetCount; minor++){
+          FragmentManager manager = workBus.getFragmentManager(getHandle(fragmentBatch, minor));
+          if(manager != null){
+            dataHandler.handle(connection, manager, fragmentBatch, null, sender);
           }
         }
-        dataHandler.handle(connection, manager, fragmentBatch, (DrillBuf) body, sender);
+
+      }else{
+
+        for(int minor = 0; minor < targetCount; minor++){
+          FragmentManager manager = workBus.getFragmentManager(getHandle(fragmentBatch, minor));
+          if(manager == null){
+            continue;
+          }
+
+          BufferAllocator allocator = manager.getFragmentContext().getAllocator();
+
+          boolean withinMemoryEnvelope = allocator.takeOwnership((DrillBuf) body, out);
+
+          if(!withinMemoryEnvelope){
+            // if we over reserved, we need to add poison pill before batch.
+            dataHandler.handle(connection, manager, OOM_FRAGMENT, null, null);
+          }
+
+          dataHandler.handle(connection, manager, fragmentBatch, out.value, sender);
+
+          // make sure to release the reference count we have to the new buffer.
+          // dataHandler.handle should have taken any ownership it needed.
+          out.value.release();
+        }
+        out = null;
       }
 
     } catch (FragmentSetupException e) {
-      logger.error("Failure while getting fragment manager. {}", QueryIdHelper.getQueryIdentifier(handle),  e);
+      logger.error("Failure while getting fragment manager. {}",
+          QueryIdHelper.getQueryIdentifiers(fragmentBatch.getQueryId(),
+              fragmentBatch.getReceivingMajorFragmentId(),
+              fragmentBatch.getReceivingMinorFragmentIdList()));
       sender.send(new Response(RpcType.ACK, Acks.FAIL));
+    } finally {
+      if(out != null && out.value != null){
+        out.value.release();
+      }
     }
   }
 
