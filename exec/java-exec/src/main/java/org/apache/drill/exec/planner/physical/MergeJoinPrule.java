@@ -39,7 +39,7 @@ public class MergeJoinPrule extends JoinPruleBase {
 
   private MergeJoinPrule() {
     super(
-        RelOptHelper.any(DrillJoinRel.class),
+        RelOptHelper.some(DrillJoinRel.class, RelOptHelper.any(RelNode.class)),
         "Prel.MergeJoinPrule");
   }
 

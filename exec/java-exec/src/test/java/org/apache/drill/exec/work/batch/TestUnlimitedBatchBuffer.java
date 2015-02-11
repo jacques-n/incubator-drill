@@ -29,6 +29,7 @@ import org.apache.drill.exec.proto.BitData.FragmentRecordBatch;
 import org.apache.drill.exec.record.RawFragmentBatch;
 import org.apache.drill.exec.rpc.Response;
 import org.apache.drill.exec.rpc.ResponseSender;
+import org.apache.drill.exec.rpc.data.AckSender;
 import org.apache.drill.exec.rpc.data.DataRpcConfig;
 import org.junit.Before;
 import org.junit.Test;
@@ -85,7 +86,7 @@ public class TestUnlimitedBatchBuffer extends ExecTest {
 
     batch = Mockito.mock(RawFragmentBatch.class);
 
-    Mockito.when(batch.getSender()).thenReturn(mySender);
+    Mockito.when(batch.getSender()).thenReturn(new AckSender(mySender));
     Mockito.doAnswer(new Answer<Void>() {
       public Void answer(InvocationOnMock ignore) throws Throwable {
         mySender.send(DataRpcConfig.OK);

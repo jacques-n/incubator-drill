@@ -32,6 +32,7 @@ import org.eigenbase.relopt.RelOptRuleCall;
 import org.eigenbase.relopt.RelOptRuleOperand;
 import org.eigenbase.relopt.RelOptUtil;
 import org.eigenbase.relopt.RelTraitSet;
+import org.eigenbase.relopt.volcano.RelSubset;
 import org.eigenbase.rex.RexNode;
 
 import com.google.common.collect.ImmutableList;
@@ -182,9 +183,10 @@ public abstract class JoinPruleBase extends Prule {
       traitsRight = right.getTraitSet().plus(Prel.DRILL_PHYSICAL).plus(distBroadcastRight);
     }
 
-    final RelTraitSet traitsLeft = left.getTraitSet().plus(Prel.DRILL_PHYSICAL);
+    RelTraitSet traitsLeft = left.getTraitSet().plus(Prel.DRILL_PHYSICAL);
     final RelNode convertedLeft = convert(left, traitsLeft);
     final RelNode convertedRight = convert(right, traitsRight);
+
 
     new SubsetTransformer<DrillJoinRel, InvalidRelException>(call) {
 
@@ -197,13 +199,13 @@ public abstract class JoinPruleBase extends Prule {
         } else {
           newTraitsLeft = newTraitSet(Prel.DRILL_PHYSICAL, toDist);
         }
-        Character.digit(1, 1);
+
         RelNode newLeft = convert(left, newTraitsLeft);
         if (physicalJoinType == PhysicalJoinType.HASH_JOIN) {
-          return new HashJoinPrel(join.getCluster(), traitsLeft, newLeft, convertedRight, join.getCondition(),
+          return new HashJoinPrel(join.getCluster(), newTraitsLeft, newLeft, convertedRight, join.getCondition(),
                                      join.getJoinType());
         } else if (physicalJoinType == PhysicalJoinType.MERGE_JOIN) {
-          return new MergeJoinPrel(join.getCluster(), traitsLeft, newLeft, convertedRight, join.getCondition(),
+          return new MergeJoinPrel(join.getCluster(), newTraitsLeft, newLeft, convertedRight, join.getCondition(),
                                       join.getJoinType());
         } else{
           return null;
@@ -214,4 +216,5 @@ public abstract class JoinPruleBase extends Prule {
     }.go(join, convertedLeft);
 
   }
+
 }

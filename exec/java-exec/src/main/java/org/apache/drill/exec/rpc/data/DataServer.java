@@ -17,6 +17,8 @@
  */
 package org.apache.drill.exec.rpc.data;
 
+import java.io.IOException;
+
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.DrillBuf;
 import io.netty.buffer.UnsafeDirectLittleEndian;
@@ -120,7 +122,9 @@ public class DataServer extends BasicServer<RpcType, BitServerConnection> {
     final int targetCount = fragmentBatch.getReceivingMinorFragmentIdCount();
 
     Pointer<DrillBuf> out = new Pointer<DrillBuf>();
-
+    AckSender ack = new AckSender(sender);
+    // increment so we don't get false returns.
+    ack.increment();
     try {
 
       if(body == null){
@@ -128,7 +132,8 @@ public class DataServer extends BasicServer<RpcType, BitServerConnection> {
         for(int minor = 0; minor < targetCount; minor++){
           FragmentManager manager = workBus.getFragmentManager(getHandle(fragmentBatch, minor));
           if(manager != null){
-            dataHandler.handle(connection, manager, fragmentBatch, null, sender);
+            ack.increment();
+            dataHandler.handle(manager, fragmentBatch, null, ack);
           }
         }
 
@@ -146,10 +151,11 @@ public class DataServer extends BasicServer<RpcType, BitServerConnection> {
 
           if(!withinMemoryEnvelope){
             // if we over reserved, we need to add poison pill before batch.
-            dataHandler.handle(connection, manager, OOM_FRAGMENT, null, null);
+            dataHandler.handle(manager, OOM_FRAGMENT, null, null);
           }
 
-          dataHandler.handle(connection, manager, fragmentBatch, out.value, sender);
+          ack.increment();
+          dataHandler.handle(manager, fragmentBatch, out.value, ack);
 
           // make sure to release the reference count we have to the new buffer.
           // dataHandler.handle should have taken any ownership it needed.
@@ -158,13 +164,17 @@ public class DataServer extends BasicServer<RpcType, BitServerConnection> {
         out = null;
       }
 
-    } catch (FragmentSetupException e) {
+    } catch (IOException | FragmentSetupException e) {
       logger.error("Failure while getting fragment manager. {}",
           QueryIdHelper.getQueryIdentifiers(fragmentBatch.getQueryId(),
               fragmentBatch.getReceivingMajorFragmentId(),
               fragmentBatch.getReceivingMinorFragmentIdList()));
+      ack.clear();
       sender.send(new Response(RpcType.ACK, Acks.FAIL));
     } finally {
+
+      // decrement the extra reference we grabbed at the top.
+      ack.sendOk();
       if(out != null && out.value != null){
         out.value.release();
       }
@@ -199,7 +209,7 @@ public class DataServer extends BasicServer<RpcType, BitServerConnection> {
 
   @Override
   public ProtobufLengthDecoder getDecoder(BufferAllocator allocator, OutOfMemoryHandler outOfMemoryHandler) {
-    return new DataProtobufLengthDecoder(allocator, outOfMemoryHandler);
+    return new DataProtobufLengthDecoder.Server(allocator, outOfMemoryHandler);
   }
 
 }

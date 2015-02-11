@@ -20,6 +20,7 @@ package org.apache.drill.exec.planner.physical;
 import java.util.logging.Logger;
 
 import org.apache.drill.exec.planner.logical.DrillJoinRel;
+import org.apache.drill.exec.planner.logical.DrillProjectRel;
 import org.apache.drill.exec.planner.logical.RelOptHelper;
 import org.eigenbase.rel.InvalidRelException;
 import org.eigenbase.rel.RelNode;
@@ -32,8 +33,8 @@ public class HashJoinPrule extends JoinPruleBase {
   protected static final Logger tracer = EigenbaseTrace.getPlannerTracer();
 
   private HashJoinPrule() {
-    super(
-        RelOptHelper.any(DrillJoinRel.class), "Prel.HashJoinPrule");
+    super(RelOptHelper.some(DrillJoinRel.class, RelOptHelper.any(RelNode.class))
+        , "Prel.HashJoinPrule");
   }
 
   @Override
@@ -64,8 +65,6 @@ public class HashJoinPrule extends JoinPruleBase {
 
       if (checkBroadcastConditions(call.getPlanner(), join, left, right)) {
         createBroadcastPlan(call, join, PhysicalJoinType.HASH_JOIN, left, right, null /* left collation */, null /* right collation */);
-
-        // createBroadcastPlan1(call, join, PhysicalJoinType.HASH_JOIN, left, right, null, null);
       }
 
     } catch (InvalidRelException e) {

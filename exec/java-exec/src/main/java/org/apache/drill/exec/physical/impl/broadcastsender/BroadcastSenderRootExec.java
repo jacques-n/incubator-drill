@@ -125,10 +125,11 @@ public class BroadcastSenderRootExec extends BaseRootExec {
           stats.startWait();
           try {
             tunnels[i].sendRecordBatch(this.statusHandler, b2);
+            statusHandler.sendCount.increment();
           } finally {
             stats.stopWait();
           }
-          statusHandler.sendCount.increment();
+
         }
 
         return false;
@@ -145,10 +146,10 @@ public class BroadcastSenderRootExec extends BaseRootExec {
           stats.startWait();
           try {
             tunnels[i].sendRecordBatch(this.statusHandler, batch);
+            statusHandler.sendCount.increment();
           } finally {
             stats.stopWait();
           }
-          statusHandler.sendCount.increment();
         }
 
         return ok;
