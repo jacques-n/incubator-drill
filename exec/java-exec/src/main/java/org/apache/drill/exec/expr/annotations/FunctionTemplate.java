@@ -71,7 +71,7 @@ public @interface FunctionTemplate {
   }
 
   public static enum FunctionCostCategory {
-    SIMPLE(1), MEDIUM(3), COMPLEX(5);
+    SIMPLE(1), MEDIUM(20), COMPLEX(50);
 
     private final int value;
 
