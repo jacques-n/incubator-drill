@@ -34,6 +34,40 @@ public class TestTpchDistributed extends BaseTestQuery{
   }
 
   @Test
+  public void testC() throws Exception {
+    test(" "
+        + "select n.dma_name\n" +
+        "     , (case when fm.segmentid=39730 then 'bonefish'\n" +
+        "             when fm.segmentid=31050 then 'cheesecake'\n" +
+        "             when fm.segmentid=33980 or fm.segmentid=52836 then 'pfchangs'\n" +
+        "             when fm.segmentid=33990 then 'pandaexpress'\n" +
+        "             when fm.segmentid=39505 then 'peiwei'\n" +
+        "             when fm.segmentid=40080 then 'whichwich'\n" +
+        "             else 'other' end\n" +
+        "       ) as advertiser\n" +
+        "     , sum(case when fm.weekstartdt between to_date('2013-01-03', 'yyyy-mm-dd') and to_date('2013-03-28', 'yyyy-mm-dd') then fm.amount else cast(0 as decimal(19,6)) end) as _2013q1spend\n" +
+        "     , sum(case when fm.weekstartdt between to_date('2013-01-03', 'yyyy-mm-dd') and to_date('2013-03-28', 'yyyy-mm-dd') then fm.trips else cast(0 as int) end) as _2013q1trips\n" +
+        "     , sum(case when fm.weekstartdt between to_date('2014-01-02', 'yyyy-mm-dd') and to_date('2014-03-27', 'yyyy-mm-dd') then fm.amount else cast(0 as decimal(19,6)) end) as _2014q1spend\n" +
+        "     , sum(case when fm.weekstartdt between to_date('2014-01-02', 'yyyy-mm-dd') and to_date('2014-03-27', 'yyyy-mm-dd') then fm.trips else cast(0 as int) end) as _2014q1trips\n" +
+        "  from dfs.`/src/data/card/cdw_vft_merchant` fm\n" +
+        "  join dfs.`/src/data/card/temp_nielsen_dma_official_060314` n on lower(cast(fm.zipid as varchar(5))) = lower(n.zipcode)\n" +
+        " where fm.segmentid in (33990,39505,40080,31050,33980,52836,39730)\n" +
+        "   and fm.weekstartdt between to_date('2013-01-03', 'yyyy-mm-dd') and to_date('2014-03-27', 'yyyy-mm-dd')\n" +
+        "   and fm.institutionid in (2726, 2252, 2755)\n" +
+        " group by n.dma_name\n" +
+        "     , (case when fm.segmentid=39730 then 'bonefish'\n" +
+        "             when fm.segmentid=31050 then 'cheesecake'\n" +
+        "             when fm.segmentid=33980 or fm.segmentid=52836 then 'pfchangs'\n" +
+        "             when fm.segmentid=33990 then 'pandaexpress'\n" +
+        "             when fm.segmentid=39505 then 'peiwei'\n" +
+        "             when fm.segmentid=40080 then 'whichwich'\n" +
+        "             else 'other' end\n" +
+        "       )\n" +
+        ";"
+        + "");
+  }
+
+  @Test
   @Ignore // DRILL-512
   public void tpch02() throws Exception{
     testDistributed("queries/tpch/02.sql");
