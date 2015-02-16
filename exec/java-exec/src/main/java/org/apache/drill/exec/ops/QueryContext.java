@@ -45,7 +45,7 @@ import org.apache.drill.exec.store.sys.PStoreProvider;
 
 // TODO - consider re-name to PlanningContext, as the query execution context actually appears
 // in fragment contexts
-public class QueryContext implements UdfUtilities{
+public class QueryContext implements UdfUtilities, AutoCloseable {
   static final org.slf4j.Logger logger = org.slf4j.LoggerFactory.getLogger(QueryContext.class);
 
   private final QueryId queryId;
@@ -62,7 +62,7 @@ public class QueryContext implements UdfUtilities{
   // which is used for planning time constant expression evaluation)
   private final BufferAllocator allocator;
   private static final int INITIAL_OFF_HEAP_ALLOCATION = 1024;
-  private static final int MAX_OFF_HEAP_ALLOCATION = 16 * 1024;
+  private static final int MAX_OFF_HEAP_ALLOCATION = 16 * 1024*1024;
 
 
   public QueryContext(UserSession session, QueryId queryId, DrillbitContext drllbitContext) {
@@ -182,4 +182,11 @@ public class QueryContext implements UdfUtilities{
   public DrillBuf getManagedBuffer() {
     return allocator.buffer(100, MAX_OFF_HEAP_ALLOCATION);
   }
+
+  @Override
+  public void close() {
+    allocator.close();
+  }
+
+
 }

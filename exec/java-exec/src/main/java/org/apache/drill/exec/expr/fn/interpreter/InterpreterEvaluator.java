@@ -17,15 +17,22 @@
  */
 package org.apache.drill.exec.expr.fn.interpreter;
 
-import com.google.common.base.Preconditions;
-import com.google.common.collect.Lists;
 import io.netty.buffer.DrillBuf;
+
+import java.lang.reflect.Field;
+
 import org.apache.drill.common.exceptions.DrillRuntimeException;
 import org.apache.drill.common.expression.BooleanOperator;
 import org.apache.drill.common.expression.FunctionHolderExpression;
 import org.apache.drill.common.expression.IfExpression;
 import org.apache.drill.common.expression.LogicalExpression;
+import org.apache.drill.common.expression.NullExpression;
+import org.apache.drill.common.expression.TypedNullConstant;
 import org.apache.drill.common.expression.ValueExpressions;
+import org.apache.drill.common.expression.ValueExpressions.BooleanExpression;
+import org.apache.drill.common.expression.ValueExpressions.DateExpression;
+import org.apache.drill.common.expression.ValueExpressions.TimeExpression;
+import org.apache.drill.common.expression.ValueExpressions.TimeStampExpression;
 import org.apache.drill.common.expression.visitors.AbstractExprVisitor;
 import org.apache.drill.common.types.TypeProtos;
 import org.apache.drill.exec.expr.DrillFuncHolderExpr;
@@ -34,20 +41,20 @@ import org.apache.drill.exec.expr.ValueVectorReadExpression;
 import org.apache.drill.exec.expr.annotations.FunctionTemplate;
 import org.apache.drill.exec.expr.fn.DrillSimpleFuncHolder;
 import org.apache.drill.exec.expr.holders.BitHolder;
+import org.apache.drill.exec.expr.holders.DateHolder;
+import org.apache.drill.exec.expr.holders.NullableBigIntHolder;
 import org.apache.drill.exec.expr.holders.NullableBitHolder;
+import org.apache.drill.exec.expr.holders.TimeHolder;
+import org.apache.drill.exec.expr.holders.TimeStampHolder;
 import org.apache.drill.exec.expr.holders.ValueHolder;
-import org.apache.drill.exec.memory.BufferAllocator;
-import org.apache.drill.exec.memory.OutOfMemoryException;
 import org.apache.drill.exec.ops.QueryDateTimeInfo;
 import org.apache.drill.exec.ops.UdfUtilities;
 import org.apache.drill.exec.record.RecordBatch;
+import org.apache.drill.exec.record.VectorAccessible;
 import org.apache.drill.exec.vector.ValueHolderHelper;
 import org.apache.drill.exec.vector.ValueVector;
-import org.reflections.Reflections;
 
-import javax.inject.Inject;
-import java.lang.reflect.Field;
-import java.util.Arrays;
+import com.google.common.base.Preconditions;
 
 
 public class InterpreterEvaluator {
@@ -60,10 +67,10 @@ public class InterpreterEvaluator {
     evaluate(incoming.getRecordCount(), incoming.getContext(), incoming, outVV, expr);
   }
 
-  public static void evaluate(int recordCount, UdfUtilities udfUtilities, RecordBatch incoming, ValueVector outVV, LogicalExpression expr) {
+  public static void evaluate(int recordCount, UdfUtilities udfUtilities, VectorAccessible incoming, ValueVector outVV, LogicalExpression expr) {
 
-    InterpreterInitVisitor initVisitor = new InterpreterInitVisitor(udfUtilities);
-    InterEvalVisitor evalVisitor = new InterEvalVisitor(incoming, udfUtilities);
+    InitVisitor initVisitor = new InitVisitor(udfUtilities);
+    EvalVisitor evalVisitor = new EvalVisitor(incoming, udfUtilities);
 
     expr.accept(initVisitor, incoming);
 
@@ -75,16 +82,16 @@ public class InterpreterEvaluator {
     outVV.getMutator().setValueCount(recordCount);
   }
 
-  public static class InterpreterInitVisitor extends AbstractExprVisitor<LogicalExpression, RecordBatch, RuntimeException> {
+  private static class InitVisitor extends AbstractExprVisitor<LogicalExpression, VectorAccessible, RuntimeException> {
 
     private UdfUtilities udfUtilities;
 
-    protected InterpreterInitVisitor(UdfUtilities udfUtilities) {
+    protected InitVisitor(UdfUtilities udfUtilities) {
       super();
       this.udfUtilities = udfUtilities;
     }
     @Override
-    public LogicalExpression visitFunctionHolderExpression(FunctionHolderExpression holderExpr, RecordBatch incoming) {
+    public LogicalExpression visitFunctionHolderExpression(FunctionHolderExpression holderExpr, VectorAccessible incoming) {
       if (! (holderExpr.getHolder() instanceof DrillSimpleFuncHolder)) {
         throw new UnsupportedOperationException("Only Drill simple UDF can be used in interpreter mode!");
       }
@@ -125,7 +132,7 @@ public class InterpreterEvaluator {
     }
 
     @Override
-    public LogicalExpression visitUnknown(LogicalExpression e, RecordBatch incoming) throws RuntimeException {
+    public LogicalExpression visitUnknown(LogicalExpression e, VectorAccessible incoming) throws RuntimeException {
       for (LogicalExpression child : e) {
         child.accept(this, incoming);
       }
@@ -135,22 +142,18 @@ public class InterpreterEvaluator {
   }
 
 
-  public static class InterEvalVisitor extends AbstractExprVisitor<ValueHolder, Integer, RuntimeException> {
-    private RecordBatch incoming;
+  private static class EvalVisitor extends AbstractExprVisitor<ValueHolder, Integer, RuntimeException> {
+    private VectorAccessible incoming;
     private UdfUtilities udfUtilities;
 
-    protected InterEvalVisitor(RecordBatch incoming, UdfUtilities udfUtilities) {
+    protected EvalVisitor(VectorAccessible incoming, UdfUtilities udfUtilities) {
       super();
       this.incoming = incoming;
       this.udfUtilities = udfUtilities;
     }
 
     public DrillBuf getManagedBufferIfAvailable() {
-      if (incoming != null) {
-        return incoming.getContext().getManagedBuffer();
-      } else {
-        return udfUtilities.getManagedBuffer();
-      }
+      return udfUtilities.getManagedBuffer();
     }
 
 
@@ -341,7 +344,6 @@ public class InterpreterEvaluator {
     private ValueHolder visitBooleanOr(BooleanOperator op, Integer inIndex) {
       ValueHolder [] args = new ValueHolder [op.args.size()];
       boolean hasNull = false;
-      ValueHolder out = null;
       for (int i = 0; i < op.args.size(); i++) {
         args[i] = op.args.get(i).accept(this, inIndex);
 
@@ -362,6 +364,46 @@ public class InterpreterEvaluator {
         return op.getMajorType().getMode() == TypeProtos.DataMode.OPTIONAL? TypeHelper.nullify(ValueHolderHelper.getBitHolder(0)) : ValueHolderHelper.getBitHolder(0);
       }
     }
+
+
+    @Override
+    public ValueHolder visitDateConstant(DateExpression dt, Integer value) throws RuntimeException {
+      DateHolder h = new DateHolder();
+      h.value = dt.getDate();
+      return h;
+    }
+
+    @Override
+    public ValueHolder visitTimeConstant(TimeExpression time, Integer value) throws RuntimeException {
+      TimeHolder t = new TimeHolder();
+      t.value = time.getTime();
+      return t;
+    }
+
+    @Override
+    public ValueHolder visitTimeStampConstant(TimeStampExpression ts, Integer value) throws RuntimeException {
+      TimeStampHolder h = new TimeStampHolder();
+      h.value = ts.getTimeStamp();
+      return h;
+    }
+
+    @Override
+    public ValueHolder visitBooleanConstant(BooleanExpression e, Integer value) throws RuntimeException {
+      BitHolder h = new BitHolder();
+      h.value = e.value ? 1 : 0;
+      return h;
+    }
+
+    @Override
+    public ValueHolder visitNullConstant(TypedNullConstant e, Integer value) throws RuntimeException {
+      return TypeHelper.createValueHolder(e.getMajorType());
+    }
+
+    @Override
+    public ValueHolder visitNullExpression(NullExpression e, Integer value) throws RuntimeException {
+      return TypeHelper.createValueHolder(e.getMajorType());
+    }
+
 
     public enum Trivalent {
       FALSE,

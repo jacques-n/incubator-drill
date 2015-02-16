@@ -24,6 +24,7 @@ import java.util.List;
 import net.hydromatic.optiq.tools.RuleSet;
 
 import org.apache.drill.exec.ops.QueryContext;
+import org.apache.drill.exec.planner.logical.partition.PruneScanRule;
 import org.apache.drill.exec.planner.physical.ConvertCountToDirectScan;
 import org.apache.drill.exec.planner.physical.FilterPrule;
 import org.apache.drill.exec.planner.physical.HashAggPrule;
@@ -106,8 +107,11 @@ public class DrillRuleSets {
 //      PushSortPastProjectRule.INSTANCE, //
 
       DrillPushProjIntoScan.INSTANCE,
-      DrillPushPartitionFilterIntoScan.FILTER_ON_PROJECT,
-      DrillPushPartitionFilterIntoScan.FILTER_ON_SCAN,
+
+//      DrillPushPartitionFilterIntoScan.FILTER_ON_PROJECT,
+//      DrillPushPartitionFilterIntoScan.FILTER_ON_SCAN,
+      PruneScanRule.getFilterOnProject(context),
+      PruneScanRule.getFilterOnScan(context),
 
       ////////////////////////////////
       DrillScanRule.INSTANCE,
@@ -120,7 +124,7 @@ public class DrillRuleSets {
       DrillSortRule.INSTANCE,
       DrillJoinRule.INSTANCE,
       DrillUnionRule.INSTANCE,
-      OptiqForkedConstantReduxRule.createFilterInstance(new DrillConstExecutor(context.getFunctionRegistry(), context.getAllocator(), context)),
+//      OptiqForkedConstantReduxRule.createFilterInstance(new DrillConstExecutor(context.getFunctionRegistry(), context.getAllocator(), context)),
       DrillReduceAggregatesRule.INSTANCE
       ));
     }

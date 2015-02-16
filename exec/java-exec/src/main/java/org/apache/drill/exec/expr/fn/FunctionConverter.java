@@ -264,7 +264,7 @@ public class FunctionConverter {
                                            template.isBinaryCommutative(),
                                            template.isRandom(), registeredNames,
                                            ps, outputField, works, methods, imports, template.costCategory(),
-                                           clazz.getSimpleName() + InterpreterGenerator.INTERPRETER_CLASSNAME_POSTFIX);
+                                           InterpreterGenerator.getInterpName(clazz));
         }
       case SC_BOOLEAN_OPERATOR:
         return new DrillBooleanOPHolder(template.scope(), template.nulls(),

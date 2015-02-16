@@ -28,6 +28,7 @@ import com.sun.codemodel.JMethod;
 import com.sun.codemodel.JMod;
 import com.sun.codemodel.JType;
 import com.sun.codemodel.JVar;
+
 import org.apache.drill.exec.expr.TypeHelper;
 import org.apache.drill.exec.expr.fn.DrillFuncHolder;
 import org.apache.drill.exec.expr.fn.DrillSimpleFuncHolder;
@@ -58,6 +59,15 @@ public class InterpreterGenerator {
     this.holder = holder;
     this.className = className;
     this.genSourceDir = genSourceDir;
+  }
+
+  public static String getInterpName(Class<?> clazz){
+    if(clazz.isMemberClass()){
+      return clazz.getEnclosingClass().getSimpleName() + clazz.getSimpleName() + INTERPRETER_CLASSNAME_POSTFIX;
+    }else{
+      return clazz.getSimpleName() + INTERPRETER_CLASSNAME_POSTFIX;
+    }
+
   }
 
   public void build() throws Exception {

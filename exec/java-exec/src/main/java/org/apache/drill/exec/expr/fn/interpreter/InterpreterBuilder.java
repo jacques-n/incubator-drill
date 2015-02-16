@@ -47,11 +47,12 @@ public class InterpreterBuilder {
 
     int count = 0;
     for (Class<? extends DrillFunc> clazz : providerClasses) {
+
       try {
         DrillFuncHolder holder = converter.getHolder(clazz);
 
         if (holder != null && holder instanceof DrillSimpleFuncHolder) {
-          InterpreterGenerator generator = new InterpreterGenerator((DrillSimpleFuncHolder)holder, clazz.getSimpleName() + InterpreterGenerator.INTERPRETER_CLASSNAME_POSTFIX, targetSrcDir);
+          InterpreterGenerator generator = new InterpreterGenerator((DrillSimpleFuncHolder)holder, InterpreterGenerator.getInterpName(clazz), targetSrcDir);
           generator.build();
           count ++;
         }
