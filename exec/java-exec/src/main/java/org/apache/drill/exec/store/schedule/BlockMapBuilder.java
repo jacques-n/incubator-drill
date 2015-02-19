@@ -21,7 +21,6 @@ package org.apache.drill.exec.store.schedule;
 import java.io.IOException;
 import java.util.Collection;
 import java.util.HashMap;
-import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
@@ -256,14 +255,14 @@ public class BlockMapBuilder {
   private static ImmutableMap<String, DrillbitEndpoint> buildEndpointMap(Collection<DrillbitEndpoint> endpoints) {
     Stopwatch watch = new Stopwatch();
     watch.start();
-    ImmutableMap.Builder<String, DrillbitEndpoint> mapBuilder = ImmutableMap.builder();
+    HashMap<String, DrillbitEndpoint> endpointMap = Maps.newHashMap();
     for (DrillbitEndpoint d : endpoints) {
       String hostName = d.getAddress();
-      mapBuilder.put(hostName, d);
+      endpointMap.put(hostName, d);
     }
     watch.stop();
     logger.debug("Took {} ms to build endpoint map", watch.elapsed(TimeUnit.MILLISECONDS));
-    return mapBuilder.build();
+    return ImmutableMap.copyOf(endpointMap);
   }
 
 }
