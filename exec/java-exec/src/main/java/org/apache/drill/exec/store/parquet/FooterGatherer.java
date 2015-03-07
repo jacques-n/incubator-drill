@@ -28,9 +28,11 @@ import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FSDataInputStream;
 import org.apache.hadoop.fs.FileStatus;
 import org.apache.hadoop.fs.FileSystem;
+import org.apache.hadoop.fs.Path;
 
 import parquet.bytes.BytesUtils;
 import parquet.hadoop.Footer;
+import parquet.hadoop.ParquetFileReader;
 import parquet.hadoop.ParquetFileWriter;
 import parquet.hadoop.metadata.ParquetMetadata;
 
@@ -64,9 +66,22 @@ public class FooterGatherer {
 
   public static List<Footer> getFooters(final Configuration conf, List<FileStatus> statuses, int parallelism) throws IOException {
     final List<TimedRunnable<Footer>> readers = Lists.newArrayList();
+    List<Footer> foundFooters = Lists.newArrayList();
     for(FileStatus status : statuses){
+
+
       if(status.isDirectory()){
+        // first we check for summary file.
         FileSystem fs = status.getPath().getFileSystem(conf);
+
+        final Path summaryPath = new Path(status.getPath(), ParquetFileWriter.PARQUET_METADATA_FILE);
+        if (fs.exists(summaryPath)){
+          FileStatus summaryStatus = fs.getFileStatus(summaryPath);
+          foundFooters.addAll(ParquetFileReader.readSummaryFile(conf, summaryStatus));
+          continue;
+        }
+
+        // else we handle as normal file.
         for(FileStatus inStatus : fs.listStatus(status.getPath())){
           readers.add(new FooterReader(conf, inStatus));
         }
@@ -75,8 +90,11 @@ public class FooterGatherer {
       }
 
     }
+    if(!readers.isEmpty()){
+      foundFooters.addAll(TimedRunnable.run("Fetch Parquet Footers", logger, readers, parallelism));
+    }
 
-    return TimedRunnable.run("Fetch Parquet Footers", logger, readers, parallelism);
+    return foundFooters;
   }
 
 
