@@ -365,6 +365,7 @@ public class Types {
     case "binary":
       return withMode(MinorType.VARBINARY, mode);
     case "json":
+    case "simplejson":
       return withMode(MinorType.LATE, mode);
     default:
       throw new UnsupportedOperationException("Could not determine type: " + typeName);
