@@ -15,26 +15,26 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.drill.exec.store.easy.json;
+package org.apache.drill.exec.vector.complex.fn;
 
-import java.io.IOException;
-import java.io.InputStream;
+import com.fasterxml.jackson.core.io.SerializedString;
 
-import org.apache.drill.exec.vector.complex.writer.BaseWriter;
+public enum ExtendedType {
 
-import com.fasterxml.jackson.databind.JsonNode;
+  BINARY(ExtendedTypeName.BINARY),
+  DATE(ExtendedTypeName.DATE),
+  TIME(ExtendedTypeName.TIME),
+  TIMESTAMP(ExtendedTypeName.TIMESTAMP),
+  INTERVAL(ExtendedTypeName.INTERVAL),
+  INTEGER(ExtendedTypeName.INTEGER),
+  DECIMAL(ExtendedTypeName.DECIMAL);
 
-public interface JsonProcessor {
+  public final SerializedString serialized;
 
-  public static enum ReadState {
-    END_OF_STREAM,
-    WRITE_SUCCEED
+  ExtendedType(String name) {
+    this.serialized = new SerializedString(name);
   }
 
-  ReadState write(BaseWriter.ComplexWriter writer) throws IOException;
 
-  void setSource(InputStream is) throws IOException;
-  void setSource(JsonNode node);
 
-  void ensureAtLeastOneField(BaseWriter.ComplexWriter writer);
 }
