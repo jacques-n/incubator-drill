@@ -39,6 +39,7 @@ import org.apache.drill.exec.planner.physical.ScreenPrule;
 import org.apache.drill.exec.planner.physical.SortConvertPrule;
 import org.apache.drill.exec.planner.physical.SortPrule;
 import org.apache.drill.exec.planner.physical.StreamAggPrule;
+import org.apache.drill.exec.planner.physical.ValuesPrule;
 import org.apache.drill.exec.planner.physical.WindowPrule;
 import org.apache.drill.exec.planner.physical.UnionAllPrule;
 import org.apache.drill.exec.planner.physical.WriterPrule;
@@ -89,6 +90,7 @@ public class DrillRuleSets {
       DrillMergeProjectRule.getInstance(true, RelFactories.DEFAULT_PROJECT_FACTORY, context.getFunctionRegistry()),
       RemoveDistinctAggregateRule.INSTANCE, //
       // ReduceAggregatesRule.INSTANCE, // replaced by DrillReduceAggregatesRule
+      DrillValuesRule.INSTANCE,
 
       /*
       Projection push-down related rules
@@ -150,7 +152,7 @@ public class DrillRuleSets {
     ruleList.add(WindowPrule.INSTANCE);
     ruleList.add(PushLimitToTopN.INSTANCE);
     ruleList.add(UnionAllPrule.INSTANCE);
-
+    ruleList.add(ValuesPrule.INSTANCE);
 
 
     // ruleList.add(UnionDistinctPrule.INSTANCE);
