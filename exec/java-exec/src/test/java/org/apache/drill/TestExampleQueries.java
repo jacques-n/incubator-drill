@@ -30,6 +30,11 @@ import org.junit.Test;
 public class TestExampleQueries extends BaseTestQuery{
   static final org.slf4j.Logger logger = org.slf4j.LoggerFactory.getLogger(TestExampleQueries.class);
 
+  @Test
+  public void q() throws Exception {
+    test("select count(*) from dfs.`/drill/SF10/lineitem` where 1 = 1");
+  }
+
   @Test // see DRILL-2328
   public void testConcatOnNull() throws Exception {
     try {
