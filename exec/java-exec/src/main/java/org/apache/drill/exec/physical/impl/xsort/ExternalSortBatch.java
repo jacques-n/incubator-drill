@@ -321,7 +321,9 @@ public class ExternalSortBatch extends AbstractRecordBatch<ExternalSort> {
               // since the last spill exceed the defined limit
               (batchGroups.size() > SPILL_THRESHOLD && batchesSinceLastSpill >= SPILL_BATCH_GROUP_SIZE)) {
 
-            firstSpillBatchCount = batchGroups.size();
+            if (firstSpillBatchCount == 0) {
+              firstSpillBatchCount = batchGroups.size();
+            }
 
             if (spilledBatchGroups.size() > firstSpillBatchCount / 2) {
               logger.info("Merging spills");
