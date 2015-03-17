@@ -320,10 +320,11 @@ public class ExternalSortBatch extends AbstractRecordBatch<ExternalSort> {
               // since the last spill exceed the defined limit
               (batchGroups.size() > SPILL_THRESHOLD && batchesSinceLastSpill >= SPILL_BATCH_GROUP_SIZE)) {
 
-            if (spilledBatchGroups.size() > batchGroups.size()) {
+            if (spilledBatchGroups.size() > batchGroups.size() / 2) {
+              logger.info("Merging spills");
               spilledBatchGroups.addFirst(mergeAndSpill(spilledBatchGroups));
             }
-            spilledBatchGroups.addFirst(mergeAndSpill(batchGroups));
+            spilledBatchGroups.add(mergeAndSpill(batchGroups));
             batchesSinceLastSpill = 0;
           }
           long t = w.elapsed(TimeUnit.MICROSECONDS);
@@ -332,7 +333,7 @@ public class ExternalSortBatch extends AbstractRecordBatch<ExternalSort> {
         case OUT_OF_MEMORY:
           highWaterMark = totalSizeInMemory;
           if (batchesSinceLastSpill > 2) {
-            spilledBatchGroups.addFirst(mergeAndSpill(spilledBatchGroups));
+            spilledBatchGroups.add(mergeAndSpill(spilledBatchGroups));
           }
           batchesSinceLastSpill = 0;
           break;
@@ -368,7 +369,7 @@ public class ExternalSortBatch extends AbstractRecordBatch<ExternalSort> {
 //        logger.debug("Took {} us to sort {} records", t, sv4.getTotalCount());
         container.buildSchema(SelectionVectorMode.FOUR_BYTE);
       } else {
-        spilledBatchGroups.addFirst(mergeAndSpill(batchGroups));
+        spilledBatchGroups.add(mergeAndSpill(batchGroups));
         batchGroups.addAll(spilledBatchGroups);
         logger.warn("Starting to merge. {} batch groups. Current allocated memory: {}", batchGroups.size(), oContext.getAllocator().getAllocatedMemory());
         VectorContainer hyperBatch = constructHyperBatch(batchGroups);
@@ -410,11 +411,15 @@ public class ExternalSortBatch extends AbstractRecordBatch<ExternalSort> {
   }
 
   public BatchGroup mergeAndSpill(LinkedList<BatchGroup> batchGroups) throws SchemaChangeException {
+    return mergeAndSpill(batchGroups, false);
+  }
+
+  public BatchGroup mergeAndSpill(LinkedList<BatchGroup> batchGroups, boolean remerge) throws SchemaChangeException {
     logger.debug("Copier allocator current allocation {}", copierAllocator.getAllocatedMemory());
     VectorContainer outputContainer = new VectorContainer();
     List<BatchGroup> batchGroupList = Lists.newArrayList();
     int batchCount = batchGroups.size();
-    for (int i = 0; i < batchCount / 2; i++) {
+    for (int i = 0; i < batchCount / 2 || (remerge && i < 10); i++) {
       if (batchGroups.size() == 0) {
         break;
       }
