@@ -333,7 +333,7 @@ public class ExternalSortBatch extends AbstractRecordBatch<ExternalSort> {
         case OUT_OF_MEMORY:
           highWaterMark = totalSizeInMemory;
           if (batchesSinceLastSpill > 2) {
-            spilledBatchGroups.add(mergeAndSpill(spilledBatchGroups));
+            spilledBatchGroups.add(mergeAndSpill(batchGroups));
           }
           batchesSinceLastSpill = 0;
           break;
