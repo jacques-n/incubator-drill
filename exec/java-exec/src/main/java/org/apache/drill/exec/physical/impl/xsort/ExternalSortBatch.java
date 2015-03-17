@@ -110,6 +110,7 @@ public class ExternalSortBatch extends AbstractRecordBatch<ExternalSort> {
   private long totalSizeInMemory = 0;
   private long highWaterMark = Long.MAX_VALUE;
   private int targetRecordCount;
+  private int firstSpillBatchCount = 0;
 
   public ExternalSortBatch(ExternalSort popConfig, FragmentContext context, RecordBatch incoming) throws OutOfMemoryException {
     super(popConfig, context, true);
@@ -320,9 +321,11 @@ public class ExternalSortBatch extends AbstractRecordBatch<ExternalSort> {
               // since the last spill exceed the defined limit
               (batchGroups.size() > SPILL_THRESHOLD && batchesSinceLastSpill >= SPILL_BATCH_GROUP_SIZE)) {
 
-            if (spilledBatchGroups.size() > batchGroups.size() / 2) {
+            firstSpillBatchCount = batchGroups.size();
+
+            if (spilledBatchGroups.size() > firstSpillBatchCount / 2) {
               logger.info("Merging spills");
-              spilledBatchGroups.addFirst(mergeAndSpill(spilledBatchGroups));
+              spilledBatchGroups.addFirst(mergeAndSpill(spilledBatchGroups, true));
             }
             spilledBatchGroups.add(mergeAndSpill(batchGroups));
             batchesSinceLastSpill = 0;
