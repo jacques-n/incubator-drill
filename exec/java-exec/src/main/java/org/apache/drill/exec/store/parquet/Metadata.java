@@ -21,73 +21,101 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.core.JsonFactory;
 import com.fasterxml.jackson.core.JsonGenerator.Feature;
 import com.fasterxml.jackson.core.JsonParser;
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.ObjectReader;
 import com.google.common.collect.Lists;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.BlockLocation;
+import org.apache.hadoop.fs.FSDataInputStream;
+import org.apache.hadoop.fs.FSDataOutputStream;
 import org.apache.hadoop.fs.FileStatus;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
+import org.apache.hadoop.mapred.Utils;
+import org.apache.hadoop.mapred.Utils.OutputFileUtils.OutputFilesFilter;
 import parquet.hadoop.Footer;
 import parquet.hadoop.ParquetFileReader;
 import parquet.hadoop.ParquetFileWriter;
 
 import java.io.FileInputStream;
+import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 public class Metadata {
 
-  private static Configuration conf = new Configuration();
-  private static FileSystem fs;
-  private static final String PATH = "/drill/tpchmulti/lineitem/";
-
   public static void main(String[] args) throws IOException {
-//    createMeta(PATH);
-    createBlockMeta(PATH);
-  }
 
-  public static void createMeta(String path) throws IOException {
-    if (fs == null) {
-      fs = FileSystem.get(conf);
+    String path = "/drill/tpchmulti/lineitem/";
+
+    Configuration conf = new Configuration();
+    conf.set("fs.default.name", "file:///");
+    FileSystem fs = FileSystem.get(conf);
+//    createMeta(conf, fs, path);
+    Map<String,List<BlockLocation>> m = readBlockMeta(fs, path + "/.drill.blocks");
+    for (String s : m.keySet()) {
+      System.out.println(s);
     }
-    FileStatus fileStatus = fs.getFileStatus(new Path(path));
-    List<Footer> footers = ParquetFileReader.readAllFootersInParallel(conf, fileStatus);
-
-    ParquetFileWriter.writeMetadataFile(conf, new Path(path), footers);
   }
 
-  public static void createBlockMeta(String path) throws IOException {
+  public static void createMeta(Configuration conf, FileSystem fs, String path) throws IOException {
     if (fs == null) {
       fs = FileSystem.get(conf);
     }
     Path p = new Path(path);
     FileStatus fileStatus = fs.getFileStatus(p);
-    assert fileStatus.isDirectory() : "Must select a directory";
+    List<FileStatus> fileStatuses = getFileStatuses(fs, fileStatus);
+    List<Footer> footers = ParquetFileReader.readAllFootersInParallel(conf, fileStatuses);
+
+    ParquetFileWriter.writeMetadataFile(conf, p, footers);
+    createBlockMeta(fs, fileStatuses, p);
+  }
+
+  private static List<FileStatus> getFileStatuses(FileSystem fs, FileStatus fileStatus) throws IOException {
+    List<FileStatus> statuses = Lists.newArrayList();
+    if (fileStatus.isDirectory()) {
+      for (FileStatus child : fs.listStatus(fileStatus.getPath(), new OutputFilesFilter())) {
+        statuses.addAll(getFileStatuses(fs, child));
+      }
+    } else {
+      statuses.add(fileStatus);
+    }
+    return statuses;
+  }
+
+  public static void createBlockMeta(FileSystem fs, List<FileStatus> files, Path p) throws IOException {
     List<FileBlockLocations> fileBlockLocationsList = Lists.newArrayList();
-    for (FileStatus file : fs.listStatus(p)) {
-      BlockLocation[] blockLocations = fs.getFileBlockLocations(fileStatus, 0, fileStatus.getLen());
-      fileBlockLocationsList.add(new FileBlockLocations(file.getPath().toString(), Arrays.asList(blockLocations)));
+    for (FileStatus file : files) {
+      BlockLocation[] blockLocations = fs.getFileBlockLocations(file, 0, file.getLen());
+      fileBlockLocationsList.add(new FileBlockLocations(Path.getPathWithoutSchemeAndAuthority(file.getPath()).toString(), Arrays.asList(blockLocations)));
     }
 
     JsonFactory jsonFactory = new JsonFactory();
     jsonFactory.configure(Feature.AUTO_CLOSE_TARGET, false);
     jsonFactory.configure(JsonParser.Feature.AUTO_CLOSE_SOURCE, false);
     ObjectMapper mapper = new ObjectMapper(jsonFactory);
-    FileOutputStream os = new FileOutputStream("/tmp/blocks");
-//    for (FileBlockLocations fileBlockLocations : fileBlockLocationsList) {
-//      mapper.writeValue(os, fileBlockLocations);
-//    }
+    FSDataOutputStream os = fs.create(new Path(p, ".drill.blocks"));
     mapper.writeValue(os, fileBlockLocationsList);
     os.flush();
     os.close();
+  }
 
-    FileInputStream is = new FileInputStream("/tmp/blocks");
-    List<FileBlockLocations> locations = mapper.readValue(is, List.class);
-    System.out.println(locations);
+  public static Map<String,List<BlockLocation>> readBlockMeta(FileSystem fs, String path) throws IOException {
+    Path p = new Path(path);
+    ObjectMapper mapper = new ObjectMapper();
+    FSDataInputStream is = fs.open(p);
+    List<FileBlockLocations> fileBlockLocationsList = mapper.readValue(is, new TypeReference<List<FileBlockLocations>>(){});
+    Map<String,List<BlockLocation>> map = new HashMap();
+    for (FileBlockLocations fileBlockLocations : fileBlockLocationsList) {
+      map.put(fileBlockLocations.path, fileBlockLocations.blockLocations);
+    }
+    return map;
   }
 
   public static class FileBlockLocations {
