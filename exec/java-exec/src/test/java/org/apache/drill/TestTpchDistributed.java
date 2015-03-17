@@ -40,6 +40,11 @@ public class TestTpchDistributed extends BaseTestQuery{
   }
 
   @Test
+  public void testB() throws Exception {
+    test("REFRESH TABLE METADATA dfs.`/src/data/tpchsf10/lineitem/`");
+  }
+
+  @Test
   public void tpch03() throws Exception{
     testDistributed("queries/tpch/03.sql");
   }
