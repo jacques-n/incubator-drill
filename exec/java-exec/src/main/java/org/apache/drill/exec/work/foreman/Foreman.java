@@ -26,8 +26,6 @@ import java.util.List;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 
-import com.google.common.base.Preconditions;
-
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.apache.drill.common.config.DrillConfig;
 import org.apache.drill.common.exceptions.ExecutionSetupException;
@@ -79,6 +77,7 @@ import org.apache.drill.exec.work.fragment.FragmentExecutor;
 import org.apache.drill.exec.work.fragment.RootFragmentManager;
 import org.codehaus.jackson.map.ObjectMapper;
 
+import com.google.common.base.Preconditions;
 import com.google.common.collect.ArrayListMultimap;
 import com.google.common.collect.Multimap;
 
@@ -117,6 +116,7 @@ public class Foreman implements Runnable {
 
   private final CountDownLatch acceptExternalEvents = new CountDownLatch(1); // gates acceptance of external events
   private final StateListener stateListener = new StateListener(); // source of external events
+  private final CountDownLatch executionCompleted = new CountDownLatch(1); // gates termination of foreman
   private final ResponseSendListener responseListener = new ResponseSendListener();
   private final ForemanResult foremanResult = new ForemanResult();
 
@@ -240,15 +240,22 @@ public class Foreman implements Runnable {
        */
       acceptExternalEvents.countDown();
 
+      /*
+       * Wait until the query has achieved a terminal state before exiting foreman thread.
+       */
+      try {
+        this.executionCompleted.await();
+      } catch (InterruptedException e) {
+        // this thread is terminating after this call, interruptions not matter.
+        logger.warn("Foreman interrupted while waiting to complete.", e);
+      }
+
+
       // restore the thread's original name
       currentThread.setName(originalName);
     }
 
-    /*
-     * Note that despite the run() completing, the Foreman continues to exist, and receives
-     * events (indirectly, through the QueryManager's use of stateListener), about fragment
-     * completions. It won't go away until everything is completed, failed, or cancelled.
-     */
+
   }
 
   private void releaseLease() {
@@ -638,6 +645,8 @@ public class Foreman implements Runnable {
       } finally {
         isClosed = true;
       }
+
+      executionCompleted.countDown();
     }
   }
 
