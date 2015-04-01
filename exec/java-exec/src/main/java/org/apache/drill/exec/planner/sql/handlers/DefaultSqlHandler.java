@@ -180,7 +180,7 @@ public class DefaultSqlHandler extends AbstractSqlHandler {
      * throw SqlUnsupportedException if there is
      */
 
-     PreProcessLogicalRel visitor = PreProcessLogicalRel.createVisitor(planner.getTypeFactory(), context.getDrillOperatorTable());
+     PreProcessLogicalRel visitor = new PreProcessLogicalRel(planner.getTypeFactory(), context.getDrillOperatorTable());
      try {
         rel = rel.accept(visitor);
      } catch(UnsupportedOperationException ex) {

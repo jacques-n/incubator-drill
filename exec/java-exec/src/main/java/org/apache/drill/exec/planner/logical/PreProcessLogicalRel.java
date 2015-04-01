@@ -55,11 +55,7 @@ public class PreProcessLogicalRel extends RelShuttleImpl {
   private DrillOperatorTable table;
   private UnsupportedOperatorCollector unsupportedOperatorCollector;
 
-  public static PreProcessLogicalRel createVisitor(RelDataTypeFactory factory, DrillOperatorTable table) {
-    return new PreProcessLogicalRel(factory, table);
-  }
-
-  private PreProcessLogicalRel(RelDataTypeFactory factory, DrillOperatorTable table) {
+  public PreProcessLogicalRel(RelDataTypeFactory factory, DrillOperatorTable table) {
     super();
     this.factory = factory;
     this.table = table;
