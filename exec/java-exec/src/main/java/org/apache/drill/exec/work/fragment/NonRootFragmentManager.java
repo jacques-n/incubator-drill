@@ -45,7 +45,7 @@ public class NonRootFragmentManager implements FragmentManager {
   private volatile FragmentExecutor runner;
   private volatile boolean cancel = false;
   private final FragmentContext context;
-  private List<RemoteConnection> connections = new CopyOnWriteArrayList<>();
+  private final List<RemoteConnection> connections = new CopyOnWriteArrayList<>();
 
   public NonRootFragmentManager(final PlanFragment fragment, final DrillbitContext context)
       throws ExecutionSetupException {
@@ -66,7 +66,7 @@ public class NonRootFragmentManager implements FragmentManager {
    * @see org.apache.drill.exec.work.fragment.FragmentHandler#handle(org.apache.drill.exec.rpc.RemoteConnection.ConnectionThrottle, org.apache.drill.exec.record.RawFragmentBatch)
    */
   @Override
-  public boolean handle(RawFragmentBatch batch) throws FragmentSetupException, IOException {
+  public boolean handle(final RawFragmentBatch batch) throws FragmentSetupException, IOException {
     return buffers.batchArrived(batch);
   }
 
@@ -86,6 +86,13 @@ public class NonRootFragmentManager implements FragmentManager {
       return runner;
     }
 
+  }
+
+  @Override
+  public void receivingFragmentFinished(final FragmentHandle handle) {
+    if (runner != null) {
+      runner.receivingFragmentFinished(handle);
+    }
   }
 
   /* (non-Javadoc)
@@ -117,13 +124,13 @@ public class NonRootFragmentManager implements FragmentManager {
   }
 
   @Override
-  public void addConnection(RemoteConnection connection) {
+  public void addConnection(final RemoteConnection connection) {
     connections.add(connection);
   }
 
   @Override
-  public void setAutoRead(boolean autoRead) {
-    for (RemoteConnection c : connections) {
+  public void setAutoRead(final boolean autoRead) {
+    for (final RemoteConnection c : connections) {
       c.setAutoRead(autoRead);
     }
   }

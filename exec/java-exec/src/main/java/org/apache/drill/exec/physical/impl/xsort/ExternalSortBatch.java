@@ -94,27 +94,27 @@ public class ExternalSortBatch extends AbstractRecordBatch<ExternalSort> {
   private SortRecordBatchBuilder builder;
   private MSorter mSorter;
   private PriorityQueueCopier copier;
-  private LinkedList<BatchGroup> batchGroups = Lists.newLinkedList();
-  private LinkedList<BatchGroup> spilledBatchGroups = Lists.newLinkedList();
+  private final LinkedList<BatchGroup> batchGroups = Lists.newLinkedList();
+  private final LinkedList<BatchGroup> spilledBatchGroups = Lists.newLinkedList();
   private SelectionVector4 sv4;
   private FileSystem fs;
   private int spillCount = 0;
   private int batchesSinceLastSpill = 0;
-  private long uid;//used for spill files to ensure multiple sorts within same fragment don't clobber each others' files
+  private final long uid;//used for spill files to ensure multiple sorts within same fragment don't clobber each others' files
   private boolean first = true;
   private long totalSizeInMemory = 0;
   private long highWaterMark = Long.MAX_VALUE;
   private int targetRecordCount;
 
-  public ExternalSortBatch(ExternalSort popConfig, FragmentContext context, RecordBatch incoming) throws OutOfMemoryException {
+  public ExternalSortBatch(final ExternalSort popConfig, final FragmentContext context, final RecordBatch incoming) throws OutOfMemoryException {
     super(popConfig, context, true);
     this.incoming = incoming;
-    DrillConfig config = context.getConfig();
-    Configuration conf = new Configuration();
+    final DrillConfig config = context.getConfig();
+    final Configuration conf = new Configuration();
     conf.set("fs.default.name", config.getString(ExecConstants.EXTERNAL_SORT_SPILL_FILESYSTEM));
     try {
       this.fs = FileSystem.get(conf);
-    } catch (IOException e) {
+    } catch (final IOException e) {
       throw new RuntimeException(e);
     }
     SPILL_BATCH_GROUP_SIZE = config.getInt(ExecConstants.EXTERNAL_SORT_SPILL_GROUP_SIZE);
@@ -142,10 +142,10 @@ public class ExternalSortBatch extends AbstractRecordBatch<ExternalSort> {
   @Override
   public void cleanup() {
     if (batchGroups != null) {
-      for (BatchGroup group: batchGroups) {
+      for (final BatchGroup group: batchGroups) {
         try {
           group.cleanup();
-        } catch (IOException e) {
+        } catch (final IOException e) {
           throw new RuntimeException(e);
         }
       }
@@ -165,12 +165,12 @@ public class ExternalSortBatch extends AbstractRecordBatch<ExternalSort> {
   }
 
   public void buildSchema() throws SchemaChangeException {
-    IterOutcome outcome = next(incoming);
+    final IterOutcome outcome = next(incoming);
     switch (outcome) {
       case OK:
       case OK_NEW_SCHEMA:
-        for (VectorWrapper w : incoming) {
-          ValueVector v = container.addOrGet(w.getField());
+        for (final VectorWrapper w : incoming) {
+          final ValueVector v = container.addOrGet(w.getField());
           if (v instanceof AbstractContainerVector) {
             w.getValueVector().makeTransferPair(v); // Can we remove this hack?
             v.clear();
@@ -194,11 +194,11 @@ public class ExternalSortBatch extends AbstractRecordBatch<ExternalSort> {
       if (spillCount == 0) {
         return (getSelectionVector4().next()) ? IterOutcome.OK : IterOutcome.NONE;
       } else {
-        Stopwatch w = new Stopwatch();
+        final Stopwatch w = new Stopwatch();
         w.start();
-        int count = copier.next(targetRecordCount);
+        final int count = copier.next(targetRecordCount);
         if (count > 0) {
-          long t = w.elapsed(TimeUnit.MICROSECONDS);
+          final long t = w.elapsed(TimeUnit.MICROSECONDS);
           logger.debug("Took {} us to merge {} records", t, count);
           container.setRecordCount(count);
           return IterOutcome.OK;
@@ -214,7 +214,7 @@ public class ExternalSortBatch extends AbstractRecordBatch<ExternalSort> {
     try{
       container.clear();
       outer: while (true) {
-        Stopwatch watch = new Stopwatch();
+        final Stopwatch watch = new Stopwatch();
         watch.start();
         IterOutcome upstream;
         if (first) {
@@ -251,7 +251,7 @@ public class ExternalSortBatch extends AbstractRecordBatch<ExternalSort> {
             first = false;
           }
           if (incoming.getRecordCount() == 0) {
-            for (VectorWrapper w : incoming) {
+            for (final VectorWrapper w : incoming) {
               w.clear();
             }
             break;
@@ -266,21 +266,21 @@ public class ExternalSortBatch extends AbstractRecordBatch<ExternalSort> {
           } else {
             try {
               sv2 = newSV2();
-            } catch (OutOfMemoryException e) {
+            } catch (final OutOfMemoryException e) {
               throw new RuntimeException(e);
             }
           }
-          int count = sv2.getCount();
+          final int count = sv2.getCount();
           totalCount += count;
 //          if (count == 0) {
 //            break outer;
 //          }
           sorter.setup(context, sv2, incoming);
-          Stopwatch w = new Stopwatch();
+          final Stopwatch w = new Stopwatch();
           w.start();
           sorter.sort(sv2);
 //          logger.debug("Took {} us to sort {} records", w.elapsed(TimeUnit.MICROSECONDS), count);
-          RecordBatchData rbd = new RecordBatchData(incoming);
+          final RecordBatchData rbd = new RecordBatchData(incoming);
           if (incoming.getSchema().getSelectionVectorMode() == SelectionVectorMode.NONE) {
             rbd.setSv2(sv2);
           }
@@ -301,7 +301,7 @@ public class ExternalSortBatch extends AbstractRecordBatch<ExternalSort> {
             mergeAndSpill();
             batchesSinceLastSpill = 0;
           }
-          long t = w.elapsed(TimeUnit.MICROSECONDS);
+          final long t = w.elapsed(TimeUnit.MICROSECONDS);
 //          logger.debug("Took {} us to sort {} records", t, count);
           break;
         case OUT_OF_MEMORY:
@@ -320,13 +320,13 @@ public class ExternalSortBatch extends AbstractRecordBatch<ExternalSort> {
         return IterOutcome.NONE;
       }
       if (spillCount == 0) {
-        Stopwatch watch = new Stopwatch();
+        final Stopwatch watch = new Stopwatch();
         watch.start();
 
         builder = new SortRecordBatchBuilder(oContext.getAllocator(), MAX_SORT_BYTES);
 
-        for (BatchGroup group : batchGroups) {
-          RecordBatchData rbd = new RecordBatchData(group.getContainer());
+        for (final BatchGroup group : batchGroups) {
+          final RecordBatchData rbd = new RecordBatchData(group.getContainer());
           rbd.setSv2(group.getSv2());
           builder.add(rbd);
         }
@@ -337,28 +337,32 @@ public class ExternalSortBatch extends AbstractRecordBatch<ExternalSort> {
         mSorter.setup(context, oContext.getAllocator(), getSelectionVector4(), this.container);
         mSorter.sort(this.container);
 
+        // sort may have prematurely exited due to should continue returning false.
+        if (!context.shouldContinue()) {
+          return IterOutcome.STOP;
+        }
         sv4 = mSorter.getSV4();
 
-        long t = watch.elapsed(TimeUnit.MICROSECONDS);
+        final long t = watch.elapsed(TimeUnit.MICROSECONDS);
 //        logger.debug("Took {} us to sort {} records", t, sv4.getTotalCount());
         container.buildSchema(SelectionVectorMode.FOUR_BYTE);
       } else {
         mergeAndSpill();
         batchGroups.addAll(spilledBatchGroups);
         logger.warn("Starting to merge. {} batch groups. Current allocated memory: {}", batchGroups.size(), oContext.getAllocator().getAllocatedMemory());
-        VectorContainer hyperBatch = constructHyperBatch(batchGroups);
+        final VectorContainer hyperBatch = constructHyperBatch(batchGroups);
         createCopier(hyperBatch, batchGroups, container);
 
         int estimatedRecordSize = 0;
-        for (VectorWrapper w : batchGroups.get(0)) {
+        for (final VectorWrapper w : batchGroups.get(0)) {
           try {
             estimatedRecordSize += TypeHelper.getSize(w.getField().getType());
-          } catch (UnsupportedOperationException e) {
+          } catch (final UnsupportedOperationException e) {
             estimatedRecordSize += 50;
           }
         }
         targetRecordCount = Math.min(MAX_BATCH_SIZE, Math.max(1, 250 * 1000 / estimatedRecordSize));
-        int count = copier.next(targetRecordCount);
+        final int count = copier.next(targetRecordCount);
         container.buildSchema(SelectionVectorMode.NONE);
         container.setRecordCount(count);
       }
@@ -370,15 +374,15 @@ public class ExternalSortBatch extends AbstractRecordBatch<ExternalSort> {
       logger.error("Failure during query", ex);
       context.fail(ex);
       return IterOutcome.STOP;
-    } catch (UnsupportedOperationException e) {
+    } catch (final UnsupportedOperationException e) {
       throw new RuntimeException(e);
     }
   }
 
-  private boolean hasMemoryForInMemorySort(int currentRecordCount) {
-    long currentlyAvailable =  popConfig.getMaxAllocation() - oContext.getAllocator().getAllocatedMemory();
+  private boolean hasMemoryForInMemorySort(final int currentRecordCount) {
+    final long currentlyAvailable =  popConfig.getMaxAllocation() - oContext.getAllocator().getAllocatedMemory();
 
-    long neededForInMemorySort = SortRecordBatchBuilder.memoryNeeded(currentRecordCount) +
+    final long neededForInMemorySort = SortRecordBatchBuilder.memoryNeeded(currentRecordCount) +
         MSortTemplate.memoryNeeded(currentRecordCount);
 
     return currentlyAvailable > neededForInMemorySort;
@@ -386,9 +390,9 @@ public class ExternalSortBatch extends AbstractRecordBatch<ExternalSort> {
 
   public void mergeAndSpill() throws SchemaChangeException {
     logger.debug("Copier allocator current allocation {}", copierAllocator.getAllocatedMemory());
-    VectorContainer outputContainer = new VectorContainer();
-    List<BatchGroup> batchGroupList = Lists.newArrayList();
-    int batchCount = batchGroups.size();
+    final VectorContainer outputContainer = new VectorContainer();
+    final List<BatchGroup> batchGroupList = Lists.newArrayList();
+    final int batchCount = batchGroups.size();
     for (int i = 0; i < batchCount / 2; i++) {
       if (batchGroups.size() == 0) {
         break;
@@ -396,35 +400,35 @@ public class ExternalSortBatch extends AbstractRecordBatch<ExternalSort> {
       if (batchGroups.peekLast().getSv2() == null) {
         break;
       }
-      BatchGroup batch = batchGroups.pollLast();
+      final BatchGroup batch = batchGroups.pollLast();
       batchGroupList.add(batch);
-      long bufferSize = getBufferSize(batch);
+      final long bufferSize = getBufferSize(batch);
       totalSizeInMemory -= bufferSize;
     }
     if (batchGroupList.size() == 0) {
       return;
     }
     int estimatedRecordSize = 0;
-    for (VectorWrapper w : batchGroups.get(0)) {
+    for (final VectorWrapper w : batchGroups.get(0)) {
       try {
         estimatedRecordSize += TypeHelper.getSize(w.getField().getType());
-      } catch (UnsupportedOperationException e) {
+      } catch (final UnsupportedOperationException e) {
         estimatedRecordSize += 50;
       }
     }
-    int targetRecordCount = Math.max(1, 250 * 1000 / estimatedRecordSize);
-    VectorContainer hyperBatch = constructHyperBatch(batchGroupList);
+    final int targetRecordCount = Math.max(1, 250 * 1000 / estimatedRecordSize);
+    final VectorContainer hyperBatch = constructHyperBatch(batchGroupList);
     createCopier(hyperBatch, batchGroupList, outputContainer);
 
     int count = copier.next(targetRecordCount);
     assert count > 0;
 
-    VectorContainer c1 = VectorContainer.getTransferClone(outputContainer);
+    final VectorContainer c1 = VectorContainer.getTransferClone(outputContainer);
     c1.buildSchema(BatchSchema.SelectionVectorMode.NONE);
     c1.setRecordCount(count);
 
-    String outputFile = String.format(Utilities.getFileNameForQueryFragment(context, dirs.next(), "spill" + uid + "_" + spillCount++));
-    BatchGroup newGroup = new BatchGroup(c1, fs, outputFile, oContext.getAllocator());
+    final String outputFile = String.format(Utilities.getFileNameForQueryFragment(context, dirs.next(), "spill" + uid + "_" + spillCount++));
+    final BatchGroup newGroup = new BatchGroup(c1, fs, outputFile, oContext.getAllocator());
 
     try {
       while ((count = copier.next(targetRecordCount)) > 0) {
@@ -434,21 +438,21 @@ public class ExternalSortBatch extends AbstractRecordBatch<ExternalSort> {
       }
       newGroup.closeOutputStream();
       spilledBatchGroups.add(newGroup);
-      for (BatchGroup group : batchGroupList) {
+      for (final BatchGroup group : batchGroupList) {
         group.cleanup();
       }
       hyperBatch.clear();
-    } catch (IOException e) {
+    } catch (final IOException e) {
       throw new RuntimeException(e);
     }
     takeOwnership(c1);
     totalSizeInMemory += getBufferSize(c1);
   }
 
-  private void takeOwnership(VectorAccessible batch) {
-    for (VectorWrapper w : batch) {
-      DrillBuf[] bufs = w.getValueVector().getBuffers(false);
-      for (DrillBuf buf : bufs) {
+  private void takeOwnership(final VectorAccessible batch) {
+    for (final VectorWrapper w : batch) {
+      final DrillBuf[] bufs = w.getValueVector().getBuffers(false);
+      for (final DrillBuf buf : bufs) {
         if (buf.isRootBuffer()) {
           oContext.getAllocator().takeOwnership(buf);
         }
@@ -456,11 +460,11 @@ public class ExternalSortBatch extends AbstractRecordBatch<ExternalSort> {
     }
   }
 
-  private long getBufferSize(VectorAccessible batch) {
+  private long getBufferSize(final VectorAccessible batch) {
     long size = 0;
-    for (VectorWrapper w : batch) {
-      DrillBuf[] bufs = w.getValueVector().getBuffers(false);
-      for (DrillBuf buf : bufs) {
+    for (final VectorWrapper w : batch) {
+      final DrillBuf[] bufs = w.getValueVector().getBuffers(false);
+      for (final DrillBuf buf : bufs) {
         if (buf.isRootBuffer()) {
           size += buf.capacity();
         }
@@ -470,11 +474,11 @@ public class ExternalSortBatch extends AbstractRecordBatch<ExternalSort> {
   }
 
   private SelectionVector2 newSV2() throws OutOfMemoryException {
-    SelectionVector2 sv2 = new SelectionVector2(oContext.getAllocator());
+    final SelectionVector2 sv2 = new SelectionVector2(oContext.getAllocator());
     if (!sv2.allocateNew(incoming.getRecordCount())) {
       try {
         mergeAndSpill();
-      } catch (SchemaChangeException e) {
+      } catch (final SchemaChangeException e) {
         throw new RuntimeException();
       }
       batchesSinceLastSpill = 0;
@@ -482,7 +486,7 @@ public class ExternalSortBatch extends AbstractRecordBatch<ExternalSort> {
       while (true) {
         try {
           Thread.sleep(waitTime * 1000);
-        } catch (InterruptedException e) {
+        } catch (final InterruptedException e) {
           throw new OutOfMemoryException(e);
         }
         waitTime *= 2;
@@ -501,12 +505,12 @@ public class ExternalSortBatch extends AbstractRecordBatch<ExternalSort> {
     return sv2;
   }
 
-  private VectorContainer constructHyperBatch(List<BatchGroup> batchGroupList) {
-    VectorContainer cont = new VectorContainer();
-    for (MaterializedField field : schema) {
-      ValueVector[] vectors = new ValueVector[batchGroupList.size()];
+  private VectorContainer constructHyperBatch(final List<BatchGroup> batchGroupList) {
+    final VectorContainer cont = new VectorContainer();
+    for (final MaterializedField field : schema) {
+      final ValueVector[] vectors = new ValueVector[batchGroupList.size()];
       int i = 0;
-      for (BatchGroup group : batchGroupList) {
+      for (final BatchGroup group : batchGroupList) {
         vectors[i++] = group.getValueAccessorById(
             field.getValueClass(),
             group.getValueVectorId(field.getPath()).getFieldIds())
@@ -522,31 +526,31 @@ public class ExternalSortBatch extends AbstractRecordBatch<ExternalSort> {
     return createNewMSorter(this.context, this.popConfig.getOrderings(), this, MAIN_MAPPING, LEFT_MAPPING, RIGHT_MAPPING);
   }
 
-  private MSorter createNewMSorter(FragmentContext context, List<Ordering> orderings, VectorAccessible batch, MappingSet mainMapping, MappingSet leftMapping, MappingSet rightMapping)
+  private MSorter createNewMSorter(final FragmentContext context, final List<Ordering> orderings, final VectorAccessible batch, final MappingSet mainMapping, final MappingSet leftMapping, final MappingSet rightMapping)
           throws ClassTransformationException, IOException, SchemaChangeException{
-    CodeGenerator<MSorter> cg = CodeGenerator.get(MSorter.TEMPLATE_DEFINITION, context.getFunctionRegistry());
-    ClassGenerator<MSorter> g = cg.getRoot();
+    final CodeGenerator<MSorter> cg = CodeGenerator.get(MSorter.TEMPLATE_DEFINITION, context.getFunctionRegistry());
+    final ClassGenerator<MSorter> g = cg.getRoot();
     g.setMappingSet(mainMapping);
 
-    for (Ordering od : orderings) {
+    for (final Ordering od : orderings) {
       // first, we rewrite the evaluation stack for each side of the comparison.
-      ErrorCollector collector = new ErrorCollectorImpl();
+      final ErrorCollector collector = new ErrorCollectorImpl();
       final LogicalExpression expr = ExpressionTreeMaterializer.materialize(od.getExpr(), batch, collector, context.getFunctionRegistry());
       if (collector.hasErrors()) {
         throw new SchemaChangeException("Failure while materializing expression. " + collector.toErrorString());
       }
       g.setMappingSet(leftMapping);
-      HoldingContainer left = g.addExpr(expr, false);
+      final HoldingContainer left = g.addExpr(expr, false);
       g.setMappingSet(rightMapping);
-      HoldingContainer right = g.addExpr(expr, false);
+      final HoldingContainer right = g.addExpr(expr, false);
       g.setMappingSet(mainMapping);
 
       // next we wrap the two comparison sides and add the expression block for the comparison.
-      LogicalExpression fh =
+      final LogicalExpression fh =
           FunctionGenerationHelper.getOrderingComparator(od.nullsSortHigh(), left, right,
                                                          context.getFunctionRegistry());
-      HoldingContainer out = g.addExpr(fh, false);
-      JConditional jc = g.getEvalBlock()._if(out.getValue().ne(JExpr.lit(0)));
+      final HoldingContainer out = g.addExpr(fh, false);
+      final JConditional jc = g.getEvalBlock()._if(out.getValue().ne(JExpr.lit(0)));
 
       if (od.getDirection() == Direction.ASCENDING) {
         jc._then()._return(out.getValue());
@@ -564,38 +568,38 @@ public class ExternalSortBatch extends AbstractRecordBatch<ExternalSort> {
 
   }
 
-  public SingleBatchSorter createNewSorter(FragmentContext context, VectorAccessible batch)
+  public SingleBatchSorter createNewSorter(final FragmentContext context, final VectorAccessible batch)
           throws ClassTransformationException, IOException, SchemaChangeException{
-    CodeGenerator<SingleBatchSorter> cg = CodeGenerator.get(SingleBatchSorter.TEMPLATE_DEFINITION, context.getFunctionRegistry());
-    ClassGenerator<SingleBatchSorter> g = cg.getRoot();
+    final CodeGenerator<SingleBatchSorter> cg = CodeGenerator.get(SingleBatchSorter.TEMPLATE_DEFINITION, context.getFunctionRegistry());
+    final ClassGenerator<SingleBatchSorter> g = cg.getRoot();
 
     generateComparisons(g, batch);
 
     return context.getImplementationClass(cg);
   }
 
-  private void generateComparisons(ClassGenerator g, VectorAccessible batch) throws SchemaChangeException {
+  private void generateComparisons(final ClassGenerator g, final VectorAccessible batch) throws SchemaChangeException {
     g.setMappingSet(MAIN_MAPPING);
 
-    for (Ordering od : popConfig.getOrderings()) {
+    for (final Ordering od : popConfig.getOrderings()) {
       // first, we rewrite the evaluation stack for each side of the comparison.
-      ErrorCollector collector = new ErrorCollectorImpl();
+      final ErrorCollector collector = new ErrorCollectorImpl();
       final LogicalExpression expr = ExpressionTreeMaterializer.materialize(od.getExpr(), batch, collector,context.getFunctionRegistry());
       if (collector.hasErrors()) {
         throw new SchemaChangeException("Failure while materializing expression. " + collector.toErrorString());
       }
       g.setMappingSet(LEFT_MAPPING);
-      HoldingContainer left = g.addExpr(expr, false);
+      final HoldingContainer left = g.addExpr(expr, false);
       g.setMappingSet(RIGHT_MAPPING);
-      HoldingContainer right = g.addExpr(expr, false);
+      final HoldingContainer right = g.addExpr(expr, false);
       g.setMappingSet(MAIN_MAPPING);
 
       // next we wrap the two comparison sides and add the expression block for the comparison.
-      LogicalExpression fh =
+      final LogicalExpression fh =
           FunctionGenerationHelper.getOrderingComparator(od.nullsSortHigh(), left, right,
                                                          context.getFunctionRegistry());
-      HoldingContainer out = g.addExpr(fh, false);
-      JConditional jc = g.getEvalBlock()._if(out.getValue().ne(JExpr.lit(0)));
+      final HoldingContainer out = g.addExpr(fh, false);
+      final JConditional jc = g.getEvalBlock()._if(out.getValue().ne(JExpr.lit(0)));
 
       if (od.getDirection() == Direction.ASCENDING) {
         jc._then()._return(out.getValue());
@@ -609,11 +613,11 @@ public class ExternalSortBatch extends AbstractRecordBatch<ExternalSort> {
     g.getEvalBlock()._return(JExpr.lit(0));
   }
 
-  private void createCopier(VectorAccessible batch, List<BatchGroup> batchGroupList, VectorContainer outputContainer) throws SchemaChangeException {
+  private void createCopier(final VectorAccessible batch, final List<BatchGroup> batchGroupList, final VectorContainer outputContainer) throws SchemaChangeException {
     try {
       if (copier == null) {
-        CodeGenerator<PriorityQueueCopier> cg = CodeGenerator.get(PriorityQueueCopier.TEMPLATE_DEFINITION, context.getFunctionRegistry());
-        ClassGenerator<PriorityQueueCopier> g = cg.getRoot();
+        final CodeGenerator<PriorityQueueCopier> cg = CodeGenerator.get(PriorityQueueCopier.TEMPLATE_DEFINITION, context.getFunctionRegistry());
+        final ClassGenerator<PriorityQueueCopier> g = cg.getRoot();
 
         generateComparisons(g, batch);
 
@@ -625,14 +629,14 @@ public class ExternalSortBatch extends AbstractRecordBatch<ExternalSort> {
         copier.cleanup();
       }
 
-      for (VectorWrapper<?> i : batch) {
-        ValueVector v = TypeHelper.getNewVector(i.getField(), copierAllocator);
+      for (final VectorWrapper<?> i : batch) {
+        final ValueVector v = TypeHelper.getNewVector(i.getField(), copierAllocator);
         outputContainer.add(v);
       }
       copier.setup(context, copierAllocator, batch, batchGroupList, outputContainer);
-    } catch (ClassTransformationException e) {
+    } catch (final ClassTransformationException e) {
       throw new RuntimeException(e);
-    } catch (IOException e) {
+    } catch (final IOException e) {
       throw new RuntimeException(e);
     }
   }
@@ -644,7 +648,7 @@ public class ExternalSortBatch extends AbstractRecordBatch<ExternalSort> {
   }
 
   @Override
-  protected void killIncoming(boolean sendUpstream) {
+  protected void killIncoming(final boolean sendUpstream) {
     incoming.kill(sendUpstream);
   }
 

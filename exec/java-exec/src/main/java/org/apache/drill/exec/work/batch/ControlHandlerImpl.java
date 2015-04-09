@@ -137,10 +137,10 @@ public class ControlHandlerImpl implements ControlMessageHandler {
         drillbitContext.getWorkBus().addFragmentManager(manager);
       }
 
-    } catch (Exception e) {
+    } catch (final Exception e) {
         throw new UserRpcException(drillbitContext.getEndpoint(),
             "Failure while trying to start remote fragment", e);
-    } catch (OutOfMemoryError t) {
+    } catch (final OutOfMemoryError t) {
       if (t.getMessage().startsWith("Direct buffer")) {
         throw new UserRpcException(drillbitContext.getEndpoint(),
             "Out of direct memory while trying to start remote fragment", t);
@@ -176,14 +176,13 @@ public class ControlHandlerImpl implements ControlMessageHandler {
 
     FragmentExecutor executor;
     if (manager != null) {
-      executor = manager.getRunnable();
+      manager.receivingFragmentFinished(finishedReceiver.getReceiver());
     } else {
       // then try local cancel.
       executor = bee.getFragmentRunner(finishedReceiver.getSender());
-    }
-
-    if (executor != null) {
-      executor.receivingFragmentFinished(finishedReceiver.getReceiver());
+      if (executor != null) {
+        executor.receivingFragmentFinished(finishedReceiver.getReceiver());
+      }
     }
 
     return Acks.OK;
