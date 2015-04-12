@@ -184,7 +184,6 @@ public class TestRepeated {
 
       map.end();
     }
-    assert writer.ok();
 
     {
       writer.setPosition(1);

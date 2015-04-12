@@ -478,9 +478,6 @@ public class JsonReader extends BaseJsonProcessor {
   private void writeDataAllText(ListWriter list) throws IOException {
     list.start();
     outside: while (true) {
-      if (!list.ok()) {
-        return;
-      }
 
       switch (parser.nextToken()) {
       case START_ARRAY:
