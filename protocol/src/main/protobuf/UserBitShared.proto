@@ -194,6 +194,7 @@ enum FragmentState {
   FINISHED = 3;
   CANCELLED = 4;
   FAILED = 5;
+  CANCELLATION_REQUESTED = 6;
 }
 
 enum CoreOperatorType {

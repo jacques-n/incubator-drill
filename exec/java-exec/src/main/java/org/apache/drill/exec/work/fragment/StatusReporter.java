@@ -24,6 +24,6 @@ import org.apache.drill.exec.proto.UserBitShared.FragmentState;
  * The status handler is responsible for receiving changes in fragment status and propagating them back to the foreman.
  */
 public interface StatusReporter {
-  void fail(FragmentHandle handle, String message, Throwable excep);
+  void fail(FragmentHandle handle, Throwable excep);
   void stateChanged(FragmentHandle handle, FragmentState newState);
 }

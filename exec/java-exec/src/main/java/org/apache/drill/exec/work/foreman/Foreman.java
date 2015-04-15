@@ -805,7 +805,7 @@ public class Foreman implements Runnable {
     queryManager.addFragmentStatusTracker(rootFragment, true);
 
     rootRunner = new FragmentExecutor(rootContext, rootOperator,
-        queryManager.getRootStatusHandler(rootContext));
+        queryManager.newRootStatusHandler(rootContext));
     final RootFragmentManager fragmentManager =
         new RootFragmentManager(rootFragment.getHandle(), buffers, rootRunner);
 

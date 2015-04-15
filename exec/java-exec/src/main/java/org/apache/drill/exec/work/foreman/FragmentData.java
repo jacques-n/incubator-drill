@@ -57,35 +57,35 @@ public class FragmentData {
     final long time = System.currentTimeMillis();
     final FragmentState oldState = this.status.getProfile().getState();
     final boolean inTerminalState = oldState == FragmentState.FAILED || oldState == FragmentState.FINISHED || oldState == FragmentState.CANCELLED;
-    final boolean stateChanged =  status.getProfile().getState() != oldState;
+    final FragmentState currentState = status.getProfile().getState();
+    final boolean stateChanged = currentState != oldState;
 
-    if(inTerminalState){
-      // is probably a terminal state ( a little awkward as moving from cancelled to
+    if (inTerminalState) {
+      // already in a terminal state. This shouldn't happen.
       logger.warn(String.format("Received status message for fragment %s after fragment was in state %s. New state was %s",
-          QueryIdHelper.getQueryIdentifier(getHandle()),
-          oldState, status.getProfile().getState()));
+          QueryIdHelper.getQueryIdentifier(getHandle()), oldState, currentState));
       return false;
     }
 
     this.status = status;
     this.lastStatusUpdate = time;
-    if(madeProgress(this.status, status)){
+    if (madeProgress(this.status, status)) {
       this.lastProgress = time;
     }
 
     return stateChanged;
   }
 
-  public FragmentState getState(){
+  public FragmentState getState() {
     return status.getProfile().getState();
   }
 
-  public MinorFragmentProfile getProfile(){
-    return status //
-        .getProfile() //
-        .toBuilder() //
-        .setLastUpdate(lastStatusUpdate) //
-        .setLastProgress(lastProgress) //
+  public MinorFragmentProfile getProfile() {
+    return status
+        .getProfile()
+        .toBuilder()
+        .setLastUpdate(lastStatusUpdate)
+        .setLastProgress(lastProgress)
         .build();
   }
 
@@ -101,20 +101,20 @@ public class FragmentData {
     return status.getHandle();
   }
 
-  private boolean madeProgress(FragmentStatus prev, FragmentStatus cur){
+  private boolean madeProgress(final FragmentStatus prev, final FragmentStatus cur) {
     final MinorFragmentProfile previous = prev.getProfile();
     final MinorFragmentProfile current = cur.getProfile();
 
-    if(previous.getState() != current.getState()){
+    if (previous.getState() != current.getState()) {
       return true;
     }
 
-    if(previous.getOperatorProfileCount() != current.getOperatorProfileCount()){
+    if (previous.getOperatorProfileCount() != current.getOperatorProfileCount()) {
       return true;
     }
 
     for(int i =0; i < current.getOperatorProfileCount(); i++){
-      if(madeProgress(previous.getOperatorProfile(i), current.getOperatorProfile(i))){
+      if (madeProgress(previous.getOperatorProfile(i), current.getOperatorProfile(i))) {
         return true;
       }
     }
@@ -122,11 +122,11 @@ public class FragmentData {
     return false;
   }
 
-  private boolean madeProgress(OperatorProfile prev, OperatorProfile cur){
-    return prev.getInputProfileCount() != cur.getInputProfileCount() || //
-        !prev.getInputProfileList().equals(cur.getInputProfileList()) || //
-        prev.getMetricCount() != cur.getMetricCount() || //
-        !prev.getMetricList().equals(cur.getMetricList());
+  private boolean madeProgress(final OperatorProfile prev, final OperatorProfile cur) {
+    return prev.getInputProfileCount() != cur.getInputProfileCount()
+        || !prev.getInputProfileList().equals(cur.getInputProfileList())
+        || prev.getMetricCount() != cur.getMetricCount()
+        || !prev.getMetricList().equals(cur.getMetricList());
   }
 
   @Override

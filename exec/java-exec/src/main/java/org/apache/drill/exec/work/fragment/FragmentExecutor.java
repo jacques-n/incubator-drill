@@ -18,11 +18,12 @@
 package org.apache.drill.exec.work.fragment;
 
 import java.util.Set;
-import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
 
 import org.apache.drill.common.DeferredException;
 import org.apache.drill.exec.coord.ClusterCoordinator;
 import org.apache.drill.exec.ops.FragmentContext;
+import org.apache.drill.exec.ops.FragmentContext.ExecutorState;
 import org.apache.drill.exec.physical.base.FragmentRoot;
 import org.apache.drill.exec.physical.impl.ImplCreator;
 import org.apache.drill.exec.physical.impl.RootExec;
@@ -41,15 +42,15 @@ import org.apache.drill.exec.work.foreman.DrillbitStatusListener;
 public class FragmentExecutor implements Runnable {
   private static final org.slf4j.Logger logger = org.slf4j.LoggerFactory.getLogger(FragmentExecutor.class);
 
-  // TODO:  REVIEW:  Can't this be AtomicReference<FragmentState> (so that
-  // debugging and logging don't show just integer values--and for type safety)?
-  private final AtomicInteger state = new AtomicInteger(FragmentState.AWAITING_ALLOCATION_VALUE);
+  private static final String CLOSE_FAILURE = "Failure while closing out resources";
+
   private final FragmentRoot rootOperator;
   private final FragmentContext fragmentContext;
   private final StatusReporter listener;
-  private volatile boolean canceled;
-  private volatile boolean operatorTreeStopped;
-  private RootExec root;
+  private final DeferredException deferredException = new DeferredException();
+
+  private volatile RootExec root;
+  private final AtomicReference<FragmentState> fragmentState = new AtomicReference<>(FragmentState.AWAITING_ALLOCATION);
 
 
   public FragmentExecutor(final FragmentContext context, final FragmentRoot rootOperator,
@@ -57,20 +58,26 @@ public class FragmentExecutor implements Runnable {
     this.fragmentContext = context;
     this.rootOperator = rootOperator;
     this.listener = listener;
+
+    context.setExecutorState(new ExecutorStateImpl());
   }
 
   @Override
   public String toString() {
-    return
-        super.toString()
-        + "[operatorTreeStopped = " + operatorTreeStopped
-        + ", state = " + state
-        + ", rootOperator = " + rootOperator
-        + ", fragmentContext = " + fragmentContext
-        + ", listener = " + listener
-        + "]";
+    final StringBuilder builder = new StringBuilder();
+    builder.append("FragmentExecutor [fragmentContext=");
+    builder.append(fragmentContext);
+    builder.append(", fragmentState=");
+    builder.append(fragmentState);
+    builder.append("]");
+    return builder.toString();
   }
 
+  /**
+   * Returns the current fragment status if the fragment is running. Otherwise, returns no status.
+   *
+   * @return FragmentStatus or null.
+   */
   public FragmentStatus getStatus() {
     /*
      * If the query is not in a running state, the operator tree is still being constructed and
@@ -80,31 +87,35 @@ public class FragmentExecutor implements Runnable {
      * before this check. This caused a concurrent modification exception as the list of operator
      * stats is iterated over while collecting info, and added to while building the operator tree.
      */
-    if(state.get() != FragmentState.RUNNING_VALUE) {
+    if (fragmentState.get() != FragmentState.RUNNING) {
       return null;
     }
+
     final FragmentStatus status =
         AbstractStatusReporter.getBuilder(fragmentContext, FragmentState.RUNNING, null, null).build();
     return status;
   }
 
+  /**
+   * Cancel the execution of this fragment is in an appropriate state.
+   */
   public void cancel() {
     /*
-     * Note that this can be called from threads *other* than the one running this runnable(), so
-     * we need to be careful about the state transitions that can result. We set the canceled flag,
-     * and this is checked in the run() loop, where action will be taken as soon as possible.
-     *
-     * If the run loop has already exited, because we've already either completed or failed the query,
-     * then the request to cancel is a no-op anyway, so it doesn't matter that we won't see the flag.
+     * Note that this can be called from threads *other* than the one running this runnable(), so we need to be careful
+     * about the state transitions that can result. We set the cancel requested flag but the actual cancellation is
+     * managed by the run() loop.
      */
-    canceled = true;
-
-    // this needs to be done here so this is what operators monitor to know they should terminate early.
-    fragmentContext.cancel();
+    updateState(FragmentState.CANCELLATION_REQUESTED);
   }
 
-  public void receivingFragmentFinished(FragmentHandle handle) {
-    cancel();
+  /**
+   * Inform this fragment that one of its downstream partners no longer needs additional records. This is most commonly
+   * called in the case that a limit query is executed.
+   *
+   * @param handle
+   *          The downstream FragmentHandle of the Fragment that needs no more records from this Fragment.
+   */
+  public void receivingFragmentFinished(final FragmentHandle handle) {
     if (root != null) {
       root.receivingFragmentFinished(handle);
     }
@@ -117,163 +128,190 @@ public class FragmentExecutor implements Runnable {
     final FragmentHandle fragmentHandle = fragmentContext.getHandle();
     final ClusterCoordinator clusterCoordinator = fragmentContext.getDrillbitContext().getClusterCoordinator();
     final DrillbitStatusListener drillbitStatusListener = new FragmentDrillbitStatusListener();
+    final String newThreadName = QueryIdHelper.getExecutorThreadName(fragmentHandle);
 
     try {
-      final String newThreadName = String.format("%s:frag:%s:%s",
-          QueryIdHelper.getQueryId(fragmentHandle.getQueryId()),
-          fragmentHandle.getMajorFragmentId(), fragmentHandle.getMinorFragmentId());
+
       myThread.setName(newThreadName);
 
       root = ImplCreator.getExec(fragmentContext, rootOperator);
+
       clusterCoordinator.addDrillbitStatusListener(drillbitStatusListener);
+      updateState(FragmentState.RUNNING);
 
       logger.debug("Starting fragment runner. {}:{}",
           fragmentHandle.getMajorFragmentId(), fragmentHandle.getMinorFragmentId());
-      if (!updateStateOrFail(FragmentState.AWAITING_ALLOCATION, FragmentState.RUNNING)) {
-        logger.warn("Unable to set fragment state to RUNNING.  Cancelled or failed?");
-        return;
-      }
 
       /*
        * Run the query until root.next returns false OR cancel() changes the
        * state.
        * Note that
        */
-      try{
-        while (state.get() == FragmentState.RUNNING_VALUE && !canceled && root.next()) {
-          // loop
-        }
-      } catch (AssertionError | Exception e) {
-        fragmentContext.fail(e);
+      while (shouldContinue() && root.next()) {
+        // loop
       }
 
-      /*
-       * We closeOutResources() here as we're done. That's because this can also throw exceptions that we also want to
-       * treat as failures of the request, even if the request did fine up until this point. Any failures there will be
-       * caught in the catch clause below, which will be reported to the user. If they were to come from the finally
-       * clause, the we will simply log the failure.
-       */
-      closeOutResources(false);
-
-
-      /*
-       * If we've gotten this far, we're either successfully completed the fragment or successfully canceled it. Report
-       * that status back to foreman.
-       */
-      final FragmentState finalState = canceled ? FragmentState.CANCELLED : FragmentState.FINISHED;
-      updateStateOrFail(FragmentState.RUNNING, finalState);
+      updateState(FragmentState.FINISHED);
 
     } catch (AssertionError | Exception e) {
-      internalFail(e);
+      fail(e);
     } finally {
-      clusterCoordinator.removeDrillbitStatusListener(drillbitStatusListener);
+      closeOutResources();
 
-      // Final check to make sure RecordBatches are cleaned up.
-      try {
-        closeOutResources(true);
-      } catch (Exception e) {
-        // We shouldn't leak any exceptions here. If we did, they would leak to the JVM. Since we've already completed
-        // our messaging to the foreman, the only thing we can do here is log the failure.
-        logger.error("Failue in final cleanup of fragment {}", QueryIdHelper.getQueryIdentifier(this.getContext().getHandle()), e);
-      }
+      // send the final state of the fragment. only the main execution thread can send the final state and it can
+      // only be sent once.
+      sendFinalState();
+
+      clusterCoordinator.removeDrillbitStatusListener(drillbitStatusListener);
 
       myThread.setName(originalThreadName);
     }
   }
 
-  private static final String CLOSE_FAILURE = "Failure while closing out resources";
-
-  private void closeOutResources(final boolean isFinalClose) throws Exception {
-
-    /*
-     * The operator tree can only be closed once.  As such, Because of the way this method can be called, it needs to be idempotent; it must
-     * be safe to call it more than once. We use this flag to bypass the body if it has
-     * been called before.
-     */
-    synchronized(this) { // synchronize for the state of closed
-      if (!operatorTreeStopped) {
-        try {
-          root.stop(); // TODO make this an AutoCloseable so we can detect lack of closure
-        } catch (Exception e) {
-          logger.warn(CLOSE_FAILURE, e);
-          fragmentContext.getDeferredException().addException(e);
-        }
-        operatorTreeStopped = true;
-      }
-    }
-
-
-    if(!isFinalClose){
-      fragmentContext.preClose();
-    }else{
-      fragmentContext.close();
-    }
-
-  }
-
-  private void internalFail(final Throwable excep) {
-    state.set(FragmentState.FAILED_VALUE);
-    listener.fail(fragmentContext.getHandle(), "Failure while running fragment.", excep);
-  }
-
   /**
-   * Updates the fragment state with the given state
+   * Utility method to check where we are in a no terminal state.
    *
-   * @param  to  target state
+   * @return Whether or not execution should continue.
    */
-  private void updateState(final FragmentState to) {
-    state.set(to.getNumber());
-    listener.stateChanged(fragmentContext.getHandle(), to);
-  }
-
-  /**
-   * Updates the fragment state only iff the current state matches the expected.
-   *
-   * @param  expected  expected current state
-   * @param  to  target state
-   * @return true only if update succeeds
-   */
-  private boolean checkAndUpdateState(final FragmentState expected, final FragmentState to) {
-    final boolean success = state.compareAndSet(expected.getNumber(), to.getNumber());
-    if (success) {
-      listener.stateChanged(fragmentContext.getHandle(), to);
-    } else {
-      logger.debug("State change failed. Expected state: {} -- target state: {} -- current state: {}.",
-          expected.name(), to.name(), FragmentState.valueOf(state.get()));
-    }
-    return success;
+  private boolean shouldContinue() {
+    return !isCompleted();
   }
 
   /**
    * Returns true if the fragment is in a terminal state
+   *
+   * @return Whether this state is in a terminal state.
    */
   private boolean isCompleted() {
-    return state.get() == FragmentState.CANCELLED_VALUE
-        || state.get() == FragmentState.FAILED_VALUE
-        || state.get() == FragmentState.FINISHED_VALUE;
+    return isTerminal(fragmentState.get());
+  }
+
+  private void sendFinalState() {
+    final FragmentState outcome = fragmentState.get();
+    if (outcome == FragmentState.FAILED) {
+      listener.fail(fragmentContext.getHandle(), deferredException.getAndClear());
+    } else {
+      listener.stateChanged(fragmentContext.getHandle(), outcome);
+    }
+  }
+
+
+  private synchronized void closeOutResources() {
+
+    try {
+      root.stop(); // TODO make this an AutoCloseable so we can detect lack of closure
+    } catch (final Exception e) {
+      logger.warn(CLOSE_FAILURE, e);
+      fail(e);
+    }
+
+    fragmentContext.close();
+
+  }
+
+  private void warnStateChange(final FragmentState current, final FragmentState target) {
+    logger.warn("Ignoring unexpected state transition {} => {}.", current.name(), target.name());
+  }
+
+  private void errorStateChange(final FragmentState current, final FragmentState target) {
+    final String msg = "State was different than expected while attempting to update state from to %s. "
+        + "Current state was %s.";
+    throw new StateTransitionException(String.format(msg, current.name(), target.name()));
+  }
+
+  private synchronized boolean updateState(FragmentState target) {
+    final FragmentHandle handle = fragmentContext.getHandle();
+    final FragmentState current = fragmentState.get();
+
+    switch (target) {
+    case CANCELLATION_REQUESTED:
+      switch (current) {
+      case SENDING:
+      case AWAITING_ALLOCATION:
+        fragmentState.set(target);
+        listener.stateChanged(handle, target);
+        return true;
+
+      default:
+        warnStateChange(current, target);
+        return false;
+      }
+
+    case FINISHED:
+      if(current == FragmentState.CANCELLATION_REQUESTED){
+        target = FragmentState.CANCELLED;
+      }
+      // fall-through
+    case FAILED:
+      if(!isTerminal(current)){
+        fragmentState.set(target);
+        // don't notify listener until we finalize this terminal state.
+        return true;
+      } else if (current == FragmentState.FAILED) {
+        // no warn since we can call fail multiple times.
+        return false;
+      }else{
+        warnStateChange(current, target);
+        return false;
+      }
+
+    case RUNNING:
+      if(current == FragmentState.AWAITING_ALLOCATION){
+        fragmentState.set(target);
+        return true;
+      }else{
+        errorStateChange(current, target);
+      }
+
+    // these should never be requested.
+    case SENDING:
+    case AWAITING_ALLOCATION:
+    case CANCELLED:
+    default:
+      errorStateChange(current, target);
+    }
+
+    // errorStateChange() throw should mean this is never executed
+    throw new IllegalStateException();
+  }
+
+  private boolean isTerminal(final FragmentState state) {
+    return state == FragmentState.CANCELLED
+        || state == FragmentState.FAILED
+        || state == FragmentState.FINISHED;
   }
 
   /**
-   * Update the state if current state matches expected or fail the fragment if state transition fails even though
-   * fragment is not in a terminal state.
+   * Capture an exception and add store it. Update state to failed status (if not already there). Does not immediately
+   * report status back to Foreman. Only the original thread can return status to the Foreman.
    *
-   * @param expected  current expected state
-   * @param to  target state
-   * @return true only if update succeeds
+   * @param excep
+   *          The failure that occurred.
    */
-  private boolean updateStateOrFail(final FragmentState expected, final FragmentState to) {
-    final boolean updated = checkAndUpdateState(expected, to);
-    if (!updated && !isCompleted()) {
-      final String msg = "State was different than expected while attempting to update state from %s to %s"
-          + "however current state was %s.";
-      internalFail(new StateTransitionException(
-          String.format(msg, expected.name(), to.name(), FragmentState.valueOf(state.get()))));
-    }
-    return updated;
+  private void fail(final Throwable excep) {
+    deferredException.addThrowable(excep);
+    updateState(FragmentState.FAILED);
   }
 
   public FragmentContext getContext() {
     return fragmentContext;
+  }
+
+  private class ExecutorStateImpl implements ExecutorState {
+    public boolean shouldContinue() {
+      return FragmentExecutor.this.shouldContinue();
+    }
+
+    public void fail(final Throwable t) {
+      deferredException.addThrowable(t);
+    }
+
+    public boolean isFailed() {
+      return fragmentState.get() == FragmentState.FAILED;
+    }
+    public Throwable getFailureCause(){
+      return deferredException.getException();
+    }
   }
 
   private class FragmentDrillbitStatusListener implements DrillbitStatusListener {
