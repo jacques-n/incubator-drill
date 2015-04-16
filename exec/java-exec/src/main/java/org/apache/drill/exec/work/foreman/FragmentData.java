@@ -53,11 +53,11 @@ public class FragmentData {
    * @param status Updated status
    * @return Whether or not the status update resulted in a FragmentState change.
    */
-  public boolean setStatus(final FragmentStatus status) {
+  public boolean setStatus(final FragmentStatus newStatus) {
     final long time = System.currentTimeMillis();
     final FragmentState oldState = this.status.getProfile().getState();
     final boolean inTerminalState = oldState == FragmentState.FAILED || oldState == FragmentState.FINISHED || oldState == FragmentState.CANCELLED;
-    final FragmentState currentState = status.getProfile().getState();
+    final FragmentState currentState = newStatus.getProfile().getState();
     final boolean stateChanged = currentState != oldState;
 
     if (inTerminalState) {
@@ -67,11 +67,11 @@ public class FragmentData {
       return false;
     }
 
-    this.status = status;
     this.lastStatusUpdate = time;
-    if (madeProgress(this.status, status)) {
+    if (madeProgress(this.status, newStatus)) {
       this.lastProgress = time;
     }
+    this.status = newStatus;
 
     return stateChanged;
   }

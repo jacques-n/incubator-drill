@@ -94,8 +94,6 @@ public class NonRootFragmentManager implements FragmentManager {
   @Override
   public void receivingFragmentFinished(final FragmentHandle handle) {
     if (runner != null) {
-      logger.warn("Apply request for early sender termination for {} -> {}.",
-          QueryIdHelper.getFragmentId(this.getHandle()), QueryIdHelper.getFragmentId(handle));
       runner.receivingFragmentFinished(handle);
     } else {
       logger.warn("Dropping request for early fragment termination for path {} -> {} as no runner exists.",

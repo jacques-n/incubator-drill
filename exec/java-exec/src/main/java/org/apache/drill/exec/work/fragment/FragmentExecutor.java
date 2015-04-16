@@ -117,7 +117,7 @@ public class FragmentExecutor implements Runnable {
    */
   public void receivingFragmentFinished(final FragmentHandle handle) {
     if (root != null) {
-      logger.warn("Apply request for early sender termination for {} -> {}.",
+      logger.info("Applying request for early sender termination for {} -> {}.",
           QueryIdHelper.getFragmentId(this.getContext().getHandle()), QueryIdHelper.getFragmentId(handle));
       root.receivingFragmentFinished(handle);
     } else {
@@ -148,9 +148,7 @@ public class FragmentExecutor implements Runnable {
           fragmentHandle.getMajorFragmentId(), fragmentHandle.getMinorFragmentId());
 
       /*
-       * Run the query until root.next returns false OR cancel() changes the
-       * state.
-       * Note that
+       * Run the query until root.next returns false OR we no longer need to continue.
        */
       while (shouldContinue() && root.next()) {
         // loop
@@ -264,6 +262,7 @@ public class FragmentExecutor implements Runnable {
     case RUNNING:
       if(current == FragmentState.AWAITING_ALLOCATION){
         fragmentState.set(target);
+        listener.stateChanged(handle, target);
         return true;
       }else{
         errorStateChange(current, target);
