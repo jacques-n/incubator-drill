@@ -275,6 +275,7 @@ public class WorkManager implements AutoCloseable {
         @Override
         protected void cleanup() {
           runningFragments.remove(fragmentHandle);
+          workBus.removeFragmentManager(fragmentHandle);
           indicateIfSafeToExit();
         }
       });

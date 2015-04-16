@@ -185,7 +185,8 @@ public class ControlHandlerImpl implements ControlMessageHandler {
       if (executor != null) {
         executor.receivingFragmentFinished(finishedReceiver.getReceiver());
       } else {
-        logger.warn("Dropping request for early fragment termination for path {} -> {} as path to executor available.",
+        logger.warn(
+            "Dropping request for early fragment termination for path {} -> {} as path to executor unavailable.",
             QueryIdHelper.getFragmentId(finishedReceiver.getSender()),
             QueryIdHelper.getFragmentId(finishedReceiver.getReceiver()));
       }
