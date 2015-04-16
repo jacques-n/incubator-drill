@@ -117,7 +117,12 @@ public class FragmentExecutor implements Runnable {
    */
   public void receivingFragmentFinished(final FragmentHandle handle) {
     if (root != null) {
+      logger.warn("Apply request for early sender termination for {} -> {}.",
+          QueryIdHelper.getFragmentId(this.getContext().getHandle()), QueryIdHelper.getFragmentId(handle));
       root.receivingFragmentFinished(handle);
+    } else {
+      logger.warn("Dropping request for early fragment termination for path {} -> {} as no root exec exists.",
+          QueryIdHelper.getFragmentId(this.getContext().getHandle()), QueryIdHelper.getFragmentId(handle));
     }
   }
 

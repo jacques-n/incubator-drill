@@ -27,6 +27,7 @@ import org.apache.drill.exec.ops.FragmentContext;
 import org.apache.drill.exec.physical.base.FragmentRoot;
 import org.apache.drill.exec.proto.BitControl.PlanFragment;
 import org.apache.drill.exec.proto.ExecProtos.FragmentHandle;
+import org.apache.drill.exec.proto.helper.QueryIdHelper;
 import org.apache.drill.exec.record.RawFragmentBatch;
 import org.apache.drill.exec.rpc.RemoteConnection;
 import org.apache.drill.exec.server.DrillbitContext;
@@ -38,6 +39,8 @@ import org.apache.drill.exec.work.foreman.ForemanException;
  */
 // TODO a lot of this is the same as RootFragmentManager
 public class NonRootFragmentManager implements FragmentManager {
+  private static final org.slf4j.Logger logger = org.slf4j.LoggerFactory.getLogger(NonRootFragmentManager.class);
+
   private final PlanFragment fragment;
   private FragmentRoot root;
   private final IncomingBuffers buffers;
@@ -91,7 +94,12 @@ public class NonRootFragmentManager implements FragmentManager {
   @Override
   public void receivingFragmentFinished(final FragmentHandle handle) {
     if (runner != null) {
+      logger.warn("Apply request for early sender termination for {} -> {}.",
+          QueryIdHelper.getFragmentId(this.getHandle()), QueryIdHelper.getFragmentId(handle));
       runner.receivingFragmentFinished(handle);
+    } else {
+      logger.warn("Dropping request for early fragment termination for path {} -> {} as no runner exists.",
+          QueryIdHelper.getFragmentId(this.getHandle()), QueryIdHelper.getFragmentId(handle));
     }
   }
 

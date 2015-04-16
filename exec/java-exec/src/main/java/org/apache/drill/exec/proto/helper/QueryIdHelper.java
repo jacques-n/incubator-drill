@@ -52,4 +52,8 @@ public class QueryIdHelper {
     return getQueryId(queryId) + ":" + majorFragmentId + ":" + fragmentIds;
   }
 
+  public static String getFragmentId(final FragmentHandle fragmentHandle) {
+    return fragmentHandle.getMajorFragmentId() + ":" + fragmentHandle.getMinorFragmentId();
+  }
+
 }

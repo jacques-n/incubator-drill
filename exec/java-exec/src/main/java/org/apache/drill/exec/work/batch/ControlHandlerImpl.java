@@ -31,6 +31,7 @@ import org.apache.drill.exec.proto.ExecProtos.FragmentHandle;
 import org.apache.drill.exec.proto.GeneralRPCProtos.Ack;
 import org.apache.drill.exec.proto.UserBitShared.QueryId;
 import org.apache.drill.exec.proto.UserBitShared.QueryProfile;
+import org.apache.drill.exec.proto.helper.QueryIdHelper;
 import org.apache.drill.exec.rpc.Acks;
 import org.apache.drill.exec.rpc.Response;
 import org.apache.drill.exec.rpc.RpcConstants;
@@ -171,6 +172,7 @@ public class ControlHandlerImpl implements ControlMessageHandler {
   }
 
   private Ack receivingFragmentFinished(final FinishedReceiver finishedReceiver) {
+
     final FragmentManager manager =
         bee.getContext().getWorkBus().getFragmentManagerIfExists(finishedReceiver.getSender());
 
@@ -182,6 +184,10 @@ public class ControlHandlerImpl implements ControlMessageHandler {
       executor = bee.getFragmentRunner(finishedReceiver.getSender());
       if (executor != null) {
         executor.receivingFragmentFinished(finishedReceiver.getReceiver());
+      } else {
+        logger.warn("Dropping request for early fragment termination for path {} -> {} as path to executor available.",
+            QueryIdHelper.getFragmentId(finishedReceiver.getSender()),
+            QueryIdHelper.getFragmentId(finishedReceiver.getReceiver()));
       }
     }
 
