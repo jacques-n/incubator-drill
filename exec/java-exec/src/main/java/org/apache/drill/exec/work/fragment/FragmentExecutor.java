@@ -179,7 +179,7 @@ public class FragmentExecutor implements Runnable {
    * @return Whether or not execution should continue.
    */
   private boolean shouldContinue() {
-    return !isCompleted();
+    return !isCompleted() && FragmentState.CANCELLATION_REQUESTED != fragmentState.get();
   }
 
   /**

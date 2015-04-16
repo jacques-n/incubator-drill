@@ -64,6 +64,9 @@ public abstract class AbstractStatusReporter implements StatusReporter{
     case AWAITING_ALLOCATION:
       awaitingAllocation(handle, status);
       break;
+    case CANCELLATION_REQUESTED:
+      cancellationRequested(handle, status);
+      break;
     case CANCELLED:
       cancelled(handle, status);
       break;
@@ -81,6 +84,10 @@ public abstract class AbstractStatusReporter implements StatusReporter{
     default:
       throw new IllegalStateException(String.format("Received state changed event for unexpected state of %s.", newState));
     }
+  }
+
+  protected void cancellationRequested(final FragmentHandle handle, final FragmentStatus.Builder statusBuilder) {
+    statusChange(handle, statusBuilder.build());
   }
 
   protected void awaitingAllocation(final FragmentHandle handle, final FragmentStatus.Builder statusBuilder) {
