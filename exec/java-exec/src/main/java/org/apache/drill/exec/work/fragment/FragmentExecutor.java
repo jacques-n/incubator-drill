@@ -228,6 +228,7 @@ public class FragmentExecutor implements Runnable {
       switch (current) {
       case SENDING:
       case AWAITING_ALLOCATION:
+      case RUNNING:
         fragmentState.set(target);
         listener.stateChanged(handle, target);
         return true;
