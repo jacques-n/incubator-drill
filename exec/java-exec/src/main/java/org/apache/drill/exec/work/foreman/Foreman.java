@@ -26,11 +26,11 @@ import java.util.List;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 
-import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.apache.drill.common.EventProcessor;
+import org.apache.drill.common.concurrent.ExtendedLatch;
 import org.apache.drill.common.config.DrillConfig;
-import org.apache.drill.common.exceptions.UserException;
 import org.apache.drill.common.exceptions.ExecutionSetupException;
+import org.apache.drill.common.exceptions.UserException;
 import org.apache.drill.common.logical.LogicalPlan;
 import org.apache.drill.common.logical.PlanProperties.Generator.ResultMode;
 import org.apache.drill.exec.ExecConstants;
@@ -113,7 +113,7 @@ public class Foreman implements Runnable {
 
   private FragmentExecutor rootRunner; // root Fragment
 
-  private final CountDownLatch acceptExternalEvents = new CountDownLatch(1); // gates acceptance of external events
+  private final ExtendedLatch acceptExternalEvents = new ExtendedLatch(); // gates acceptance of external events
   private final StateListener stateListener = new StateListener(); // source of external events
   private final ResponseSendListener responseListener = new ResponseSendListener();
   private final StateSwitch stateSwitch = new StateSwitch();
@@ -612,8 +612,8 @@ public class Foreman implements Runnable {
           .setQueryId(queryId)
           .setQueryState(resultState);
       if (resultException != null) {
-        boolean verbose = queryContext.getOptions().getOption(ExecConstants.ENABLE_VERBOSE_ERRORS_KEY).bool_val;
-        UserException uex = UserException.systemError(resultException).addIdentity(queryContext.getCurrentEndpoint()).build();
+        final boolean verbose = queryContext.getOptions().getOption(ExecConstants.ENABLE_VERBOSE_ERRORS_KEY).bool_val;
+        final UserException uex = UserException.systemError(resultException).addIdentity(queryContext.getCurrentEndpoint()).build();
         resultBuilder.addError(uex.getOrCreatePBError(verbose));
       }
 
@@ -999,16 +999,7 @@ public class Foreman implements Runnable {
      *   to the user
      */
     public void moveToState(final QueryState newState, final Exception ex) {
-      boolean ready = false;
-      while(!ready) {
-        try {
-          acceptExternalEvents.await();
-          ready = true;
-        } catch(final InterruptedException e) {
-          // if we're still not ready, the while loop will cause us to wait again
-          logger.warn("Interrupted while waiting to move state.", e);
-        }
-      }
+      acceptExternalEvents.awaitUninterruptibly();
 
       Foreman.this.moveToState(newState, ex);
     }

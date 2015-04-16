@@ -21,6 +21,7 @@ import java.util.Set;
 import java.util.concurrent.atomic.AtomicReference;
 
 import org.apache.drill.common.DeferredException;
+import org.apache.drill.common.concurrent.ExtendedLatch;
 import org.apache.drill.common.exceptions.UserException;
 import org.apache.drill.exec.coord.ClusterCoordinator;
 import org.apache.drill.exec.ops.FragmentContext;
@@ -51,7 +52,7 @@ public class FragmentExecutor implements Runnable {
 
   private volatile RootExec root;
   private final AtomicReference<FragmentState> fragmentState = new AtomicReference<>(FragmentState.AWAITING_ALLOCATION);
-
+  private final ExtendedLatch acceptExternalEvents = new ExtendedLatch();
 
   public FragmentExecutor(final FragmentContext context, final FragmentRoot rootOperator,
                           final StatusReporter listener) {
@@ -99,9 +100,11 @@ public class FragmentExecutor implements Runnable {
   }
 
   /**
-   * Cancel the execution of this fragment is in an appropriate state.
+   * Cancel the execution of this fragment is in an appropriate state. Messages come from external.
    */
   public void cancel() {
+    acceptExternalEvents.awaitUninterruptibly();
+
     /*
      * Note that this can be called from threads *other* than the one running this runnable(), so we need to be careful
      * about the state transitions that can result. We set the cancel requested flag but the actual cancellation is
@@ -118,6 +121,7 @@ public class FragmentExecutor implements Runnable {
    *          The downstream FragmentHandle of the Fragment that needs no more records from this Fragment.
    */
   public void receivingFragmentFinished(final FragmentHandle handle) {
+    acceptExternalEvents.awaitUninterruptibly();
     if (root != null) {
       logger.info("Applying request for early sender termination for {} -> {}.",
           QueryIdHelper.getFragmentId(this.getContext().getHandle()), QueryIdHelper.getFragmentId(handle));
@@ -146,6 +150,8 @@ public class FragmentExecutor implements Runnable {
       clusterCoordinator.addDrillbitStatusListener(drillbitStatusListener);
       updateState(FragmentState.RUNNING);
 
+      acceptExternalEvents.countDown();
+
       logger.debug("Starting fragment runner. {}:{}",
           fragmentHandle.getMajorFragmentId(), fragmentHandle.getMinorFragmentId());
 
@@ -161,6 +167,9 @@ public class FragmentExecutor implements Runnable {
     } catch (AssertionError | Exception e) {
       fail(e);
     } finally {
+      // note, this most likely duplicates the call to countDown. However, this is a noop and guarantees that this
+      // thread won't exit until this latch has been released.
+      acceptExternalEvents.countDown();
       closeOutResources();
 
       // send the final state of the fragment. only the main execution thread can send the final state and it can
