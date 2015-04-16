@@ -43,8 +43,7 @@ import org.apache.drill.exec.work.foreman.DrillbitStatusListener;
 public class FragmentExecutor implements Runnable {
   private static final org.slf4j.Logger logger = org.slf4j.LoggerFactory.getLogger(FragmentExecutor.class);
 
-  private static final String CLOSE_FAILURE = "Failure while closing out resources";
-
+  private final String fragmentName;
   private final FragmentRoot rootOperator;
   private final FragmentContext fragmentContext;
   private final StatusReporter listener;
@@ -59,6 +58,7 @@ public class FragmentExecutor implements Runnable {
     this.fragmentContext = context;
     this.rootOperator = rootOperator;
     this.listener = listener;
+    this.fragmentName = QueryIdHelper.getQueryIdentifier(context.getHandle());
 
     context.setExecutorState(new ExecutorStateImpl());
   }
@@ -211,7 +211,6 @@ public class FragmentExecutor implements Runnable {
     try {
       root.stop(); // TODO make this an AutoCloseable so we can detect lack of closure
     } catch (final Exception e) {
-      logger.warn(CLOSE_FAILURE, e);
       fail(e);
     }
 
@@ -224,15 +223,14 @@ public class FragmentExecutor implements Runnable {
   }
 
   private void errorStateChange(final FragmentState current, final FragmentState target) {
-    final String msg = "State was different than expected while attempting to update state from to %s. "
-        + "Current state was %s.";
+    final String msg = "Invalid state transition %s => %s.";
     throw new StateTransitionException(String.format(msg, current.name(), target.name()));
   }
 
   private synchronized boolean updateState(FragmentState target) {
     final FragmentHandle handle = fragmentContext.getHandle();
     final FragmentState current = fragmentState.get();
-    logger.info("State change requested from {} --> {}", current, target);
+    logger.info(fragmentName + ": State change requested from {} --> {} for ", current, target);
     switch (target) {
     case CANCELLATION_REQUESTED:
       switch (current) {
@@ -261,6 +259,9 @@ public class FragmentExecutor implements Runnable {
       } else if (current == FragmentState.FAILED) {
         // no warn since we can call fail multiple times.
         return false;
+      } else if (current == FragmentState.CANCELLED && target == FragmentState.FAILED) {
+        fragmentState.set(FragmentState.FAILED);
+        return true;
       }else{
         warnStateChange(current, target);
         return false;
@@ -315,7 +316,7 @@ public class FragmentExecutor implements Runnable {
     }
 
     public void fail(final Throwable t) {
-      deferredException.addThrowable(t);
+      FragmentExecutor.this.fail(t);
     }
 
     public boolean isFailed() {

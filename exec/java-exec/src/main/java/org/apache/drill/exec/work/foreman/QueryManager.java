@@ -182,7 +182,7 @@ public class QueryManager {
       case SENDING:
       case AWAITING_ALLOCATION:
       case RUNNING:
-        if (rootRunner != null) {
+        if (rootRunner.getContext().getHandle().equals(data.getHandle()) && rootRunner != null) {
             rootRunner.cancel();
         } else {
           final DrillbitEndpoint endpoint = data.getEndpoint();
@@ -401,6 +401,7 @@ public class QueryManager {
       switch(status.getProfile().getState()) {
       case AWAITING_ALLOCATION:
       case RUNNING:
+      case CANCELLATION_REQUESTED:
         updateFragmentStatus(status);
         break;
 
