@@ -23,6 +23,7 @@ import org.apache.drill.exec.proto.BitControl.FragmentStatus;
 import org.apache.drill.exec.proto.ExecProtos.FragmentHandle;
 import org.apache.drill.exec.proto.UserBitShared.FragmentState;
 import org.apache.drill.exec.proto.UserBitShared.MinorFragmentProfile;
+import org.apache.drill.exec.proto.helper.QueryIdHelper;
 import org.apache.drill.exec.work.ErrorHelper;
 
 public abstract class AbstractStatusReporter implements StatusReporter{
@@ -58,7 +59,7 @@ public abstract class AbstractStatusReporter implements StatusReporter{
   @Override
   public void stateChanged(final FragmentHandle handle, final FragmentState newState) {
     final FragmentStatus.Builder status = getBuilder(newState);
-
+    logger.info("State changed for {}. New state: {}", QueryIdHelper.getQueryIdentifier(handle), newState);
     switch(newState){
     case AWAITING_ALLOCATION:
       awaitingAllocation(handle, status);
