@@ -64,6 +64,13 @@ public class UnlimitedRawBatchBuffer implements RawBatchBuffer{
 
   @Override
   public void enqueue(final RawFragmentBatch batch) throws IOException {
+
+    // if this fragment is already canceled or failed, we shouldn't need any or more stuff. We do the null check to
+    // ensure that tests run.
+    if (context != null && !context.shouldContinue()) {
+      this.kill(context);
+    }
+
     if (isFinished()) {
       if (state == BufferState.KILLED) {
         // do not even enqueue just release and send ack back

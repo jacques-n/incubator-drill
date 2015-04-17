@@ -44,11 +44,11 @@ public class NonRootFragmentManager implements FragmentManager {
   private final PlanFragment fragment;
   private FragmentRoot root;
   private final IncomingBuffers buffers;
-  private final StatusReporter runnerListener;
-  private volatile FragmentExecutor runner;
+  private final FragmentExecutor runner;
   private volatile boolean cancel = false;
   private final FragmentContext context;
   private final List<RemoteConnection> connections = new CopyOnWriteArrayList<>();
+  private volatile boolean runnerRetrieved = false;
 
   public NonRootFragmentManager(final PlanFragment fragment, final DrillbitContext context)
       throws ExecutionSetupException {
@@ -57,8 +57,10 @@ public class NonRootFragmentManager implements FragmentManager {
       this.root = context.getPlanReader().readFragmentOperator(fragment.getFragmentJson());
       this.context = new FragmentContext(context, fragment, null, context.getFunctionImplementationRegistry());
       this.buffers = new IncomingBuffers(root, this.context);
+      final StatusReporter reporter = new NonRootStatusReporter(this.context, context.getController().getTunnel(
+          fragment.getForeman()));
+      this.runner = new FragmentExecutor(this.context, root, reporter);
       this.context.setBuffers(buffers);
-      this.runnerListener = new NonRootStatusReporter(this.context, context.getController().getTunnel(fragment.getForeman()));
 
     } catch (ForemanException | IOException e) {
       throw new FragmentSetupException("Failure while decoding fragment.", e);
@@ -79,16 +81,15 @@ public class NonRootFragmentManager implements FragmentManager {
   @Override
   public FragmentExecutor getRunnable() {
     synchronized(this) {
-      if (runner != null) {
+      if (runnerRetrieved) {
         throw new IllegalStateException("Get Runnable can only be run once.");
       }
       if (cancel) {
         return null;
       }
-      runner = new FragmentExecutor(context, root, runnerListener);
+      runnerRetrieved = true;
       return runner;
     }
-
   }
 
   @Override
