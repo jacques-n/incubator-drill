@@ -18,6 +18,7 @@
 package org.apache.drill.common.concurrent;
 
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
 
 /**
  * An extended CountDownLatch which allows us to await uninterruptibly.
@@ -41,6 +42,30 @@ public class ExtendedLatch extends CountDownLatch {
    */
   protected boolean ignoreInterruptions() {
     return true;
+  }
+
+  /**
+   * Await without interruption for a given time.
+   * 
+   * @param waitMillis
+   *          Time in milliseconds to wait
+   * @return Whether the countdown reached zero or not.
+   */
+  public boolean awaitUninterruptibly(long waitMillis) {
+    final long targetMillis = System.currentTimeMillis() + waitMillis;
+    while (System.currentTimeMillis() < targetMillis) {
+      final long wait = targetMillis - System.currentTimeMillis();
+      if (wait < 1) {
+        return false;
+      }
+
+      try {
+        return await(wait, TimeUnit.MILLISECONDS);
+      } catch (final InterruptedException e) {
+        // if we weren't ready, the while loop will continue to wait
+      }
+    }
+    return false;
   }
 
   /**

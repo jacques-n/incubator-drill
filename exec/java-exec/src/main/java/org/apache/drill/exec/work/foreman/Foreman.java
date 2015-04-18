@@ -23,6 +23,7 @@ import java.io.IOException;
 import java.util.Collection;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Set;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 
@@ -79,6 +80,7 @@ import org.codehaus.jackson.map.ObjectMapper;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.ArrayListMultimap;
 import com.google.common.collect.Multimap;
+import com.google.common.collect.Sets;
 
 /**
  * Foreman manages all the fragments (local and remote) for a single query where this
@@ -99,6 +101,7 @@ import com.google.common.collect.Multimap;
 public class Foreman implements Runnable {
   private static final org.slf4j.Logger logger = org.slf4j.LoggerFactory.getLogger(Foreman.class);
   private final static ExceptionInjector injector = ExceptionInjector.getInjector(Foreman.class);
+  private static final int RPC_WAIT_IN_SECONDS = 90;
 
   private final QueryId queryId;
   private final RunQuery queryRequest;
@@ -855,7 +858,7 @@ public class Foreman implements Runnable {
      * count down (see FragmentSubmitFailures), but we count the number of failures so that we'll
      * know if any submissions did fail.
      */
-    final CountDownLatch endpointLatch = new CountDownLatch(intFragmentMap.keySet().size());
+    final ExtendedLatch endpointLatch = new ExtendedLatch(intFragmentMap.keySet().size());
     final FragmentSubmitFailures fragmentSubmitFailures = new FragmentSubmitFailures();
 
     // send remote intermediate fragments
@@ -863,25 +866,38 @@ public class Foreman implements Runnable {
       sendRemoteFragments(ep, intFragmentMap.get(ep), endpointLatch, fragmentSubmitFailures);
     }
 
-    // wait for the status of all requests sent above to be known
-    boolean ready = false;
-    while(!ready) {
-      try {
-        endpointLatch.await();
-        ready = true;
-      } catch (final InterruptedException e) {
-        // if we weren't ready, the while loop will continue to wait
-      }
+    if(!endpointLatch.awaitUninterruptibly(RPC_WAIT_IN_SECONDS * 1000)){
+      long numberRemaining = endpointLatch.getCount();
+      throw UserException.connectionError()
+          .message(
+              "Exceeded timeout while waiting send intermediate work fragments to remote nodes.  Sent %d and only heard response back from %d nodes.",
+              intFragmentMap.keySet().size(), intFragmentMap.keySet().size() - numberRemaining)
+          .build();
     }
 
+
     // if any of the intermediate fragment submissions failed, fail the query
-    final List<FragmentSubmitFailures.SubmissionException> submissionExceptions =
-        fragmentSubmitFailures.submissionExceptions;
+    final List<FragmentSubmitFailures.SubmissionException> submissionExceptions = fragmentSubmitFailures.submissionExceptions;
     if (submissionExceptions.size() > 0) {
-      throw new ForemanSetupException("Error setting up remote intermediate fragment execution",
-          submissionExceptions.get(0).rpcException);
-      // TODO indicate the failing drillbit?
-      // TODO report on all the failures?
+      Set<DrillbitEndpoint> endpoints = Sets.newHashSet();
+      StringBuilder sb = new StringBuilder();
+      boolean first = true;
+
+      for (FragmentSubmitFailures.SubmissionException e : fragmentSubmitFailures.submissionExceptions) {
+        DrillbitEndpoint endpoint = e.drillbitEndpoint;
+        if (endpoints.add(endpoint)) {
+          if (first) {
+            first = false;
+          } else {
+            sb.append(", ");
+          }
+          sb.append(endpoint.getAddress());
+        }
+      }
+      throw UserException.connectionError(submissionExceptions.get(0).rpcException)
+          .message("Error setting up remote intermediate fragment execution")
+          .addContext("Nodes with failures", sb.toString())
+          .build();
     }
 
     /*
@@ -926,12 +942,12 @@ public class Foreman implements Runnable {
    */
   private static class FragmentSubmitFailures {
     static class SubmissionException {
-//      final DrillbitEndpoint drillbitEndpoint;
+      final DrillbitEndpoint drillbitEndpoint;
       final RpcException rpcException;
 
       SubmissionException(@SuppressWarnings("unused") final DrillbitEndpoint drillbitEndpoint,
           final RpcException rpcException) {
-//        this.drillbitEndpoint = drillbitEndpoint;
+        this.drillbitEndpoint = drillbitEndpoint;
         this.rpcException = rpcException;
       }
     }
