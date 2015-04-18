@@ -26,6 +26,7 @@ import java.util.List;
 import java.util.Set;
 
 import com.google.common.collect.Sets;
+
 import org.apache.drill.common.expression.SchemaPath;
 import org.apache.drill.common.types.TypeProtos.MajorType;
 import org.apache.drill.exec.expr.TypeHelper;

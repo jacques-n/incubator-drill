@@ -17,8 +17,6 @@
  */
 package org.apache.drill.exec.physical.impl;
 
-import io.netty.buffer.ByteBuf;
-
 import java.util.List;
 
 import org.apache.drill.common.exceptions.ExecutionSetupException;
@@ -26,15 +24,11 @@ import org.apache.drill.exec.memory.OutOfMemoryException;
 import org.apache.drill.exec.ops.AccountingDataTunnel;
 import org.apache.drill.exec.ops.FragmentContext;
 import org.apache.drill.exec.ops.MetricDef;
-import org.apache.drill.exec.ops.OperatorContext;
 import org.apache.drill.exec.physical.config.SingleSender;
 import org.apache.drill.exec.proto.ExecProtos.FragmentHandle;
-import org.apache.drill.exec.proto.GeneralRPCProtos.Ack;
 import org.apache.drill.exec.record.FragmentWritableBatch;
 import org.apache.drill.exec.record.RecordBatch;
 import org.apache.drill.exec.record.RecordBatch.IterOutcome;
-import org.apache.drill.exec.rpc.BaseRpcOutcomeListener;
-import org.apache.drill.exec.rpc.RpcException;
 
 public class SingleSenderCreator implements RootCreator<SingleSender>{
 
@@ -68,7 +62,7 @@ public class SingleSenderCreator implements RootCreator<SingleSender>{
     }
 
     public SingleSenderRootExec(FragmentContext context, RecordBatch batch, SingleSender config) throws OutOfMemoryException {
-      super(context, new OperatorContext(config, context, null, false), config);
+      super(context, context.newOperatorContext(config, null, false), config);
       this.incoming = batch;
       assert(incoming != null);
       this.handle = context.getHandle();
@@ -133,13 +127,6 @@ public class SingleSenderCreator implements RootCreator<SingleSender>{
 
     public void updateStats(FragmentWritableBatch writableBatch) {
       stats.addLongStat(Metric.BYTES_SENT, writableBatch.getByteCount());
-    }
-
-    @Override
-    public void stop() {
-      super.stop();
-      oContext.close();
-      incoming.cleanup();
     }
 
     @Override

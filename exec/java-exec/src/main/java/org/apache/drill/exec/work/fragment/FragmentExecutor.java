@@ -24,6 +24,7 @@ import org.apache.drill.common.DeferredException;
 import org.apache.drill.common.concurrent.ExtendedLatch;
 import org.apache.drill.common.exceptions.UserException;
 import org.apache.drill.exec.coord.ClusterCoordinator;
+import org.apache.drill.exec.memory.OutOfMemoryRuntimeException;
 import org.apache.drill.exec.ops.FragmentContext;
 import org.apache.drill.exec.ops.FragmentContext.ExecutorState;
 import org.apache.drill.exec.physical.base.FragmentRoot;
@@ -51,6 +52,8 @@ public class FragmentExecutor implements Runnable {
   private final DeferredException deferredException = new DeferredException();
 
   private volatile RootExec root;
+  private volatile Thread executorThread;
+
   private final AtomicReference<FragmentState> fragmentState = new AtomicReference<>(FragmentState.AWAITING_ALLOCATION);
   private final ExtendedLatch acceptExternalEvents = new ExtendedLatch();
 
@@ -134,8 +137,8 @@ public class FragmentExecutor implements Runnable {
 
   @Override
   public void run() {
-    final Thread myThread = Thread.currentThread();
-    final String originalThreadName = myThread.getName();
+    executorThread = Thread.currentThread();
+    final String originalThreadName = executorThread.getName();
     final FragmentHandle fragmentHandle = fragmentContext.getHandle();
     final ClusterCoordinator clusterCoordinator = fragmentContext.getDrillbitContext().getClusterCoordinator();
     final DrillbitStatusListener drillbitStatusListener = new FragmentDrillbitStatusListener();
@@ -143,7 +146,7 @@ public class FragmentExecutor implements Runnable {
 
     try {
 
-      myThread.setName(newThreadName);
+      executorThread.setName(newThreadName);
 
       root = ImplCreator.getExec(fragmentContext, rootOperator);
 
@@ -164,6 +167,19 @@ public class FragmentExecutor implements Runnable {
 
       updateState(FragmentState.FINISHED);
 
+    } catch (OutOfMemoryError | OutOfMemoryRuntimeException e) {
+      if (!(e instanceof OutOfMemoryError) || "Direct buffer memory".equals(e.getMessage())) {
+        fail(UserException.resourceError(e)
+            .message("One or more nodes ran out of memory while executing the query.")
+            .build());
+      } else {
+        // we have a heap out of memory error. The JVM in unstable, exit.
+        System.out.println("Node ran out of Heap memory, exiting.");
+        e.printStackTrace();
+        System.out.flush();
+        System.exit(-2);
+
+      }
     } catch (AssertionError | Exception e) {
       fail(e);
     } finally {
@@ -179,7 +195,7 @@ public class FragmentExecutor implements Runnable {
 
       clusterCoordinator.removeDrillbitStatusListener(drillbitStatusListener);
 
-      myThread.setName(originalThreadName);
+      executorThread.setName(originalThreadName);
     }
   }
 
@@ -218,12 +234,14 @@ public class FragmentExecutor implements Runnable {
 
   private void closeOutResources() {
 
+    // first close the operators and release all memory.
     try {
-      root.stop(); // TODO make this an AutoCloseable so we can detect lack of closure
+      root.close();
     } catch (final Exception e) {
       fail(e);
     }
 
+    // then close the fragment context.
     fragmentContext.close();
 
   }
@@ -249,6 +267,7 @@ public class FragmentExecutor implements Runnable {
       case RUNNING:
         fragmentState.set(target);
         listener.stateChanged(handle, target);
+        executorThread.interrupt();
         return true;
 
       default:

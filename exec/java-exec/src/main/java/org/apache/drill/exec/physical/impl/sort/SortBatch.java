@@ -43,7 +43,6 @@ import org.apache.drill.exec.record.WritableBatch;
 import org.apache.drill.exec.record.selection.SelectionVector2;
 import org.apache.drill.exec.record.selection.SelectionVector4;
 import org.eigenbase.rel.RelFieldCollation.Direction;
-import org.eigenbase.rel.RelFieldCollation.NullDirection;
 
 import com.sun.codemodel.JConditional;
 import com.sun.codemodel.JExpr;
@@ -84,10 +83,9 @@ public class SortBatch extends AbstractRecordBatch<Sort> {
   }
 
   @Override
-  public void cleanup() {
+  public void close() {
     builder.clear();
-    super.cleanup();
-    incoming.cleanup();
+    super.close();
   }
 
   @Override

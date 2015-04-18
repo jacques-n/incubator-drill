@@ -17,6 +17,7 @@
  */
 package org.apache.drill.exec.physical.impl;
 
+import java.util.LinkedList;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
@@ -26,6 +27,7 @@ import org.apache.drill.exec.physical.base.AbstractPhysicalVisitor;
 import org.apache.drill.exec.physical.base.FragmentRoot;
 import org.apache.drill.exec.physical.base.PhysicalOperator;
 import org.apache.drill.exec.physical.impl.validate.IteratorValidatorInjector;
+import org.apache.drill.exec.record.CloseableRecordBatch;
 import org.apache.drill.exec.record.RecordBatch;
 import org.apache.drill.exec.util.AssertionUtil;
 
@@ -40,11 +42,16 @@ public class ImplCreator extends AbstractPhysicalVisitor<RecordBatch, FragmentCo
   static final org.slf4j.Logger logger = org.slf4j.LoggerFactory.getLogger(ImplCreator.class);
 
   private RootExec root = null;
+  private LinkedList<CloseableRecordBatch> operators = Lists.newLinkedList();
 
   private ImplCreator() {}
 
   private RootExec getRoot() {
     return root;
+  }
+
+  private List<CloseableRecordBatch> getOperators() {
+    return operators;
   }
 
   @Override
@@ -54,12 +61,18 @@ public class ImplCreator extends AbstractPhysicalVisitor<RecordBatch, FragmentCo
     Preconditions.checkNotNull(context);
 
     Object opCreator = context.getDrillbitContext().getOperatorCreatorRegistry().getOperatorCreator(op.getClass());
+
     if (opCreator != null) {
       if (op instanceof FragmentRoot ) {
         root = ((RootCreator<PhysicalOperator>)opCreator).getRoot(context, op, getChildren(op, context));
         return null;
       } else {
-        return ((BatchCreator<PhysicalOperator>)opCreator).getBatch(context, op, getChildren(op, context));
+        final CloseableRecordBatch batch = ((BatchCreator<PhysicalOperator>) opCreator).getBatch(context, op,
+            getChildren(op, context));
+
+        // order list from root of tree.
+        operators.addFirst(batch);
+        return batch;
       }
     } else {
       throw new UnsupportedOperationException(String.format(
@@ -90,7 +103,11 @@ public class ImplCreator extends AbstractPhysicalVisitor<RecordBatch, FragmentCo
       throw new ExecutionSetupException(
           "The provided fragment did not have a root node that correctly created a RootExec value.");
     }
-    return i.getRoot();
+    RootExec exec = i.getRoot();
+    if (exec instanceof BaseRootExec) {
+      ((BaseRootExec) exec).setOperators(i.getOperators());
+    }
+    return exec;
   }
 
 }

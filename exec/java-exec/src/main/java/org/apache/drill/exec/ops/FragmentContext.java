@@ -27,7 +27,6 @@ import net.hydromatic.optiq.SchemaPlus;
 import net.hydromatic.optiq.jdbc.SimpleOptiqSchema;
 
 import org.apache.drill.common.config.DrillConfig;
-import org.apache.drill.common.exceptions.UserException;
 import org.apache.drill.common.exceptions.ExecutionSetupException;
 import org.apache.drill.exec.exception.ClassTransformationException;
 import org.apache.drill.exec.expr.ClassGenerator;
@@ -35,6 +34,7 @@ import org.apache.drill.exec.expr.CodeGenerator;
 import org.apache.drill.exec.expr.fn.FunctionImplementationRegistry;
 import org.apache.drill.exec.memory.BufferAllocator;
 import org.apache.drill.exec.memory.OutOfMemoryException;
+import org.apache.drill.exec.physical.base.PhysicalOperator;
 import org.apache.drill.exec.planner.physical.PlannerSettings;
 import org.apache.drill.exec.proto.BitControl.PlanFragment;
 import org.apache.drill.exec.proto.CoordinationProtos.DrillbitEndpoint;
@@ -53,6 +53,7 @@ import org.apache.drill.exec.work.batch.IncomingBuffers;
 
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Preconditions;
+import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 
 /**
@@ -62,6 +63,8 @@ public class FragmentContext implements AutoCloseable, UdfUtilities {
   private static final org.slf4j.Logger logger = org.slf4j.LoggerFactory.getLogger(FragmentContext.class);
 
   private final Map<DrillbitEndpoint, AccountingDataTunnel> tunnels = Maps.newHashMap();
+  private final List<OperatorContextImpl> contexts = Lists.newLinkedList();
+
   private final DrillbitContext context;
   private final UserClientConnection connection;
   private final FragmentStats stats;
@@ -113,8 +116,7 @@ public class FragmentContext implements AutoCloseable, UdfUtilities {
     // Add the fragment context to the root allocator.
     // The QueryManager will call the root allocator to recalculate all the memory limits for all the fragments
     try {
-      allocator = context.getAllocator().getChildAllocator(
-          this, fragment.getMemInitial(), fragment.getMemMax(), true);
+      allocator = context.getAllocator().getChildAllocator(this, fragment.getMemInitial(), fragment.getMemMax(), true);
       Preconditions.checkNotNull(allocator, "Unable to acuqire allocator");
     } catch(final Throwable e) {
       throw new ExecutionSetupException("Failure while getting memory allocator for fragment.", e);
@@ -264,6 +266,20 @@ public class FragmentContext implements AutoCloseable, UdfUtilities {
     return buffers;
   }
 
+  public OperatorContext newOperatorContext(PhysicalOperator popConfig, OperatorStats stats, boolean applyFragmentLimit)
+      throws OutOfMemoryException {
+    OperatorContextImpl context = new OperatorContextImpl(popConfig, this, stats, applyFragmentLimit);
+    contexts.add(context);
+    return context;
+  }
+
+  public OperatorContext newOperatorContext(PhysicalOperator popConfig, boolean applyFragmentLimit)
+      throws OutOfMemoryException {
+    OperatorContextImpl context = new OperatorContextImpl(popConfig, this, applyFragmentLimit);
+    contexts.add(context);
+    return context;
+  }
+
   @VisibleForTesting
   @Deprecated
   public Throwable getFailureCause() {
@@ -291,6 +307,12 @@ public class FragmentContext implements AutoCloseable, UdfUtilities {
   @Override
   public void close() {
     waitForSendComplete();
+
+    // close operator context
+    for (OperatorContextImpl opContext : contexts) {
+      suppressingClose(opContext);
+    }
+
     suppressingClose(bufferManager);
     suppressingClose(buffers);
     suppressingClose(allocator);
