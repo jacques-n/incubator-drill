@@ -216,7 +216,7 @@ public class FragmentExecutor implements Runnable {
   }
 
 
-  private synchronized void closeOutResources() {
+  private void closeOutResources() {
 
     try {
       root.stop(); // TODO make this an AutoCloseable so we can detect lack of closure
