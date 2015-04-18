@@ -46,7 +46,6 @@ public class ExtendedLatch extends CountDownLatch {
 
   /**
    * Await without interruption for a given time.
-   * 
    * @param waitMillis
    *          Time in milliseconds to wait
    * @return Whether the countdown reached zero or not.
