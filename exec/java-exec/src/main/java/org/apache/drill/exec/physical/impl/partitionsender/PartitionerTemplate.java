@@ -267,7 +267,14 @@ public abstract class PartitionerTemplate implements Partitioner {
 
     public void flush(boolean schemaChanged) throws IOException {
       if (dropAll) {
-        vectorContainer.zeroVectors();
+        // If we are in dropAll mode, we still want to copy the data, because we can't stop copying a single outgoing
+        // batch with out stopping all outgoing batches. Other option is check for status of dropAll before copying
+        // every single record in copy method which has the overhead for every record all the time. Resetting the output
+        // count, reusing the same buffers and copying has overhead only for outgoing batches whose receiver has
+        // terminated.
+
+        // Reset the count to 0 and use existing buffers for exhausting input where receiver of this batch is terminated
+        recordCount = 0;
         return;
       }
       final FragmentHandle handle = context.getHandle();
