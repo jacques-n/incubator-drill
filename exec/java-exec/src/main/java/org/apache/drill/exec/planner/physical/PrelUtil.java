@@ -35,11 +35,6 @@ import org.apache.drill.common.expression.SchemaPath;
 import org.apache.drill.common.logical.data.Order.Ordering;
 import org.apache.drill.common.types.TypeProtos.MinorType;
 import org.apache.drill.common.types.Types;
-import org.apache.drill.exec.compile.sig.MappingSet;
-import org.apache.drill.exec.expr.ClassGenerator;
-import org.apache.drill.exec.expr.ClassGenerator.HoldingContainer;
-import org.apache.drill.exec.expr.fn.FunctionGenerationHelper;
-import org.apache.drill.exec.expr.fn.FunctionImplementationRegistry;
 import org.apache.drill.exec.planner.physical.DrillDistributionTrait.DistributionField;
 import org.apache.drill.exec.record.BatchSchema.SelectionVectorMode;
 import org.eigenbase.rel.RelCollation;
@@ -90,7 +85,8 @@ public class PrelUtil {
   public static LogicalExpression getHashExpression(List<LogicalExpression> fields, boolean hashAsDouble){
     assert fields.size() > 0;
 
-    String functionName = hashAsDouble ? HASH64_DOUBLE_FUNCTION_NAME : HASH64_FUNCTION_NAME;
+    // String functionName = hashAsDouble ? HASH64_DOUBLE_FUNCTION_NAME : HASH64_FUNCTION_NAME;
+    String functionName = HASH64_FUNCTION_NAME;
     FunctionCall func = new FunctionCall(functionName,  ImmutableList.of(fields.get(0)), ExpressionPosition.UNKNOWN);
     for (int i = 1; i<fields.size(); i++) {
       func = new FunctionCall(functionName,  ImmutableList.of(fields.get(i), func), ExpressionPosition.UNKNOWN);
