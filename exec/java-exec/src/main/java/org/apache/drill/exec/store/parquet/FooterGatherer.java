@@ -145,14 +145,9 @@ public class FooterGatherer {
       final int size = BytesUtils.readIntLittleEndian(footerBytes, footerBytes.length - FOOTER_METADATA_SIZE);
 
       if(size > footerBytes.length - FOOTER_METADATA_SIZE){
-        // if the footer is larger than our initial read, we need to read the rest.
-        byte[] origFooterBytes = footerBytes;
-        int origFooterRead = origFooterBytes.length - FOOTER_METADATA_SIZE;
-
+        // if the footer is larger than our initial read, we need to read the whole footer.
         footerBytes = new byte[size];
-
-        readFully(file, fileLength - size - FOOTER_METADATA_SIZE, footerBytes, 0, size - origFooterRead);
-        System.arraycopy(origFooterBytes, 0, footerBytes, size - footerBytes.length, origFooterRead);
+        readFully(file, fileLength - size - FOOTER_METADATA_SIZE, footerBytes, 0, size);
       }else{
         int start = footerBytes.length - (size + FOOTER_METADATA_SIZE);
         footerBytes = ArrayUtils.subarray(footerBytes, start, start + size);
