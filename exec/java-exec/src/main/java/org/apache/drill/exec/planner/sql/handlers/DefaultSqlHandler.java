@@ -170,23 +170,23 @@ public class DefaultSqlHandler extends AbstractSqlHandler {
     return rel;
   }
 
-  protected RelNode preprocessNode(RelNode rel) throws SqlUnsupportedException{
-     /* Traverse the tree to do the following pre-processing tasks:
-     * 1. replace the convert_from, convert_to function to actual implementations
-     * Eg: convert_from(EXPR, 'JSON') be converted to convert_fromjson(EXPR);
-     * TODO: Ideally all function rewrites would move here instead of DrillOptiq
+  protected RelNode preprocessNode(RelNode rel) throws SqlUnsupportedException {
+    /*
+     * Traverse the tree to do the following pre-processing tasks: 1. replace the convert_from, convert_to function to
+     * actual implementations Eg: convert_from(EXPR, 'JSON') be converted to convert_fromjson(EXPR); TODO: Ideally all
+     * function rewrites would move here instead of DrillOptiq.
      *
-     * 2. see where the tree contains unsupported functions;
-     * throw SqlUnsupportedException if there is
+     * 2. see where the tree contains unsupported functions; throw SqlUnsupportedException if there is any.
      */
 
-     PreProcessLogicalRel visitor = PreProcessLogicalRel.createVisitor(planner.getTypeFactory(), context.getDrillOperatorTable());
-     try {
-        rel = rel.accept(visitor);
-     } catch(UnsupportedOperationException ex) {
-        visitor.convertException();
-       throw ex;
-     }
+    PreProcessLogicalRel visitor = PreProcessLogicalRel.createVisitor(planner.getTypeFactory(),
+        context.getDrillOperatorTable());
+    try {
+      rel = rel.accept(visitor);
+    } catch (UnsupportedOperationException ex) {
+      visitor.convertException();
+      throw ex;
+    }
 
     return rel;
   }
@@ -198,6 +198,12 @@ public class DefaultSqlHandler extends AbstractSqlHandler {
       if (convertedRelNode instanceof DrillStoreRel) {
         throw new UnsupportedOperationException();
       } else {
+
+        // If the query contains a limit 0 clause, disable distributed mode since it is overkill for determining schema.
+        if (FindLimit0Visitor.containsLimit0(convertedRelNode)) {
+          context.getPlannerSettings().forceSingleMode();
+        }
+
         return new DrillScreenRel(convertedRelNode.getCluster(), convertedRelNode.getTraitSet(), convertedRelNode);
       }
     } catch (RelOptPlanner.CannotPlanException ex) {
