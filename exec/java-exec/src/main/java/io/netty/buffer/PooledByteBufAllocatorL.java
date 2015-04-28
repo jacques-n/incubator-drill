@@ -24,11 +24,11 @@ public class PooledByteBufAllocatorL extends PooledByteBufAllocator{
 
   public static final PooledByteBufAllocatorL DEFAULT = new PooledByteBufAllocatorL();
 
-//  public final UnsafeDirectLittleEndian emptyBuf;
+  // public final UnsafeDirectLittleEndian emptyBuf;
 
   public PooledByteBufAllocatorL() {
     super(true);
-//    emptyBuf = newDirectBuffer(0,0);
+    // emptyBuf = newDirectBuffer(0,0);
   }
 
   @Override
@@ -38,23 +38,32 @@ public class PooledByteBufAllocatorL extends PooledByteBufAllocator{
 
   @Override
   protected UnsafeDirectLittleEndian newDirectBuffer(int initialCapacity, int maxCapacity) {
+
     PoolThreadCache cache = threadCache.get();
     PoolArena<ByteBuffer> directArena = cache.directArena;
 
     ByteBuf buf;
     if (directArena != null) {
+      if (maxCapacity > directArena.chunkSize) {
+        return new UnsafeDirectLittleEndian(
+            (UnpooledUnsafeDirectByteBuf) UnpooledByteBufAllocator.DEFAULT.buffer(initialCapacity, maxCapacity));
+      } else {
         buf = directArena.allocate(cache, initialCapacity, maxCapacity);
+        if (buf instanceof PooledUnsafeDirectByteBuf) {
+          return new UnsafeDirectLittleEndian((PooledUnsafeDirectByteBuf) buf);
+        } else {
+          throw new UnsupportedOperationException(
+              "Drill requries that the JVM used supports access sun.misc.Unsafe.  This platform didn't provide that functionality.");
+        }
+      }
     } else {
       throw new UnsupportedOperationException("Drill requries that the allocator operates in DirectBuffer mode.");
     }
 
-    if(buf instanceof PooledUnsafeDirectByteBuf){
-      return new UnsafeDirectLittleEndian( (PooledUnsafeDirectByteBuf) buf);
-    }else{
-      throw new UnsupportedOperationException("Drill requries that the JVM used supports access sun.misc.Unsafe.  This platform didn't provide that functionality.");
-    }
+
 
   }
+
 
 
   @Override

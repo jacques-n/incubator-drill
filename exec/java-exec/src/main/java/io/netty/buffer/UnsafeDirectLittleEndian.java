@@ -24,18 +24,25 @@ import java.nio.ByteOrder;
 
 public final class UnsafeDirectLittleEndian extends WrappedByteBuf {
     private static final boolean NATIVE_ORDER = ByteOrder.nativeOrder() == ByteOrder.LITTLE_ENDIAN;
-    private final PooledUnsafeDirectByteBuf wrapped;
+  private final AbstractReferenceCountedByteBuf wrapped;
     private final long memoryAddress;
 
-    UnsafeDirectLittleEndian(PooledUnsafeDirectByteBuf buf) {
-        super(buf);
-        if (!NATIVE_ORDER || buf.order() != ByteOrder.BIG_ENDIAN) {
-          throw new IllegalStateException("Drill only runs on LittleEndian systems.");
-        }
-        wrapped = buf;
-        this.memoryAddress = buf.memoryAddress();
-    }
+  UnsafeDirectLittleEndian(UnpooledUnsafeDirectByteBuf buf) {
+    this(buf, true);
+  }
 
+  UnsafeDirectLittleEndian(PooledUnsafeDirectByteBuf buf) {
+    this(buf, true);
+  }
+
+  private UnsafeDirectLittleEndian(AbstractReferenceCountedByteBuf buf, boolean fake) {
+    super(buf);
+    if (!NATIVE_ORDER || buf.order() != ByteOrder.BIG_ENDIAN) {
+      throw new IllegalStateException("Drill only runs on LittleEndian systems.");
+    }
+    wrapped = buf;
+    this.memoryAddress = buf.memoryAddress();
+  }
     private long addr(int index) {
         return memoryAddress + index;
     }
