@@ -17,7 +17,7 @@
  */
 package org.apache.drill.exec.store.parquet;
 
-import io.netty.buffer.ByteBuf;
+import io.netty.buffer.DrillBuf;
 
 import java.io.IOException;
 import java.io.OutputStream;
@@ -53,7 +53,7 @@ public class ColumnDataReader {
     return new HadoopBytesInput(b);
   }
 
-  public ByteBuf getPageAsBytesBuf(ByteBuf byteBuf, int pageLength) throws IOException{
+  public void getPageAsBytesBuf(DrillBuf byteBuf, int pageLength) throws IOException {
     ByteBuffer directBuffer=byteBuf.nioBuffer(0, pageLength);
     int l=directBuffer.remaining();
     int bl=byteBuf.capacity();
@@ -62,10 +62,9 @@ public class ColumnDataReader {
         CompatibilityUtil.getBuf(input, directBuffer, directBuffer.remaining());
       }
     }catch(Exception e) {
-      logger.error("Failed to read data into Direct ByteBuffer with exception: "+e.getMessage());
-      throw new DrillRuntimeException(e.getMessage());
+      logger.error("Failed to read data into Direct ByteBuffer with exception: " + e.getMessage(), e);
+      throw new DrillRuntimeException(e);
     }
-    return byteBuf;
   }
 
   public void clear(){
