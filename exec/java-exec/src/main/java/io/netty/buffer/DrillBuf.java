@@ -71,19 +71,6 @@ public final class DrillBuf extends AbstractByteBuf {
     this.allocator = allocator;
   }
 
-  private DrillBuf(ByteBuffer bb) {
-    super(bb.remaining());
-    UnpooledUnsafeDirectByteBuf bytebuf = new UnpooledUnsafeDirectByteBuf(UnpooledByteBufAllocator.DEFAULT, bb, bb.remaining());
-    this.acct = FakeAllocator.FAKE_ACCOUNTOR;
-    this.addr = bytebuf.memoryAddress();
-    this.allocator = FakeAllocator.FAKE_ALLOCATOR;
-    this.b = bytebuf;
-    this.length = bytebuf.capacity();
-    this.offset = 0;
-    this.rootBuffer = true;
-    this.writerIndex(bb.remaining());
-  }
-
   private DrillBuf(BufferAllocator allocator, Accountor a) {
     super(0);
     this.b = new EmptyByteBuf(allocator.getUnderlyingAllocator()).order(ByteOrder.LITTLE_ENDIAN);
@@ -699,6 +686,24 @@ public final class DrillBuf extends AbstractByteBuf {
     return this;
   }
 
+  public ByteBuf setBytes(int index, ByteBuffer src, int srcIndex, int length) {
+    if (src.isDirect()) {
+      checkIndex(index, length);
+      PlatformDependent.copyMemory(PlatformDependent.directBufferAddress(src), this.memoryAddress(), length);
+    } else {
+      if (srcIndex == 0 && src.capacity() == length) {
+        b.setBytes(index + offset, src);
+      } else {
+        ByteBuffer newBuf = src.duplicate();
+        newBuf.position(srcIndex);
+        newBuf.limit(srcIndex + length);
+        b.setBytes(index + offset, src);
+      }
+    }
+
+    return this;
+  }
+
   @Override
   public ByteBuf setBytes(int index, byte[] src, int srcIndex, int length) {
     b.setBytes(index + offset, src, srcIndex, length);
@@ -733,15 +738,6 @@ public final class DrillBuf extends AbstractByteBuf {
 
   public boolean isRootBuffer() {
     return rootBuffer;
-  }
-
-  public static DrillBuf wrapByteBuffer(ByteBuffer b) {
-    if (!b.isDirect()) {
-      throw new IllegalStateException("DrillBufs can only refer to direct memory.");
-    } else {
-      return new DrillBuf(b);
-    }
-
   }
 
 }

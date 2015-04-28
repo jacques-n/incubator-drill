@@ -184,7 +184,7 @@ public class Drillbit implements AutoCloseable {
     engine = new ServiceEngine(manager.getControlMessageHandler(), manager.getUserWorker(), context,
         manager.getWorkBus(), manager.getDataHandler(), allowPortHunting);
 
-    if (enableHttp) {
+    if (true || enableHttp) {
       embeddedJetty = new Server(config.getInt(ExecConstants.HTTP_PORT));
     } else {
       embeddedJetty = null;
