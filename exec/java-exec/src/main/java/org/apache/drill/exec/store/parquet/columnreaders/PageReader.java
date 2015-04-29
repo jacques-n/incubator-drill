@@ -319,6 +319,7 @@ final class PageReader {
   public void clearBuffers() {
     if (pageDataByteArray != null) {
       pageDataByteArray.release();
+      pageDataByteArray = null;
     }
   }
 
