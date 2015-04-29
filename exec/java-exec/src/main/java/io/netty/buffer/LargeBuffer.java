@@ -41,10 +41,11 @@ public class LargeBuffer extends AbstractByteBuf {
   }
 
   private final ByteBuf buffer;
+  private final int initCap;
 
   public LargeBuffer(ByteBuf buffer, AtomicLong hugeBufferSize, AtomicLong hugeBufferCount) {
     super(buffer.maxCapacity());
-
+    initCap = buffer.capacity();
     this.hugeBufferCount = hugeBufferCount;
     this.hugeBufferSize = hugeBufferSize;
 
@@ -338,10 +339,9 @@ public class LargeBuffer extends AbstractByteBuf {
 
   @Override
   public boolean release(int decrement) {
-    int maxCapacity = this.maxCapacity();
     boolean released = unwrap().release(decrement);
     if (released) {
-      hugeBufferSize.addAndGet(-maxCapacity);
+      hugeBufferSize.addAndGet(-initCap);
       hugeBufferCount.decrementAndGet();
     }
     return released;

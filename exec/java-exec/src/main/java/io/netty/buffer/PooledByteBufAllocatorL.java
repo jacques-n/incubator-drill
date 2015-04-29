@@ -113,8 +113,8 @@ public class PooledByteBufAllocatorL extends PooledByteBufAllocator{
         ByteBuf buf = UnpooledByteBufAllocator.DEFAULT.directBuffer(initialCapacity, maxCapacity);
 
         hugeBufferCount.incrementAndGet();
-        hugeBufferSize.addAndGet(buf.maxCapacity());
-        largeBuffersHist.update(buf.maxCapacity());
+        hugeBufferSize.addAndGet(buf.capacity());
+        largeBuffersHist.update(buf.capacity());
         return new UnsafeDirectLittleEndian(new LargeBuffer(buf, hugeBufferSize, hugeBufferCount));
 
       } else {
