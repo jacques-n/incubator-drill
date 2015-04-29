@@ -108,7 +108,7 @@ public class PooledByteBufAllocatorL extends PooledByteBufAllocator{
 
     if (directArena != null) {
 
-      if (maxCapacity > directArena.chunkSize) {
+      if (initialCapacity > directArena.chunkSize) {
         // This is beyond chunk size so we'll allocate separately.
         ByteBuf buf = UnpooledByteBufAllocator.DEFAULT.directBuffer(initialCapacity, maxCapacity);
 
