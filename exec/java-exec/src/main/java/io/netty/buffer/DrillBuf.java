@@ -36,6 +36,8 @@ import org.apache.drill.exec.ops.FragmentContext;
 import org.apache.drill.exec.ops.OperatorContext;
 import org.apache.drill.exec.util.AssertionUtil;
 
+import com.google.common.base.Preconditions;
+
 public final class DrillBuf extends AbstractByteBuf {
   static final org.slf4j.Logger logger = org.slf4j.LoggerFactory.getLogger(DrillBuf.class);
 
@@ -244,7 +246,9 @@ public final class DrillBuf extends AbstractByteBuf {
   public synchronized boolean release(int decrement) {
 
     if(rootBuffer){
-      if(0 == this.rootRefCnt.addAndGet(-decrement)){
+      final long newRefCnt = this.rootRefCnt.addAndGet(-decrement);
+      Preconditions.checkArgument(newRefCnt > -1, "Buffer has negative reference count.");
+      if (newRefCnt == 0) {
         b.release(decrement);
         acct.release(this, length);
         return true;
