@@ -25,6 +25,7 @@ import java.util.concurrent.atomic.AtomicLong;
 
 import org.apache.drill.common.exceptions.DrillRuntimeException;
 import org.apache.drill.exec.metrics.DrillMetrics;
+import org.apache.drill.exec.util.AssertionUtil;
 
 import com.codahale.metrics.Gauge;
 import com.codahale.metrics.Histogram;
@@ -131,7 +132,7 @@ public class PooledByteBufAllocatorL extends PooledByteBufAllocator{
         hugeBufferCount.incrementAndGet();
         hugeBufferSize.addAndGet(buf.capacity());
         largeBuffersHist.update(buf.capacity());
-        logger.info("Allocating huge buffer of size {}", initialCapacity, new Exception());
+        // logger.debug("Allocating huge buffer of size {}", initialCapacity, new Exception());
         return new UnsafeDirectLittleEndian(new LargeBuffer(buf, hugeBufferSize, hugeBufferCount));
 
       } else {
@@ -142,17 +143,17 @@ public class PooledByteBufAllocatorL extends PooledByteBufAllocator{
         }
 
         normalBuffersHist.update(buf.capacity());
-        normalBufferSize.addAndGet(buf.capacity());
-        normalBufferCount.incrementAndGet();
+        if (AssertionUtil.ASSERT_ENABLED) {
+          normalBufferSize.addAndGet(buf.capacity());
+          normalBufferCount.incrementAndGet();
+        }
+
         return new UnsafeDirectLittleEndian((PooledUnsafeDirectByteBuf) buf, normalBufferCount, normalBufferSize);
       }
 
     } else {
       throw fail();
     }
-
-
-
   }
 
   private UnsupportedOperationException fail() {

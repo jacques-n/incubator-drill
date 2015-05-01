@@ -23,6 +23,8 @@ import io.netty.util.internal.PlatformDependent;
 import java.nio.ByteOrder;
 import java.util.concurrent.atomic.AtomicLong;
 
+import org.apache.drill.exec.util.AssertionUtil;
+
 public final class UnsafeDirectLittleEndian extends WrappedByteBuf {
     private static final boolean NATIVE_ORDER = ByteOrder.nativeOrder() == ByteOrder.LITTLE_ENDIAN;
   private final AbstractByteBuf wrapped;
@@ -39,7 +41,9 @@ public final class UnsafeDirectLittleEndian extends WrappedByteBuf {
     this(buf, true);
     this.bufferCount = bufferCount;
     this.bufferSize = bufferSize;
-    this.initCap = capacity();
+
+    // initCap is used if we're tracking memory release. If we're in non-debug mode, we'll skip this.
+    this.initCap = AssertionUtil.ASSERT_ENABLED ? capacity() : -1;
   }
 
   private UnsafeDirectLittleEndian(AbstractByteBuf buf, boolean fake) {
