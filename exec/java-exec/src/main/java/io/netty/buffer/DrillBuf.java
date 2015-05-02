@@ -693,7 +693,8 @@ public final class DrillBuf extends AbstractByteBuf {
   public ByteBuf setBytes(int index, ByteBuffer src, int srcIndex, int length) {
     if (src.isDirect()) {
       checkIndex(index, length);
-      PlatformDependent.copyMemory(PlatformDependent.directBufferAddress(src), this.memoryAddress(), length);
+      PlatformDependent.copyMemory(PlatformDependent.directBufferAddress(src) + srcIndex, this.memoryAddress() + index,
+          length);
     } else {
       if (srcIndex == 0 && src.capacity() == length) {
         b.setBytes(index + offset, src);
