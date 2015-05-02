@@ -91,8 +91,7 @@ public abstract class VarLengthValuesColumn<V extends ValueVector> extends VarLe
       currDictValToWrite = currLengthDeterminingDictVal;
       // re-purposing  this field here for length in BYTES to prevent repetitive multiplication/division
       dataTypeLengthInBits = currLengthDeterminingDictVal.length();
-    }
-    else {
+    } else {
       // re-purposing  this field here for length in BYTES to prevent repetitive multiplication/division
       dataTypeLengthInBits = pageReader.pageDataByteArray.getInt((int) pageReader.readyToReadPosInBytes);
     }

@@ -238,13 +238,15 @@ public class VarLengthColumnReaders {
   public static class VarBinaryColumn extends VarLengthValuesColumn<VarBinaryVector> {
 
     // store a hard reference to the vector (which is also stored in the superclass) to prevent repetitive casting
-    protected VarBinaryVector varBinaryVector;
+    private final VarBinaryVector varBinaryVector;
+    private final VarBinaryVector.Mutator mutator;
 
     VarBinaryColumn(ParquetRecordReader parentReader, int allocateSize, ColumnDescriptor descriptor,
                     ColumnChunkMetaData columnChunkMetaData, boolean fixedLength, VarBinaryVector v,
                     SchemaElement schemaElement) throws ExecutionSetupException {
       super(parentReader, allocateSize, descriptor, columnChunkMetaData, fixedLength, v, schemaElement);
       varBinaryVector = v;
+      mutator = v.getMutator();
     }
 
     @Override
@@ -255,9 +257,9 @@ public class VarLengthColumnReaders {
 
       if (usingDictionary) {
         currDictValToWrite = pageReader.dictionaryValueReader.readBytes();
-        varBinaryVector.getMutator().setSafe(index, currDictValToWrite.toByteBuffer(), 0, currDictValToWrite.length());
+        mutator.setSafe(index, currDictValToWrite.toByteBuffer(), 0, currDictValToWrite.length());
       } else {
-        varBinaryVector.getMutator().setSafe(index, start, start + length, value);
+        mutator.setSafe(index, start, start + length, value);
       }
       return true;
     }
