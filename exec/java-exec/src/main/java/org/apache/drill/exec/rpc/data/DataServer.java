@@ -137,7 +137,7 @@ public class DataServer extends BasicServer<RpcType, BitServerConnection> {
         }
 
       }else{
-        if (targetCount > 1) {
+        if (targetCount > 1 || true) {
           for (int minor = 0; minor < targetCount; minor++) {
             send(fragmentBatch, (DrillBuf) body, minor, ack, true);
           }

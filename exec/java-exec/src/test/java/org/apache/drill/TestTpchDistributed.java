@@ -17,11 +17,28 @@
  */
 package org.apache.drill;
 
+import static org.junit.Assert.assertEquals;
+import io.netty.buffer.UnsafeDirectLittleEndian;
+
+import org.junit.After;
+import org.junit.AfterClass;
 import org.junit.Ignore;
 import org.junit.Test;
 
 public class TestTpchDistributed extends BaseTestQuery {
-//  private static final org.slf4j.Logger logger = org.slf4j.LoggerFactory.getLogger(TestTpchDistributed.class);
+  private static final org.slf4j.Logger logger = org.slf4j.LoggerFactory.getLogger(TestTpchDistributed.class);
+
+  @SuppressWarnings("static-method")
+  @After
+  public void checkForBuffers() {
+    assertEquals(0, UnsafeDirectLittleEndian.getBufferCount());
+  }
+
+  @AfterClass
+  public static void checkForBuffersAfterClose() {
+    UnsafeDirectLittleEndian.logBuffers(logger);
+    assertEquals(0, UnsafeDirectLittleEndian.getBufferCount());
+  }
 
   private static void testDistributed(final String fileName) throws Exception {
     final String query = getFile(fileName);

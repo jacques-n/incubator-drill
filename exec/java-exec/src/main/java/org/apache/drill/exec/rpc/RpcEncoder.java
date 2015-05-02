@@ -103,9 +103,10 @@ class RpcEncoder extends MessageToMessageEncoder<OutboundRpcMessage>{
 
       // if exists, write data body and tag.
       if (msg.getRawBodySize() > 0) {
-        if(RpcConstants.EXTRA_DEBUGGING) {
+
+        // if(RpcConstants.EXTRA_DEBUGGING) {
           logger.debug("Writing raw body of size {}", msg.getRawBodySize());
-        }
+        // }
 
         cos.writeRawVarint32(RAW_BODY_TAG);
         cos.writeRawVarint32(rawBodyLength);
@@ -113,6 +114,7 @@ class RpcEncoder extends MessageToMessageEncoder<OutboundRpcMessage>{
 
         CompositeByteBuf cbb = new CompositeByteBuf(buf.alloc(), true, msg.dBodies.length + 1);
         cbb.addComponent(buf);
+
         int bufLength = buf.readableBytes();
         for (ByteBuf b : msg.dBodies) {
           cbb.addComponent(b);
@@ -120,6 +122,7 @@ class RpcEncoder extends MessageToMessageEncoder<OutboundRpcMessage>{
         }
         cbb.writerIndex(bufLength);
         out.add(cbb);
+
       } else {
         cos.flush();
         out.add(buf);

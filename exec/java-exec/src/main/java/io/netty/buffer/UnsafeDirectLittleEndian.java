@@ -21,12 +21,20 @@ package io.netty.buffer;
 import io.netty.util.internal.PlatformDependent;
 
 import java.nio.ByteOrder;
+import java.util.IdentityHashMap;
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicLong;
 
+import org.apache.drill.common.StackTrace;
 import org.apache.drill.exec.util.AssertionUtil;
+import org.slf4j.Logger;
+
 
 public final class UnsafeDirectLittleEndian extends WrappedByteBuf {
-    private static final boolean NATIVE_ORDER = ByteOrder.nativeOrder() == ByteOrder.LITTLE_ENDIAN;
+  private static final boolean NATIVE_ORDER = ByteOrder.nativeOrder() == ByteOrder.LITTLE_ENDIAN;
+
+  private final static IdentityHashMap<UnsafeDirectLittleEndian, StackTrace> bufferMap = new IdentityHashMap<>();
+
   private final AbstractByteBuf wrapped;
   private final long memoryAddress;
   private AtomicLong bufferCount;
@@ -46,6 +54,22 @@ public final class UnsafeDirectLittleEndian extends WrappedByteBuf {
     this.initCap = AssertionUtil.ASSERT_ENABLED ? capacity() : -1;
   }
 
+  public static int getBufferCount() {
+    return bufferMap.size();
+  }
+
+  public static void logBuffers(final Logger logger) {
+    synchronized (bufferMap) {
+      int count = 0;
+      final Set<UnsafeDirectLittleEndian> bufferSet = bufferMap.keySet();
+      for (final UnsafeDirectLittleEndian udle : bufferSet) {
+        final StackTrace stackTrace = bufferMap.get(udle);
+        ++count;
+        logger.error("#" + count + " active buffer allocated at\n" + stackTrace);
+      }
+    }
+  }
+
   private UnsafeDirectLittleEndian(AbstractByteBuf buf, boolean fake) {
     super(buf);
     if (!NATIVE_ORDER || buf.order() != ByteOrder.BIG_ENDIAN) {
@@ -53,6 +77,11 @@ public final class UnsafeDirectLittleEndian extends WrappedByteBuf {
     }
     wrapped = buf;
     this.memoryAddress = buf.memoryAddress();
+
+    synchronized (bufferMap) {
+      bufferMap.put(this, new StackTrace());
+    }
+
   }
     private long addr(int index) {
         return memoryAddress + index;
@@ -229,6 +258,16 @@ public final class UnsafeDirectLittleEndian extends WrappedByteBuf {
     if (released && initCap != -1) {
       bufferCount.decrementAndGet();
       bufferSize.addAndGet(-initCap);
+    }
+
+    if (released) {
+      final Object object;
+      synchronized (bufferMap) {
+        object = bufferMap.remove(this);
+      }
+      if (object == null) {
+        throw new IllegalStateException("no such buffer");
+      }
     }
     return released;
   }
