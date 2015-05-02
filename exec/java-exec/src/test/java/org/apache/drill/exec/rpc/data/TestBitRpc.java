@@ -15,7 +15,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.drill.exec.server;
+package org.apache.drill.exec.rpc.data;
 
 import static org.junit.Assert.assertTrue;
 import io.netty.buffer.ByteBuf;
@@ -58,6 +58,8 @@ import org.apache.drill.exec.rpc.data.DataResponseHandler;
 import org.apache.drill.exec.rpc.data.DataRpcConfig;
 import org.apache.drill.exec.rpc.data.DataServer;
 import org.apache.drill.exec.rpc.data.DataTunnel;
+import org.apache.drill.exec.rpc.data.RemoteDataTunnel;
+import org.apache.drill.exec.server.BootStrapContext;
 import org.apache.drill.exec.vector.Float8Vector;
 import org.apache.drill.exec.vector.ValueVector;
 import org.apache.drill.exec.work.WorkManager.WorkerBee;
@@ -91,7 +93,7 @@ public class TestBitRpc extends ExecTest {
     port = server.bind(port, false);
     DrillbitEndpoint ep = DrillbitEndpoint.newBuilder().setAddress("localhost").setDataPort(port).build();
     DataConnectionManager manager = new DataConnectionManager(ep, c2);
-    DataTunnel tunnel = new DataTunnel(manager);
+    DataTunnel tunnel = new RemoteDataTunnel(manager);
     AtomicLong max = new AtomicLong(0);
     for (int i = 0; i < 40; i++) {
       long t1 = System.currentTimeMillis();

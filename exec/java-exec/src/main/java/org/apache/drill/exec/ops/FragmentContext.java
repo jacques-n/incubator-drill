@@ -24,7 +24,6 @@ import java.util.List;
 import java.util.Map;
 
 import org.apache.calcite.schema.SchemaPlus;
-
 import org.apache.drill.common.config.DrillConfig;
 import org.apache.drill.common.exceptions.ExecutionSetupException;
 import org.apache.drill.common.exceptions.UserException;
@@ -308,7 +307,7 @@ public class FragmentContext implements AutoCloseable, UdfUtilities {
     return context.getController().getTunnel(endpoint);
   }
 
-  public AccountingDataTunnel getDataTunnel(final DrillbitEndpoint endpoint) {
+  public synchronized AccountingDataTunnel getDataTunnel(final DrillbitEndpoint endpoint) {
     AccountingDataTunnel tunnel = tunnels.get(endpoint);
     if (tunnel == null) {
       tunnel = new AccountingDataTunnel(context.getDataConnectionsPool().getTunnel(endpoint), sendingAccountor, statusHandler);

@@ -23,8 +23,8 @@ import org.apache.drill.exec.rpc.RpcOutcomeListener;
 import org.apache.drill.exec.rpc.data.DataTunnel;
 
 /**
- * Wrapper around a {@link org.apache.drill.exec.rpc.data.DataTunnel} that tracks the status of batches sent to
- * to other Drillbits.
+ * Wrapper around a {@link org.apache.drill.exec.rpc.data.DataTunnel} that tracks the status of batches sent to to other
+ * Drillbits.
  */
 public class AccountingDataTunnel {
   private final DataTunnel tunnel;
