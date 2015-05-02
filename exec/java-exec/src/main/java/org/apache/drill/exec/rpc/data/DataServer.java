@@ -117,8 +117,15 @@ public class DataServer extends BasicServer<RpcType, BitServerConnection> {
   @Override
   protected void handle(BitServerConnection connection, int rpcType, ByteBuf pBody, ByteBuf body, ResponseSender sender) throws RpcException {
     assert rpcType == RpcType.REQ_RECORD_BATCH_VALUE;
-
     final FragmentRecordBatch fragmentBatch = get(pBody, FragmentRecordBatch.PARSER);
+    receiveBatch(fragmentBatch, body, sender);
+  }
+
+  BufferAllocator getAllocator() {
+    return context.getAllocator();
+  }
+
+  void receiveBatch(FragmentRecordBatch fragmentBatch, ByteBuf body, ResponseSender sender) {
     final int targetCount = fragmentBatch.getReceivingMinorFragmentIdCount();
 
     Pointer<DrillBuf> out = new Pointer<DrillBuf>();

@@ -143,6 +143,9 @@ public class UnlimitedRawBatchBuffer implements RawBatchBuffer{
     if (state != BufferState.KILLED) {
       state = BufferState.FINISHED;
     }
+
+    readController.flushResponses();
+
     if (!buffer.isEmpty()) {
       throw new IllegalStateException("buffer not empty when finished");
     }
