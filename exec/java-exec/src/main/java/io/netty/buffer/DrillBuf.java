@@ -339,7 +339,7 @@ public final class DrillBuf extends AbstractByteBuf {
   }
 
   @Override
-  public ByteBuf slice() {
+  public DrillBuf slice() {
     return slice(readerIndex(), readableBytes());
   }
 

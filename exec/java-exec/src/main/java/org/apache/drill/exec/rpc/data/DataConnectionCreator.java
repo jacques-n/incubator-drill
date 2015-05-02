@@ -22,7 +22,6 @@ import java.util.concurrent.ConcurrentMap;
 
 import org.apache.drill.exec.exception.DrillbitStartupException;
 import org.apache.drill.exec.proto.CoordinationProtos.DrillbitEndpoint;
-import org.apache.drill.exec.proto.ExecProtos.FragmentHandle;
 import org.apache.drill.exec.rpc.control.WorkEventBus;
 import org.apache.drill.exec.server.BootStrapContext;
 
@@ -41,6 +40,7 @@ public class DataConnectionCreator implements Closeable {
   private final DataResponseHandler dataHandler;
   private final boolean allowPortHunting;
   private ConcurrentMap<DrillbitEndpoint, DataConnectionManager> connectionManager = Maps.newConcurrentMap();
+  private DrillbitEndpoint localIdentity;
 
   public DataConnectionCreator(BootStrapContext context, WorkEventBus workBus, DataResponseHandler dataHandler, boolean allowPortHunting) {
     super();
@@ -53,17 +53,21 @@ public class DataConnectionCreator implements Closeable {
   public DrillbitEndpoint start(DrillbitEndpoint partialEndpoint) throws DrillbitStartupException {
     server = new DataServer(context, workBus, dataHandler);
     int port = server.bind(partialEndpoint.getControlPort() + 1, allowPortHunting);
-    DrillbitEndpoint completeEndpoint = partialEndpoint.toBuilder().setDataPort(port).build();
-    return completeEndpoint;
+    localIdentity = partialEndpoint.toBuilder().setDataPort(port).build();
+    return localIdentity;
   }
 
   public DataTunnel getTunnel(DrillbitEndpoint endpoint) {
-    DataConnectionManager newManager = new DataConnectionManager(endpoint, context);
-    DataConnectionManager oldManager = connectionManager.putIfAbsent(endpoint, newManager);
-    if(oldManager != null){
-      newManager = oldManager;
+    if (endpoint.equals(localIdentity)) {
+      return new LocalDataTunnel(server, context.getBitLoopGroup());
+    } else {
+      DataConnectionManager newManager = new DataConnectionManager(endpoint, context);
+      DataConnectionManager oldManager = connectionManager.putIfAbsent(endpoint, newManager);
+      if (oldManager != null) {
+        newManager = oldManager;
+      }
+      return new RemoteDataTunnel(newManager);
     }
-    return new DataTunnel(newManager);
   }
 
   public void close() {
