@@ -63,7 +63,7 @@ public class DataConnectionCreator implements Closeable {
     if(oldManager != null){
       newManager = oldManager;
     }
-    return new DataTunnel(newManager);
+    return new RemoteDataTunnel(newManager);
   }
 
   public void close() {
