@@ -44,9 +44,9 @@ import org.apache.drill.exec.server.Drillbit;
 import org.apache.drill.exec.server.DrillbitContext;
 import org.apache.drill.exec.server.RemoteServiceSet;
 import org.apache.drill.exec.store.StoragePluginRegistry;
-import org.apache.drill.exec.util.TestUtilities;
 import org.apache.drill.exec.util.JsonStringArrayList;
 import org.apache.drill.exec.util.JsonStringHashMap;
+import org.apache.drill.exec.util.TestUtilities;
 import org.apache.drill.exec.util.VectorUtil;
 import org.apache.hadoop.io.Text;
 import org.junit.AfterClass;
@@ -220,7 +220,6 @@ public class BaseTestQuery extends ExecTest {
 
   @AfterClass
   public static void closeClient() throws IOException, InterruptedException {
-    Thread.sleep(5000);
     if (client != null) {
       client.close();
     }
