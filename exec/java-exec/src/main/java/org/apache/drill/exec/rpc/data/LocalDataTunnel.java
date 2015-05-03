@@ -18,7 +18,7 @@
 package org.apache.drill.exec.rpc.data;
 
 import io.netty.buffer.DrillBuf;
-import io.netty.channel.EventLoopGroup;
+import io.netty.channel.EventLoop;
 
 import java.util.concurrent.Semaphore;
 
@@ -37,13 +37,13 @@ public class LocalDataTunnel implements DataTunnel {
   private static final org.slf4j.Logger logger = org.slf4j.LoggerFactory.getLogger(LocalDataTunnel.class);
 
   private final DataServer dataServer;
-  private final EventLoopGroup eventGroup;
+  private final EventLoop eventLoop;
   private final Semaphore sendingSemaphore = new Semaphore(3);
 
-  public LocalDataTunnel(DataServer dataServer, EventLoopGroup eventGroup) {
+  public LocalDataTunnel(DataServer dataServer, EventLoop eventLoop) {
     super();
     this.dataServer = dataServer;
-    this.eventGroup = eventGroup;
+    this.eventLoop = eventLoop;
   }
 
   @Override
@@ -69,7 +69,7 @@ public class LocalDataTunnel implements DataTunnel {
     }
     try {
       sendingSemaphore.acquire();
-      eventGroup.submit(new SendBatchRunnable(batch.getHeader(), buf == null ? null : buf.slice(), outcomeListener));
+      eventLoop.submit(new SendBatchRunnable(batch.getHeader(), buf == null ? null : buf.slice(), outcomeListener));
     } catch (InterruptedException e) {
       outcomeListener.failed(new RpcException("Interrupted while trying to get sending semaphore.", e));
     }

@@ -17,6 +17,8 @@
  */
 package org.apache.drill.exec.rpc.data;
 
+import io.netty.channel.EventLoop;
+
 import java.io.Closeable;
 import java.util.concurrent.ConcurrentMap;
 
@@ -40,6 +42,9 @@ public class DataConnectionCreator implements Closeable {
   private final DataResponseHandler dataHandler;
   private final boolean allowPortHunting;
   private ConcurrentMap<DrillbitEndpoint, DataConnectionManager> connectionManager = Maps.newConcurrentMap();
+
+  // we share one event loop for all local events to ensure that events never get out of order.
+  private final EventLoop localEventLoop;
   private DrillbitEndpoint localIdentity;
 
   public DataConnectionCreator(BootStrapContext context, WorkEventBus workBus, DataResponseHandler dataHandler, boolean allowPortHunting) {
@@ -48,6 +53,7 @@ public class DataConnectionCreator implements Closeable {
     this.workBus = workBus;
     this.dataHandler = dataHandler;
     this.allowPortHunting = allowPortHunting;
+    this.localEventLoop = context.getBitLoopGroup().next();
   }
 
   public DrillbitEndpoint start(DrillbitEndpoint partialEndpoint) throws DrillbitStartupException {
@@ -59,7 +65,7 @@ public class DataConnectionCreator implements Closeable {
 
   public DataTunnel getTunnel(DrillbitEndpoint endpoint) {
     if (endpoint.equals(localIdentity)) {
-      return new LocalDataTunnel(server, context.getBitLoopGroup());
+      return new LocalDataTunnel(server, localEventLoop);
     } else {
       DataConnectionManager newManager = new DataConnectionManager(endpoint, context);
       DataConnectionManager oldManager = connectionManager.putIfAbsent(endpoint, newManager);
