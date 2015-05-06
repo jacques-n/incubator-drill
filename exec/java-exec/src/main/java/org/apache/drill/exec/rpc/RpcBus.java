@@ -23,10 +23,12 @@ import io.netty.channel.Channel;
 import io.netty.channel.ChannelFuture;
 import io.netty.channel.ChannelFutureListener;
 import io.netty.channel.ChannelHandlerContext;
+import io.netty.channel.socket.SocketChannel;
 import io.netty.handler.codec.MessageToMessageDecoder;
 import io.netty.util.concurrent.GenericFutureListener;
 
 import java.io.Closeable;
+import java.net.InetSocketAddress;
 import java.util.Arrays;
 import java.util.List;
 
@@ -128,22 +130,33 @@ public abstract class RpcBus<T extends EnumLite, C extends RemoteConnection> imp
   public abstract C initRemoteConnection(Channel channel);
 
   public class ChannelClosedHandler implements GenericFutureListener<ChannelFuture> {
+
+    final InetSocketAddress local;
+    final InetSocketAddress remote;
+    final C clientConnection;
+
+    public ChannelClosedHandler(C clientConnection, InetSocketAddress local, InetSocketAddress remote) {
+      this.local = local;
+      this.remote = remote;
+      this.clientConnection = clientConnection;
+    }
+
     @Override
     public void operationComplete(ChannelFuture future) throws Exception {
-      logger.info("Channel closed between local {} and remote {}", future.channel().localAddress(), future.channel()
-          .remoteAddress());
-      closeQueueDueToChannelClose();
+      String msg = String.format("Channel closed %s <--> %s.", local, remote);
+      if (RpcBus.this.isClient()) {
+        logger.info(String.format(msg));
+      } else {
+        queue.channelClosed(new ChannelClosedException(msg));
+      }
+
+      clientConnection.close();
     }
+
   }
 
-  protected void closeQueueDueToChannelClose() {
-    if (this.isClient()) {
-      queue.channelClosed(new ChannelClosedException("Queue closed due to channel closure."));
-    }
-  }
-
-  protected GenericFutureListener<ChannelFuture> getCloseHandler(C clientConnection) {
-    return new ChannelClosedHandler();
+  protected GenericFutureListener<ChannelFuture> getCloseHandler(SocketChannel channel, C clientConnection) {
+    return new ChannelClosedHandler(clientConnection, channel.localAddress(), channel.remoteAddress());
   }
 
   private class ResponseSenderImpl implements ResponseSender {

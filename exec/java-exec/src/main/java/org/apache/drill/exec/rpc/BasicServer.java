@@ -69,7 +69,7 @@ public abstract class BasicServer<T extends EnumLite, C extends RemoteConnection
           protected void initChannel(SocketChannel ch) throws Exception {
 //            logger.debug("Starting initialization of server connection.");
             C connection = initRemoteConnection(ch);
-            ch.closeFuture().addListener(getCloseHandler(connection));
+            ch.closeFuture().addListener(getCloseHandler(ch, connection));
 
             ch.pipeline().addLast( //
                 getDecoder(connection.getAllocator(), getOutOfMemoryHandler()), //

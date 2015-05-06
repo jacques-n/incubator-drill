@@ -20,7 +20,6 @@ package org.apache.drill.exec.rpc;
 import io.netty.bootstrap.Bootstrap;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufAllocator;
-import io.netty.channel.Channel;
 import io.netty.channel.ChannelFuture;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelInitializer;
@@ -70,7 +69,8 @@ public abstract class BasicClient<T extends EnumLite, R extends RemoteConnection
           protected void initChannel(SocketChannel ch) throws Exception {
 //            logger.debug("initializing client connection.");
             connection = initRemoteConnection(ch);
-            ch.closeFuture().addListener(getCloseHandler(connection));
+
+            ch.closeFuture().addListener(getCloseHandler(ch, connection));
 
             ch.pipeline().addLast( //
                 getDecoder(connection.getAllocator()), //
@@ -98,10 +98,6 @@ public abstract class BasicClient<T extends EnumLite, R extends RemoteConnection
 
   protected abstract void validateHandshake(HANDSHAKE_RESPONSE validateHandshake) throws RpcException;
   protected abstract void finalizeConnection(HANDSHAKE_RESPONSE handshake, R connection);
-
-  protected GenericFutureListener<ChannelFuture> getCloseHandler(Channel channel) {
-    return new ChannelClosedHandler();
-  }
 
   public <SEND extends MessageLite, RECEIVE extends MessageLite> void send(RpcOutcomeListener<RECEIVE> listener,
       T rpcType, SEND protobufBody, Class<RECEIVE> clazz, ByteBuf... dataBodies) {

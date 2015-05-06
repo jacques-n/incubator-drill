@@ -20,6 +20,7 @@ package org.apache.drill.exec.rpc.control;
 import io.netty.buffer.ByteBuf;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelFuture;
+import io.netty.channel.socket.SocketChannel;
 import io.netty.util.concurrent.GenericFutureListener;
 
 import org.apache.drill.exec.memory.BufferAllocator;
@@ -70,8 +71,8 @@ public class ControlClient extends BasicClient<RpcType, ControlConnection, BitCo
   }
 
   @Override
-  protected GenericFutureListener<ChannelFuture> getCloseHandler(ControlConnection clientConnection) {
-    return closeHandlerFactory.getHandler(clientConnection, super.getCloseHandler(clientConnection));
+  protected GenericFutureListener<ChannelFuture> getCloseHandler(SocketChannel ch, ControlConnection clientConnection) {
+    return closeHandlerFactory.getHandler(clientConnection, super.getCloseHandler(ch, clientConnection));
   }
 
   @Override

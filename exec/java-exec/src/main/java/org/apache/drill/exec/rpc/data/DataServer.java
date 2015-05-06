@@ -21,6 +21,7 @@ import io.netty.buffer.ByteBuf;
 import io.netty.buffer.DrillBuf;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelFuture;
+import io.netty.channel.socket.SocketChannel;
 import io.netty.util.concurrent.GenericFutureListener;
 
 import java.io.IOException;
@@ -69,8 +70,8 @@ public class DataServer extends BasicServer<RpcType, BitServerConnection> {
   }
 
   @Override
-  protected GenericFutureListener<ChannelFuture> getCloseHandler(BitServerConnection connection) {
-    this.proxyCloseHandler = new ProxyCloseHandler(super.getCloseHandler(connection));
+  protected GenericFutureListener<ChannelFuture> getCloseHandler(SocketChannel ch, BitServerConnection connection) {
+    this.proxyCloseHandler = new ProxyCloseHandler(super.getCloseHandler(ch, connection));
     return proxyCloseHandler;
   }
 

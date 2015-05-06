@@ -107,7 +107,12 @@ public abstract class RemoteConnection implements ConnectionThrottle, AutoClosea
   @Override
   public void close() {
     try {
-      channel.close().get();
+      // this could possibly overrelease but it doesn't matter since we're only going to do this to ensure that we fail
+      // out any pending messages
+      writeManager.setWritable(true);
+      if (channel.isActive()) {
+        channel.close().get();
+      }
     } catch (InterruptedException | ExecutionException e) {
       logger.warn("Caught exception while closing channel.", e);
       // TODO InterruptedException

@@ -20,6 +20,7 @@ package org.apache.drill.exec.rpc.data;
 import io.netty.buffer.ByteBuf;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelFuture;
+import io.netty.channel.socket.SocketChannel;
 import io.netty.util.concurrent.GenericFutureListener;
 
 import org.apache.drill.exec.memory.BufferAllocator;
@@ -60,8 +61,8 @@ public class DataClient extends BasicClient<RpcType, DataClientConnection, BitCl
   }
 
   @Override
-  protected GenericFutureListener<ChannelFuture> getCloseHandler(DataClientConnection clientConnection) {
-    return closeHandlerFactory.getHandler(clientConnection, super.getCloseHandler(clientConnection));
+  protected GenericFutureListener<ChannelFuture> getCloseHandler(SocketChannel ch, DataClientConnection clientConnection) {
+    return closeHandlerFactory.getHandler(clientConnection, super.getCloseHandler(ch, clientConnection));
   }
 
   @Override

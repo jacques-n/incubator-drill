@@ -19,9 +19,7 @@ package org.apache.drill.exec.rpc;
 
 import io.netty.buffer.ByteBuf;
 import io.netty.channel.Channel;
-import io.netty.channel.ChannelFuture;
 import io.netty.channel.EventLoopGroup;
-import io.netty.util.concurrent.GenericFutureListener;
 
 import org.apache.drill.exec.memory.BufferAllocator;
 import org.apache.drill.exec.rpc.BasicClientWithConnection.ServerConnection;
@@ -40,11 +38,6 @@ public abstract class BasicClientWithConnection<T extends EnumLite, HANDSHAKE_SE
       Class<HANDSHAKE_RESPONSE> responseClass, Parser<HANDSHAKE_RESPONSE> handshakeParser) {
     super(rpcMapping, alloc.getUnderlyingAllocator(), eventLoopGroup, handshakeType, responseClass, handshakeParser);
     this.alloc = alloc;
-  }
-
-  @Override
-  protected GenericFutureListener<ChannelFuture> getCloseHandler(ServerConnection clientConnection) {
-    return getCloseHandler(clientConnection.getChannel());
   }
 
   @Override
