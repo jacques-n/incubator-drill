@@ -35,16 +35,6 @@ public class ExtendedLatch extends CountDownLatch {
   }
 
   /**
-   * Returns whether or not interruptions should continue to be ignored. This can be overridden in subclasses to check a
-   * state variable or similar.
-   *
-   * @return Whether awaitUninterruptibly() should continue ignoring interruptions.
-   */
-  protected boolean ignoreInterruptions() {
-    return true;
-  }
-
-  /**
    * Await without interruption for a given time.
    * @param waitMillis
    *          Time in milliseconds to wait
@@ -77,12 +67,8 @@ public class ExtendedLatch extends CountDownLatch {
         await();
         return;
       } catch (final InterruptedException e) {
-        if (ignoreInterruptions()) {
-          // if we're still not ready, the while loop will cause us to wait again
-          logger.warn("Interrupted while waiting for event latch.", e);
-        } else {
-          return;
-        }
+        // if we're still not ready, the while loop will cause us to wait again
+        logger.warn("Interrupted while waiting for event latch.", e);
       }
     }
   }
