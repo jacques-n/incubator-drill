@@ -208,9 +208,10 @@ public class DrillParquetReader extends AbstractRecordReader {
   }
 
   @Override
-  public void setup(OutputMutator output) throws ExecutionSetupException {
+  public void setup(OperatorContext context, OutputMutator output) throws ExecutionSetupException {
 
     try {
+      this.operatorContext = context;
       schema = footer.getFileMetaData().getSchema();
       MessageType projection = null;
 

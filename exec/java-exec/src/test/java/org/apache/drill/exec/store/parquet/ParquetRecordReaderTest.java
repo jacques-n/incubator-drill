@@ -627,7 +627,7 @@ public class ParquetRecordReaderTest extends BaseTestQuery{
       ParquetRecordReader rr = new ParquetRecordReader(context, 256000, fileName, 0, fs,
           new CodecFactoryExposer(dfsConfig), f.getParquetMetadata(), columns);
       TestOutputMutator mutator = new TestOutputMutator(allocator);
-      rr.setup(mutator);
+      rr.setup(null, mutator);
       Stopwatch watch = new Stopwatch();
       watch.start();
 
