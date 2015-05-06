@@ -430,6 +430,13 @@ public class Foreman implements Runnable {
 
         final long queueTimeout = optionManager.getOption(ExecConstants.QUEUE_TIMEOUT_KEY).num_val;
         lease = distributedSemaphore.acquire(queueTimeout, TimeUnit.MILLISECONDS);
+        if (lease == null) {
+          throw UserException
+              .resourceError()
+              .message("Unable to acquire queue resources for query within timeout.  Timeout was set at %d seconds.",
+                  queueTimeout / 1000)
+              .build();
+        }
       } catch (final Exception e) {
         throw new ForemanSetupException("Unable to acquire slot for query.", e);
       }
