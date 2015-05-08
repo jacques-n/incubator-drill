@@ -32,6 +32,7 @@
     <li><a href="#query-physical" role="tab" data-toggle="tab">Physical Plan</a></li>
     <li><a href="#query-visual" role="tab" data-toggle="tab">Visualized Plan</a></li>
     <li><a href="#query-edit" role="tab" data-toggle="tab">Edit Query</a></li>
+    <#if model.hasError() ><li><a href="#query-error" role="tab" data-toggle="tab">Error</a></li></#if>
   </ul>
   <div id="query-content" class="tab-content">
     <div id="query-query" class="tab-pane">
@@ -74,6 +75,19 @@
         <button type="link" class="btn btn-default">Cancel query</button>
       </form>
     </div>
+    <#if model.hasError() >
+    <div>
+      <h3>Error Message</h1>
+      <pre>
+      ${model.getProfile().error}
+      </pre>
+      
+      <h3>Verbose Error</h1>
+      <pre>
+        ${model.getProfile().verboseError}
+      </pre>
+    </div>
+    </#if>
   </div>
 
   <div class="page-header"></div>
