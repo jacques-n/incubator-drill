@@ -20,14 +20,15 @@ package org.apache.drill.exec.planner.physical;
 import java.io.IOException;
 import java.util.Iterator;
 
+import org.apache.calcite.plan.RelOptCluster;
+import org.apache.calcite.plan.RelTraitSet;
+import org.apache.calcite.rel.AbstractRelNode;
+import org.apache.calcite.rel.type.RelDataType;
 import org.apache.drill.common.JSONOptions;
+import org.apache.drill.exec.physical.base.PhysicalOperator;
 import org.apache.drill.exec.physical.config.Values;
 import org.apache.drill.exec.planner.physical.visitor.PrelVisitor;
 import org.apache.drill.exec.record.BatchSchema.SelectionVectorMode;
-import org.apache.calcite.rel.AbstractRelNode;
-import org.apache.calcite.plan.RelOptCluster;
-import org.apache.calcite.plan.RelTraitSet;
-import org.apache.calcite.rel.type.RelDataType;
 
 import com.google.common.collect.Iterators;
 
@@ -50,8 +51,8 @@ public class ValuesPrel extends AbstractRelNode implements Prel {
   }
 
   @Override
-  public Values getPhysicalOperator(PhysicalPlanCreator creator) throws IOException {
-    return new Values(content);
+  public PhysicalOperator getPhysicalOperator(PhysicalPlanCreator creator) throws IOException {
+    return creator.addMetadata(this, new Values(content));
   }
 
   @Override
