@@ -28,7 +28,6 @@ import org.apache.drill.exec.record.FragmentWritableBatch;
 import org.apache.drill.exec.rpc.DrillRpcFuture;
 import org.apache.drill.exec.rpc.FutureBitCommand;
 import org.apache.drill.exec.rpc.ListeningCommand;
-import org.apache.drill.exec.rpc.RpcConnectionHandler.FailureType;
 import org.apache.drill.exec.rpc.RpcException;
 import org.apache.drill.exec.rpc.RpcOutcomeListener;
 
@@ -49,7 +48,8 @@ public class DataTunnel {
       sendingSemaphore.acquire();
       manager.runCommand(b);
     }catch(final InterruptedException e){
-      outcomeListener.failed(new RpcException("Interrupted while trying to get sending semaphore.", e));
+      // if we're interrupted, we'll simply send the message since we don't want to create an artificial exception.
+      manager.runCommand(b);
 
       // Preserve evidence that the interruption occurred so that code higher up on the call stack can learn of the
       // interruption and respond to it if it wants to.
@@ -63,7 +63,9 @@ public class DataTunnel {
       sendingSemaphore.acquire();
       manager.runCommand(b);
     }catch(final InterruptedException e){
-      b.connectionFailed(FailureType.CONNECTION, new RpcException("Interrupted while trying to get sending semaphore.", e));
+
+      // if we're interrupted, we'll simply send the message since we don't want to create an artificial exception.
+      manager.runCommand(b);
 
       // Preserve evidence that the interruption occurred so that code higher up on the call stack can learn of the
       // interruption and respond to it if it wants to.
