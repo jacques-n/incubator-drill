@@ -25,12 +25,13 @@ import org.apache.drill.exec.server.options.TypeValidators.EnumeratedStringValid
 import org.apache.drill.exec.server.options.TypeValidators.LongValidator;
 import org.apache.drill.exec.server.options.TypeValidators.PositiveLongValidator;
 import org.apache.drill.exec.server.options.TypeValidators.PowerOfTwoLongValidator;
-import org.apache.drill.exec.server.options.TypeValidators.RangeLongValidator;
 import org.apache.drill.exec.server.options.TypeValidators.RangeDoubleValidator;
+import org.apache.drill.exec.server.options.TypeValidators.RangeLongValidator;
 import org.apache.drill.exec.server.options.TypeValidators.StringValidator;
 import org.apache.drill.exec.testing.ExecutionControls;
 
 public interface ExecConstants {
+  public static final String FOREMAN_FRAG_PROP_TIMEOUT = "drill.exec.foreman.frag_prop_timeout_ms";
   public static final String ZK_RETRY_TIMES = "drill.exec.zk.retry.count";
   public static final String ZK_RETRY_DELAY = "drill.exec.zk.retry.delay";
   public static final String ZK_CONNECTION = "drill.exec.zk.connect";

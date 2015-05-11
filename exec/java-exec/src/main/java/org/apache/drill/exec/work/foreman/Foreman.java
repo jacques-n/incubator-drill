@@ -109,7 +109,6 @@ public class Foreman implements Runnable {
   private static final org.slf4j.Logger queryLogger = org.slf4j.LoggerFactory.getLogger("query.logger");
   private static final ObjectMapper MAPPER = new ObjectMapper();
   private final static ExecutionControlsInjector injector = ExecutionControlsInjector.getInjector(Foreman.class);
-  private static final int RPC_WAIT_IN_MSECS_PER_FRAGMENT = 5000;
 
   private final QueryId queryId;
   private final RunQuery queryRequest;
@@ -124,6 +123,8 @@ public class Foreman implements Runnable {
   private volatile DistributedLease lease; // used to limit the number of concurrent queries
 
   private FragmentExecutor rootRunner; // root Fragment
+
+  private final int rpcWaitPerFragMS;
 
   private final ExtendedLatch acceptExternalEvents = new ExtendedLatch(); // gates acceptance of external events
   private final StateListener stateListener = new StateListener(); // source of external events
@@ -151,6 +152,7 @@ public class Foreman implements Runnable {
     this.queryRequest = queryRequest;
     this.drillbitContext = drillbitContext;
 
+    this.rpcWaitPerFragMS = drillbitContext.getConfig().getInt(ExecConstants.FOREMAN_FRAG_PROP_TIMEOUT);
     initiatingClient = connection;
     this.closeFuture = initiatingClient.getChannel().closeFuture();
     closeFuture.addListener(closeListener);
@@ -976,7 +978,7 @@ public class Foreman implements Runnable {
       sendRemoteFragments(ep, intFragmentMap.get(ep), endpointLatch, fragmentSubmitFailures);
     }
 
-    final long timeout = RPC_WAIT_IN_MSECS_PER_FRAGMENT * numIntFragments;
+    final long timeout = rpcWaitPerFragMS * numIntFragments;
     if(numIntFragments > 0 && !endpointLatch.awaitUninterruptibly(timeout)){
       long numberRemaining = endpointLatch.getCount();
       throw UserException.connectionError()
