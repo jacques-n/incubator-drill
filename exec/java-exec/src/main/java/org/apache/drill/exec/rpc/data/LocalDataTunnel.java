@@ -50,7 +50,7 @@ public class LocalDataTunnel implements DataTunnel {
   public void sendRecordBatch(RpcOutcomeListener<Ack> outcomeListener, FragmentWritableBatch batch) {
     final DrillBuf buf;
     if(batch.getBuffers().length == 0){
-      buf = null;
+      buf = dataServer.getAllocator().buffer(0);
     }else{
       int len = 0;
       for (DrillBuf b : batch.getBuffers()) {
