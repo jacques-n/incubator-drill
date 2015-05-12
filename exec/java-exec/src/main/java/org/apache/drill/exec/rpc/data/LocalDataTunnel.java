@@ -110,6 +110,7 @@ public class LocalDataTunnel implements DataTunnel {
       try {
         dataServer.receiveBatch(fragRecordBatch, body, this);
       } catch (Exception e) {
+        outcomeListener.failed(RpcException.mapException(e));
         logger.error("Failure while sending local batch.", e);
       } finally {
         if (body != null) {

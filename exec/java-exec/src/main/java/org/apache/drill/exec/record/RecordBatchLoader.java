@@ -94,6 +94,9 @@ public class RecordBatchLoader implements VectorAccessible, Iterable<VectorWrapp
       if (fmd.getValueCount() == 0 && (!fmd.hasGroupCount() || fmd.getGroupCount() == 0)) {
         AllocationHelper.allocate(vector, 0, 0, 0);
       } else {
+        Preconditions.checkNotNull(vector, "Vector is null.");
+        Preconditions.checkNotNull(buf, "Incoming buffer is null.");
+        Preconditions.checkNotNull(fmd, "SerializedField is null.");
         vector.load(fmd, buf.slice(bufOffset, fmd.getBufferLength()));
       }
       bufOffset += fmd.getBufferLength();

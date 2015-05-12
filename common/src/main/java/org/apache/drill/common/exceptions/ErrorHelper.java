@@ -17,10 +17,10 @@
  */
 package org.apache.drill.common.exceptions;
 
+import java.util.regex.Pattern;
+
 import org.apache.drill.exec.proto.UserBitShared.ExceptionWrapper;
 import org.apache.drill.exec.proto.UserBitShared.StackTraceElementWrapper;
-
-import java.util.regex.Pattern;
 
 /**
  * Utility class that handles error message generation from protobuf error objects.
@@ -71,7 +71,9 @@ class ErrorHelper {
       sb.append("(");
       sb.append(ex.getClass().getCanonicalName());
       sb.append(") ");
-      sb.append(ex.getMessage());
+      if (ex.getMessage() != null) {
+        sb.append(ex.getMessage());
+      }
       sb.append("\n");
 
       for(StackTraceElement st : ex.getStackTrace()){
@@ -112,7 +114,7 @@ class ErrorHelper {
     boolean isHidden = false;
     StackTraceElement[] stackTrace = ex.getStackTrace();
     for(int i = 0; i < stackTrace.length; i++){
-      StackTraceElement ele = ex.getStackTrace()[i];
+      StackTraceElement ele = stackTrace[i];
       if(include(ele, includeAllStack)){
         if(isHidden){
           isHidden = false;
