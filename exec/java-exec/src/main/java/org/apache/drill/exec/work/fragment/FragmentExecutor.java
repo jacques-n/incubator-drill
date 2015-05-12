@@ -145,7 +145,7 @@ public class FragmentExecutor implements Runnable {
        */
       final Thread myThread = myThreadRef.get();
       if (myThread != null) {
-        myThread.interrupt();
+        // myThread.interrupt();
       }
     }
   }
