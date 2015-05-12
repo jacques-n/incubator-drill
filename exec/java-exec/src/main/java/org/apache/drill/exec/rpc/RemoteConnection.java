@@ -40,19 +40,25 @@ public abstract class RemoteConnection implements ConnectionThrottle, AutoClosea
   }
 
   public RemoteConnection(SocketChannel channel, String name) {
+    this(channel, name, true);
+  }
+
+  public RemoteConnection(SocketChannel channel, String name, boolean applyBackPressure) {
     super();
     this.channel = channel;
     this.name = String.format("%s <--> %s (%s)", channel.localAddress(), channel.remoteAddress(), name);
     this.writeManager = new WriteManager();
-    channel.pipeline().addLast(new BackPressureHandler());
-    channel.closeFuture().addListener(new GenericFutureListener<Future<? super Void>>() {
-      public void operationComplete(Future<? super Void> future) throws Exception {
-        // this could possibly overrelease but it doesn't matter since we're only going to do this to ensure that we
-        // fail out any pending messages
-        writeManager.disable();
-        writeManager.setWritable(true);
-      }
-    });
+    if (applyBackPressure) {
+      channel.pipeline().addLast(new BackPressureHandler());
+      channel.closeFuture().addListener(new GenericFutureListener<Future<? super Void>>() {
+        public void operationComplete(Future<? super Void> future) throws Exception {
+          // this could possibly overrelease but it doesn't matter since we're only going to do this to ensure that we
+          // fail out any pending messages
+          writeManager.disable();
+          writeManager.setWritable(true);
+        }
+      });
+    }
 
   }
 

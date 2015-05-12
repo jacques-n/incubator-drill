@@ -29,6 +29,7 @@ import java.util.concurrent.TimeUnit;
 import org.apache.drill.exec.metrics.DrillMetrics;
 import org.apache.drill.exec.proto.CoordinationProtos.DrillbitEndpoint;
 import org.apache.drill.exec.store.TimedRunnable;
+import org.apache.drill.exec.store.TimedRunnable.IOTimedRunnable;
 import org.apache.drill.exec.store.dfs.easy.FileWork;
 import org.apache.hadoop.fs.BlockLocation;
 import org.apache.hadoop.fs.FileStatus;
@@ -68,7 +69,7 @@ public class BlockMapBuilder {
 
   public List<CompleteFileWork> generateFileWork(List<FileStatus> files, boolean blockify) throws IOException {
 
-    List<TimedRunnable<List<CompleteFileWork>>> readers = Lists.newArrayList();
+    List<TimedRunnable<List<CompleteFileWork>, IOException>> readers = Lists.newArrayList();
     for(FileStatus status : files){
       readers.add(new BlockMapReader(status, blockify));
     }
@@ -82,7 +83,7 @@ public class BlockMapBuilder {
 
   }
 
-  private class BlockMapReader extends TimedRunnable<List<CompleteFileWork>> {
+  private class BlockMapReader extends IOTimedRunnable<List<CompleteFileWork>> {
     final FileStatus status;
     final boolean blockify;
 
@@ -119,7 +120,7 @@ public class BlockMapBuilder {
 
 
     @Override
-    protected IOException convertToIOException(Exception e) {
+    protected IOException convertToException(Exception e) {
       return new IOException("Failure while trying to get block map for " + status.getPath(), e);
     }
 

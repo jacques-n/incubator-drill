@@ -25,7 +25,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
-import com.google.common.collect.ArrayListMultimap;
 import org.apache.drill.common.exceptions.DrillRuntimeException;
 import org.apache.drill.common.exceptions.ExecutionSetupException;
 import org.apache.drill.common.expression.SchemaPath;
@@ -43,6 +42,7 @@ import org.apache.drill.exec.physical.base.ScanStats.GroupScanProperty;
 import org.apache.drill.exec.proto.CoordinationProtos.DrillbitEndpoint;
 import org.apache.drill.exec.store.StoragePluginRegistry;
 import org.apache.drill.exec.store.TimedRunnable;
+import org.apache.drill.exec.store.TimedRunnable.IOTimedRunnable;
 import org.apache.drill.exec.store.dfs.DrillFileSystem;
 import org.apache.drill.exec.store.dfs.FileSelection;
 import org.apache.drill.exec.store.dfs.ReadEntryFromHDFS;
@@ -56,8 +56,8 @@ import org.apache.drill.exec.store.schedule.EndpointByteMap;
 import org.apache.drill.exec.util.ImpersonationUtil;
 import org.apache.hadoop.fs.FileStatus;
 import org.apache.hadoop.fs.Path;
-
 import org.apache.hadoop.security.UserGroupInformation;
+
 import parquet.hadoop.Footer;
 import parquet.hadoop.metadata.BlockMetaData;
 import parquet.hadoop.metadata.ColumnChunkMetaData;
@@ -72,6 +72,7 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonTypeName;
 import com.google.common.base.Preconditions;
 import com.google.common.base.Stopwatch;
+import com.google.common.collect.ArrayListMultimap;
 import com.google.common.collect.ListMultimap;
 import com.google.common.collect.Lists;
 
@@ -342,7 +343,7 @@ public class ParquetGroupScan extends AbstractFileGroupScan {
     if (this.endpointAffinities == null) {
       BlockMapBuilder bmb = new BlockMapBuilder(fs, formatPlugin.getContext().getBits());
       try {
-        List<TimedRunnable<Void>> blockMappers = Lists.newArrayList();
+        List<TimedRunnable<Void, IOException>> blockMappers = Lists.newArrayList();
         for (RowGroupInfo rgi : rowGroupInfos) {
           blockMappers.add(new BlockMapper(bmb, rgi));
         }
@@ -357,12 +358,11 @@ public class ParquetGroupScan extends AbstractFileGroupScan {
     return this.endpointAffinities;
   }
 
-  private class BlockMapper extends TimedRunnable<Void> {
+  private class BlockMapper extends IOTimedRunnable<Void> {
     private final BlockMapBuilder bmb;
     private final RowGroupInfo rgi;
 
     public BlockMapper(BlockMapBuilder bmb, RowGroupInfo rgi) {
-      super();
       this.bmb = bmb;
       this.rgi = rgi;
     }
@@ -375,7 +375,7 @@ public class ParquetGroupScan extends AbstractFileGroupScan {
     }
 
     @Override
-    protected IOException convertToIOException(Exception e) {
+    protected IOException convertToException(Exception e) {
       return new IOException(String.format("Failure while trying to get block locations for file %s starting at %d.", rgi.getPath(), rgi.getStart()));
     }
 

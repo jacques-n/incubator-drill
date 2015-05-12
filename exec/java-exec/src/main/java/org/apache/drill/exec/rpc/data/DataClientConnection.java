@@ -37,7 +37,7 @@ public class DataClientConnection extends RemoteConnection{
   private final UUID id;
 
   public DataClientConnection(SocketChannel channel, DataClient client) {
-    super(channel, "data client");
+    super(channel, "data client", false);
     this.client = client;
     // we use a local listener pool unless a global one is provided.
     this.id = UUID.randomUUID();

@@ -17,7 +17,13 @@
  */
 package org.apache.drill.exec.store;
 
-import com.google.common.collect.Lists;
+import static org.hamcrest.core.StringContains.containsString;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertThat;
+
+import java.io.IOException;
+import java.util.List;
+
 import org.apache.drill.common.exceptions.UserException;
 import org.apache.drill.common.util.TestTools;
 import org.apache.drill.test.DrillTest;
@@ -25,12 +31,7 @@ import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TestRule;
 
-import java.io.IOException;
-import java.util.List;
-
-import static org.hamcrest.core.StringContains.containsString;
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertThat;
+import com.google.common.collect.Lists;
 
 /**
  * Unit testing for {@link TimedRunnable}.
@@ -45,6 +46,7 @@ public class TestTimedRunnable extends DrillTest {
     final long sleepTime; // sleep time in ms
 
     public TestTask(final long sleepTime) {
+      super(Exception.class);
       this.sleepTime = sleepTime;
     }
 
@@ -59,14 +61,14 @@ public class TestTimedRunnable extends DrillTest {
     }
 
     @Override
-    protected IOException convertToIOException(Exception e) {
+    protected IOException convertToException(Exception e) {
       return new IOException("Failure while trying to sleep for sometime", e);
     }
   }
 
   @Test
   public void withoutAnyTasksTriggeringTimeout() throws Exception {
-    List<TimedRunnable<TestTask>> tasks = Lists.newArrayList();
+    List<TimedRunnable<TestTask, IOException>> tasks = Lists.newArrayList();
 
     for(int i=0; i<100; i++){
       tasks.add(new TestTask(2000));
@@ -80,7 +82,7 @@ public class TestTimedRunnable extends DrillTest {
     UserException ex = null;
 
     try {
-      List<TimedRunnable<TestTask>> tasks = Lists.newArrayList();
+      List<TimedRunnable<TestTask, IOException>> tasks = Lists.newArrayList();
 
       for (int i = 0; i < 100; i++) {
         if ((i & (i + 1)) == 0) {

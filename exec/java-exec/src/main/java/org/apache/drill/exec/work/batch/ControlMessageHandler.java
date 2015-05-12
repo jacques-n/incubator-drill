@@ -20,6 +20,8 @@ package org.apache.drill.exec.work.batch;
 import static org.apache.drill.exec.rpc.RpcBus.get;
 import io.netty.buffer.ByteBuf;
 
+import java.util.List;
+
 import org.apache.drill.exec.ops.FragmentContext;
 import org.apache.drill.exec.physical.base.FragmentRoot;
 import org.apache.drill.exec.proto.BitControl.FinishedReceiver;
@@ -41,12 +43,15 @@ import org.apache.drill.exec.rpc.control.ControlConnection;
 import org.apache.drill.exec.rpc.control.ControlRpcConfig;
 import org.apache.drill.exec.rpc.control.ControlTunnel;
 import org.apache.drill.exec.server.DrillbitContext;
+import org.apache.drill.exec.store.TimedRunnable;
 import org.apache.drill.exec.work.WorkManager.WorkerBee;
 import org.apache.drill.exec.work.foreman.Foreman;
 import org.apache.drill.exec.work.fragment.FragmentExecutor;
 import org.apache.drill.exec.work.fragment.FragmentManager;
 import org.apache.drill.exec.work.fragment.NonRootFragmentManager;
 import org.apache.drill.exec.work.fragment.NonRootStatusReporter;
+
+import com.beust.jcommander.internal.Lists;
 
 public class ControlMessageHandler {
   private static final org.slf4j.Logger logger = org.slf4j.LoggerFactory.getLogger(ControlMessageHandler.class);
@@ -94,9 +99,11 @@ public class ControlMessageHandler {
 
     case RpcType.REQ_INITIALIZE_FRAGMENTS_VALUE: {
       final InitializeFragments fragments = get(pBody, InitializeFragments.PARSER);
+      List<TimedRunnable<Void, RpcException>> runnables = Lists.newArrayList();
       for(int i = 0; i < fragments.getFragmentCount(); i++) {
-        startNewRemoteFragment(fragments.getFragment(i));
+        runnables.add(new StartFragmentWork(fragments.getFragment(i)));
       }
+      TimedRunnable.run("fragment-init", logger, runnables, 16);
       return ControlRpcConfig.OK;
     }
 
@@ -119,6 +126,27 @@ public class ControlMessageHandler {
     default:
       throw new RpcException("Not yet supported.");
     }
+  }
+
+  private class StartFragmentWork extends TimedRunnable<Void, RpcException> {
+    private final PlanFragment fragment;
+
+    public StartFragmentWork(PlanFragment fragment) {
+      super(RpcException.class);
+      this.fragment = fragment;
+    }
+
+    @Override
+    protected Void runInner() throws Exception {
+      startNewRemoteFragment(fragment);
+      return null;
+    }
+
+    @Override
+    protected RpcException convertToException(Exception e) {
+      return new RpcException(e);
+    }
+
   }
 
   private void startNewRemoteFragment(final PlanFragment fragment) throws UserRpcException {

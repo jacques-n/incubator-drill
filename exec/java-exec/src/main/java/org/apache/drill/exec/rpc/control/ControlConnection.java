@@ -43,7 +43,7 @@ public class ControlConnection extends RemoteConnection {
 
   public ControlConnection(String name, SocketChannel channel, RpcBus<RpcType, ControlConnection> bus,
       BufferAllocator allocator) {
-    super(channel, name);
+    super(channel, name, false);
     this.bus = bus;
     this.id = UUID.randomUUID();
     this.allocator = allocator;

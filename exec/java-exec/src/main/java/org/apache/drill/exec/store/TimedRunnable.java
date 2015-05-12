@@ -20,17 +20,15 @@ package org.apache.drill.exec.store;
 import java.io.IOException;
 import java.util.List;
 import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.TimeoutException;
 
 import org.apache.drill.common.concurrent.ExtendedLatch;
 import org.apache.drill.common.exceptions.UserException;
 import org.slf4j.Logger;
 
+import com.google.common.base.Preconditions;
 import com.google.common.base.Stopwatch;
 import com.google.common.collect.Lists;
 
@@ -39,13 +37,18 @@ import com.google.common.collect.Lists;
  * TODO: look at switching to fork join.
  * @param <V> The time value that will be returned when the task is executed.
  */
-public abstract class TimedRunnable<V> implements Runnable {
+public abstract class TimedRunnable<V, X extends Exception> implements Runnable {
 
   private static int TIMEOUT_PER_RUNNABLE_IN_MSECS = 15000;
-
+  private final Class<X> exceptionClass;
   private volatile Exception e;
   private volatile long timeNanos;
   private volatile V value;
+
+  public TimedRunnable(Class<X> exceptionClass) {
+    super();
+    this.exceptionClass = exceptionClass;
+  }
 
   @Override
   public final void run() {
@@ -60,18 +63,19 @@ public abstract class TimedRunnable<V> implements Runnable {
   }
 
   protected abstract V runInner() throws Exception ;
-  protected abstract IOException convertToIOException(Exception e);
+
+  protected abstract X convertToException(Exception e);
 
   public long getTimeSpentNanos(){
     return timeNanos;
   }
 
-  public final V getValue() throws IOException {
+  public final V getValue() throws X {
     if(e != null){
-      if(e instanceof IOException){
-        throw (IOException) e;
+      if (exceptionClass.isAssignableFrom(e.getClass())) {
+        throw (X) e;
       }else{
-        throw convertToIOException(e);
+        throw convertToException(e);
       }
     }
 
@@ -98,20 +102,27 @@ public abstract class TimedRunnable<V> implements Runnable {
   }
 
   /**
-   * Execute the list of runnables with the given parallelization.  At end, return values and report completion time
+   * Execute the list of runnables with the given parallelization. At end, return values and report completion time
    * stats to provided logger. Each runnable is allowed a certain timeout. If the timeout exceeds, existing/pending
    * tasks will be cancelled and a {@link UserException} is thrown.
-   * @param activity Name of activity for reporting in logger.
-   * @param logger The logger to use to report results.
-   * @param runnables List of runnables that should be executed and timed.  If this list has one item, task will be
-   *                  completed in-thread. Runnable must handle {@link InterruptedException}s.
-   * @param parallelism  The number of threads that should be run to complete this task.
+   *
+   * @param activity
+   *          Name of activity for reporting in logger.
+   * @param logger
+   *          The logger to use to report results.
+   * @param runnables
+   *          List of runnables that should be executed and timed. If this list has one item, task will be completed
+   *          in-thread. Runnable must handle {@link InterruptedException}s.
+   * @param parallelism
+   *          The number of threads that should be run to complete this task.
    * @return The list of outcome objects.
-   * @throws IOException All exceptions are coerced to IOException since this was build for storage system tasks initially.
+   * @throws V
+   *           All exceptions are coerced to <V> Exception.
    */
-  public static <V> List<V> run(final String activity, final Logger logger, final List<TimedRunnable<V>> runnables, int parallelism) throws IOException {
+  public static <V, X extends Exception> List<V> run(final String activity, final Logger logger,
+      final List<TimedRunnable<V, X>> runnables, int parallelism) throws X {
     Stopwatch watch = new Stopwatch().start();
-
+    Preconditions.checkArgument(runnables.size() > 0, "You must submit at least one runnable.");
     if(runnables.size() == 1){
       parallelism = 1;
       runnables.get(0).run();
@@ -120,7 +131,7 @@ public abstract class TimedRunnable<V> implements Runnable {
       final ExtendedLatch latch = new ExtendedLatch(runnables.size());
       final ExecutorService threadPool = Executors.newFixedThreadPool(parallelism);
       try{
-        for(TimedRunnable<V> runnable : runnables){
+        for (TimedRunnable<V, X> runnable : runnables) {
           threadPool.submit(new LatchedRunnable(latch, runnable));
         }
 
@@ -158,16 +169,16 @@ public abstract class TimedRunnable<V> implements Runnable {
     long sum = 0;
     long max = 0;
     long count = 0;
-    IOException excep = null;
-    for(final TimedRunnable<V> reader : runnables){
+    X excep = null;
+    for (final TimedRunnable<V, X> runner : runnables) {
       try{
-        values.add(reader.getValue());
-        sum += reader.getTimeSpentNanos();
+        values.add(runner.getValue());
+        sum += runner.getTimeSpentNanos();
         count++;
-        max = Math.max(max, reader.getTimeSpentNanos());
-      }catch(IOException e){
+        max = Math.max(max, runner.getTimeSpentNanos());
+      } catch (Exception e) {
         if(excep == null){
-          excep = e;
+          excep = (X) e;
         }else{
           excep.addSuppressed(e);
         }
@@ -188,6 +199,14 @@ public abstract class TimedRunnable<V> implements Runnable {
     }
 
     return values;
+
+  }
+
+  public static abstract class IOTimedRunnable<V> extends TimedRunnable<V, IOException> {
+
+    public IOTimedRunnable() {
+      super(IOException.class);
+    }
 
   }
 }

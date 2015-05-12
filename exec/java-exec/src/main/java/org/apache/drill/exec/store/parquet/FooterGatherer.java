@@ -24,6 +24,7 @@ import java.util.List;
 
 import org.apache.commons.lang3.ArrayUtils;
 import org.apache.drill.exec.store.TimedRunnable;
+import org.apache.drill.exec.store.TimedRunnable.IOTimedRunnable;
 import org.apache.drill.exec.store.dfs.DrillPathFilter;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FSDataInputStream;
@@ -66,7 +67,7 @@ public class FooterGatherer {
   }
 
   public static List<Footer> getFooters(final Configuration conf, List<FileStatus> statuses, int parallelism) throws IOException {
-    final List<TimedRunnable<Footer>> readers = Lists.newArrayList();
+    final List<TimedRunnable<Footer, IOException>> readers = Lists.newArrayList();
     List<Footer> foundFooters = Lists.newArrayList();
     for(FileStatus status : statuses){
 
@@ -99,7 +100,7 @@ public class FooterGatherer {
   }
 
 
-  private static class FooterReader extends TimedRunnable<Footer>{
+  private static class FooterReader extends IOTimedRunnable<Footer> {
 
     final Configuration conf;
     final FileStatus status;
@@ -116,7 +117,7 @@ public class FooterGatherer {
     }
 
     @Override
-    protected IOException convertToIOException(Exception e) {
+    protected IOException convertToException(Exception e) {
       return new IOException("Failure while trying to get footer for file " + status.getPath(), e);
     }
 

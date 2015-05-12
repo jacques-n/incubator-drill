@@ -73,6 +73,7 @@ import org.apache.drill.exec.rpc.control.Controller;
 import org.apache.drill.exec.rpc.user.UserServer.UserClientConnection;
 import org.apache.drill.exec.server.DrillbitContext;
 import org.apache.drill.exec.server.options.OptionManager;
+import org.apache.drill.exec.store.TimedRunnable;
 import org.apache.drill.exec.testing.ExecutionControlsInjector;
 import org.apache.drill.exec.util.Pointer;
 import org.apache.drill.exec.work.EndpointListener;
@@ -83,6 +84,7 @@ import org.apache.drill.exec.work.fragment.FragmentExecutor;
 import org.apache.drill.exec.work.fragment.RootFragmentManager;
 import org.codehaus.jackson.map.ObjectMapper;
 
+import com.beust.jcommander.internal.Lists;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.ArrayListMultimap;
 import com.google.common.collect.Multimap;
@@ -972,8 +974,12 @@ public class Foreman implements Runnable {
     final FragmentSubmitFailures fragmentSubmitFailures = new FragmentSubmitFailures();
 
     // send remote intermediate fragments
+    final List<TimedRunnable<Void, RuntimeException>> runnables = Lists.newArrayList();
     for (final DrillbitEndpoint ep : intFragmentMap.keySet()) {
-      sendRemoteFragments(ep, intFragmentMap.get(ep), endpointLatch, fragmentSubmitFailures);
+      runnables.add(new SendRemoteFragment(ep, intFragmentMap.get(ep), endpointLatch, fragmentSubmitFailures));
+    }
+    if (!runnables.isEmpty()) {
+      TimedRunnable.run("send-int-fragments", logger, runnables, 16);
     }
 
     final long timeout = RPC_WAIT_IN_MSECS_PER_FRAGMENT * numIntFragments;
@@ -1016,38 +1022,76 @@ public class Foreman implements Runnable {
      * Send the remote (leaf) fragments; we don't wait for these. Any problems will come in through
      * the regular sendListener event delivery.
      */
+    List<TimedRunnable<Void, RuntimeException>> leaves = Lists.newArrayList();
     for (final DrillbitEndpoint ep : leafFragmentMap.keySet()) {
-      sendRemoteFragments(ep, leafFragmentMap.get(ep), null, null);
+      leaves.add(new SendRemoteFragment(ep, leafFragmentMap.get(ep), null, null));
     }
+    if (!leaves.isEmpty()) {
+      TimedRunnable.run("fragment-leaf-send", logger, leaves, 16);
+    }
+
   }
 
-  /**
-   * Send all the remote fragments belonging to a single target drillbit in one request.
-   *
-   * @param assignment the drillbit assigned to these fragments
-   * @param fragments the set of fragments
-   * @param latch the countdown latch used to track the requests to all endpoints
-   * @param fragmentSubmitFailures the submission failure counter used to track the requests to all endpoints
-   */
-  private void sendRemoteFragments(final DrillbitEndpoint assignment, final Collection<PlanFragment> fragments,
-      final CountDownLatch latch, final FragmentSubmitFailures fragmentSubmitFailures) {
-    @SuppressWarnings("resource")
-    final Controller controller = drillbitContext.getController();
-    final InitializeFragments.Builder fb = InitializeFragments.newBuilder();
-    for(final PlanFragment planFragment : fragments) {
-      fb.addFragment(planFragment);
-    }
-    final InitializeFragments initFrags = fb.build();
+  private class SendRemoteFragment extends TimedRunnable<Void, RuntimeException> {
+    private final DrillbitEndpoint endpoint;
+    private final Collection<PlanFragment> fragments;
+    private final CountDownLatch endpointLatch;
+    private final FragmentSubmitFailures failures;
 
-    logger.debug("Sending remote fragments to \nNode:\n{} \n\nData:\n{}", assignment, initFrags);
-    final FragmentSubmitListener listener =
-        new FragmentSubmitListener(assignment, initFrags, latch, fragmentSubmitFailures);
-    controller.getTunnel(assignment).sendFragments(listener, initFrags);
+    public SendRemoteFragment(DrillbitEndpoint endpoint,
+        Collection<PlanFragment> fragments, CountDownLatch endpointLatch, FragmentSubmitFailures failures) {
+      super(RuntimeException.class);
+      this.endpoint = endpoint;
+      this.fragments = fragments;
+      this.endpointLatch = endpointLatch;
+      this.failures = failures;
+    }
+
+    @Override
+    protected Void runInner() throws Exception {
+      sendRemoteFragments(endpoint, fragments, endpointLatch, failures);
+      return null;
+    }
+
+    /**
+     * Send all the remote fragments belonging to a single target drillbit in one request.
+     *
+     * @param assignment
+     *          the drillbit assigned to these fragments
+     * @param fragments
+     *          the set of fragments
+     * @param latch
+     *          the countdown latch used to track the requests to all endpoints
+     * @param fragmentSubmitFailures
+     *          the submission failure counter used to track the requests to all endpoints
+     */
+    private void sendRemoteFragments(final DrillbitEndpoint assignment, final Collection<PlanFragment> fragments,
+        final CountDownLatch latch, final FragmentSubmitFailures fragmentSubmitFailures) {
+      @SuppressWarnings("resource")
+      final Controller controller = drillbitContext.getController();
+      final InitializeFragments.Builder fb = InitializeFragments.newBuilder();
+      for (final PlanFragment planFragment : fragments) {
+        fb.addFragment(planFragment);
+      }
+      final InitializeFragments initFrags = fb.build();
+
+      logger.debug("Sending remote fragments to \nNode:\n{} \n\nData:\n{}", assignment, initFrags);
+      final FragmentSubmitListener listener =
+          new FragmentSubmitListener(assignment, initFrags, latch, fragmentSubmitFailures);
+      controller.getTunnel(assignment).sendFragments(listener, initFrags);
+    }
+
+    @Override
+    protected RuntimeException convertToException(Exception e) {
+      return new RuntimeException(e);
+    }
+
   }
 
   public QueryState getState() {
     return state;
   }
+
 
   /**
    * Used by {@link FragmentSubmitListener} to track the number of submission failures.
@@ -1066,7 +1110,7 @@ public class Foreman implements Runnable {
 
     final List<SubmissionException> submissionExceptions = new LinkedList<>();
 
-    void addFailure(final DrillbitEndpoint drillbitEndpoint, final RpcException rpcException) {
+    synchronized void addFailure(final DrillbitEndpoint drillbitEndpoint, final RpcException rpcException) {
       submissionExceptions.add(new SubmissionException(drillbitEndpoint, rpcException));
     }
   }

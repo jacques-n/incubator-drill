@@ -28,7 +28,7 @@ public class BitServerConnection extends RemoteConnection{
   private final BufferAllocator allocator;
 
   public BitServerConnection(SocketChannel channel, BufferAllocator allocator) {
-    super(channel, "data server");
+    super(channel, "data server", false);
     this.allocator = allocator;
   }
 
