@@ -25,7 +25,7 @@ import org.apache.drill.exec.ExecConstants;
 import org.apache.drill.exec.ops.FragmentContext;
 import org.apache.drill.exec.record.RawFragmentBatch;
 
-public abstract class BaseRawBatchBuffer implements RawBatchBuffer {
+public abstract class BaseRawBatchBuffer<T> implements RawBatchBuffer {
   static final org.slf4j.Logger logger = org.slf4j.LoggerFactory.getLogger(BaseRawBatchBuffer.class);
 
   private static enum BufferState {
@@ -44,7 +44,7 @@ public abstract class BaseRawBatchBuffer implements RawBatchBuffer {
     public void add(T obj);
   }
 
-  protected BufferQueue bufferQueue;
+  protected BufferQueue<T> bufferQueue;
   private volatile BufferState state = BufferState.INIT;
   protected final int bufferSizePerSocket;
   protected final AtomicBoolean outOfMemory = new AtomicBoolean(false);

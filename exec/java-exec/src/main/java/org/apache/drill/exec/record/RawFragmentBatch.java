@@ -19,6 +19,8 @@ package org.apache.drill.exec.record;
 
 import io.netty.buffer.DrillBuf;
 
+import java.util.concurrent.atomic.AtomicBoolean;
+
 import org.apache.drill.exec.proto.BitData.FragmentRecordBatch;
 import org.apache.drill.exec.rpc.data.AckSender;
 
@@ -29,7 +31,7 @@ public class RawFragmentBatch {
   private final DrillBuf body;
   private final AckSender sender;
 
-  private volatile boolean ackSent;
+  private AtomicBoolean ackSent = new AtomicBoolean(false);
 
   public RawFragmentBatch(FragmentRecordBatch header, DrillBuf body, AckSender sender) {
     super();
@@ -65,10 +67,9 @@ public class RawFragmentBatch {
     return sender;
   }
 
-  public void sendOk() {
-    if (sender != null && !ackSent) {
+  public synchronized void sendOk() {
+    if (sender != null && ackSent.compareAndSet(false, true)) {
       sender.sendOk();
-      ackSent = true;
     }
   }
 
@@ -77,7 +78,7 @@ public class RawFragmentBatch {
   }
 
   public boolean isAckSent() {
-    return ackSent;
+    return ackSent.get();
   }
 
 }

@@ -17,17 +17,15 @@
  */
 package org.apache.drill.exec.work.batch;
 
-import com.google.common.annotations.VisibleForTesting;
-import com.google.common.collect.Queues;
-import org.apache.drill.exec.ops.FragmentContext;
-import org.apache.drill.exec.proto.BitData.FragmentRecordBatch;
-import org.apache.drill.exec.record.RawFragmentBatch;
-
 import java.io.IOException;
 import java.util.concurrent.LinkedBlockingDeque;
-import java.util.concurrent.atomic.AtomicBoolean;
 
-public class UnlimitedRawBatchBuffer extends BaseRawBatchBuffer {
+import org.apache.drill.exec.ops.FragmentContext;
+import org.apache.drill.exec.record.RawFragmentBatch;
+
+import com.google.common.collect.Queues;
+
+public class UnlimitedRawBatchBuffer extends BaseRawBatchBuffer<RawFragmentBatch> {
   private static final org.slf4j.Logger logger = org.slf4j.LoggerFactory.getLogger(UnlimitedRawBatchBuffer.class);
 
   private final int softlimit;
