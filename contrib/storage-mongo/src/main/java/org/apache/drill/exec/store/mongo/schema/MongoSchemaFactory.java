@@ -35,7 +35,6 @@ import org.apache.drill.exec.planner.logical.DynamicDrillTable;
 import org.apache.drill.exec.store.AbstractSchema;
 import org.apache.drill.exec.store.SchemaConfig;
 import org.apache.drill.exec.store.SchemaFactory;
-import org.apache.drill.exec.store.mongo.MongoCnxnManager;
 import org.apache.drill.exec.store.mongo.MongoScanSpec;
 import org.apache.drill.exec.store.mongo.MongoStoragePlugin;
 import org.apache.drill.exec.store.mongo.MongoStoragePluginConfig;
@@ -46,11 +45,9 @@ import com.google.common.cache.CacheBuilder;
 import com.google.common.cache.CacheLoader;
 import com.google.common.cache.LoadingCache;
 import com.google.common.collect.ImmutableList;
-import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
-import com.mongodb.MongoClientOptions;
-import com.mongodb.MongoCredential;
+import com.mongodb.MongoClient;
 import com.mongodb.MongoException;
 import com.mongodb.ServerAddress;
 import com.mongodb.client.MongoDatabase;
@@ -66,23 +63,13 @@ public class MongoSchemaFactory implements SchemaFactory {
   private LoadingCache<String, List<String>> tableNameLoader;
   private final String schemaName;
   private final MongoStoragePlugin plugin;
+  private final MongoClient client;
 
-  private final List<ServerAddress> addresses;
-  private final MongoClientOptions options;
-  private final MongoCredential credential;
-
-  public MongoSchemaFactory(MongoStoragePlugin schema, String schemaName)
+  public MongoSchemaFactory(MongoStoragePlugin plugin, String schemaName)
       throws ExecutionSetupException, UnknownHostException {
-    this.plugin = schema;
+    this.plugin = plugin;
     this.schemaName = schemaName;
-
-    List<String> hosts = plugin.getConfig().getHosts();
-    addresses = Lists.newArrayList();
-    for (String host : hosts) {
-      addresses.add(new ServerAddress(host));
-    }
-    options = plugin.getConfig().getMongoOptions();
-    credential = plugin.getConfig().getMongoCrendials();
+    this.client = plugin.getClient();
 
     databases = CacheBuilder //
         .newBuilder() //
@@ -104,8 +91,7 @@ public class MongoSchemaFactory implements SchemaFactory {
       }
       try {
         List<String> dbNames = new ArrayList<>();
-        MongoCnxnManager.getClient(addresses, options, credential)
-            .listDatabaseNames().into(dbNames);
+        client.listDatabaseNames().into(dbNames);
         return dbNames;
       } catch (MongoException me) {
         logger.warn("Failure while loading databases in Mongo. {}",
@@ -123,8 +109,7 @@ public class MongoSchemaFactory implements SchemaFactory {
     @Override
     public List<String> load(String dbName) throws Exception {
       try {
-        MongoDatabase db = MongoCnxnManager.getClient(addresses, options,
-            credential).getDatabase(dbName);
+        MongoDatabase db = client.getDatabase(dbName);
         List<String> collectionNames = new ArrayList<>();
         db.listCollectionNames().into(collectionNames);
         return collectionNames;

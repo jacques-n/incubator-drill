@@ -179,9 +179,7 @@ public class MongoGroupScan extends AbstractGroupScan implements
       for (String host : h) {
         addresses.add(new ServerAddress(host));
       }
-      MongoClient client = MongoCnxnManager.getClient(addresses,
-          storagePluginConfig.getMongoOptions(),
-          storagePluginConfig.getMongoCrendials());
+      MongoClient client = storagePlugin.getClient();
       chunksMapping = Maps.newHashMap();
       chunksInverseMapping = Maps.newLinkedHashMap();
       if (isShardedCluster(client)) {
@@ -221,9 +219,7 @@ public class MongoGroupScan extends AbstractGroupScan implements
             String[] hosts = tagAndHost.length > 1 ? StringUtils.split(
                 tagAndHost[1], ',') : StringUtils.split(tagAndHost[0], ',');
             List<String> chunkHosts = Arrays.asList(hosts);
-            //to get the address list from one of the shard nodes, need to get port.
-            MongoClient shardClient = new MongoClient(hosts[0]);
-            Set<ServerAddress> addressList = getPreferredHosts(shardClient, chunkHosts);
+            Set<ServerAddress> addressList = getPreferredHosts(storagePlugin.getClient(hosts[0]), chunkHosts);
             if (addressList == null) {
               addressList = Sets.newHashSet();
               for (String host : chunkHosts) {
@@ -474,16 +470,8 @@ public class MongoGroupScan extends AbstractGroupScan implements
 
   @Override
   public ScanStats getScanStats() {
-    MongoClientURI clientURI = new MongoClientURI(
-        this.storagePluginConfig.getConnection());
-    try {
-      List<String> hosts = clientURI.getHosts();
-      List<ServerAddress> addresses = Lists.newArrayList();
-      for (String host : hosts) {
-        addresses.add(new ServerAddress(host));
-      }
-      MongoClient client = MongoCnxnManager.getClient(addresses,
-          clientURI.getOptions(), clientURI.getCredentials());
+    try{
+      MongoClient client = storagePlugin.getClient();
       MongoDatabase db = client.getDatabase(scanSpec.getDbName());
       MongoCollection<Document> collection = db.getCollection(scanSpec
           .getCollectionName());

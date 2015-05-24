@@ -64,26 +64,25 @@ public class MongoRecordReader extends AbstractRecordReader {
   private VectorContainerWriter writer;
 
   private BasicDBObject filters;
-  private BasicDBObject fields;
+  private final BasicDBObject fields;
 
-  private MongoClientOptions clientOptions;
-  private MongoCredential credential;
-  private FragmentContext fragmentContext;
+  private final FragmentContext fragmentContext;
   private OperatorContext operatorContext;
 
-  private Boolean enableAllTextMode;
-  private Boolean readNumbersAsDouble;
+  private final MongoStoragePlugin plugin;
+
+  private final boolean enableAllTextMode;
+  private final boolean readNumbersAsDouble;
 
   public MongoRecordReader(MongoSubScan.MongoSubScanSpec subScanSpec,
       List<SchemaPath> projectedColumns, FragmentContext context,
-      MongoClientOptions clientOptions, MongoCredential credential) {
-    this.clientOptions = clientOptions;
-    this.credential = credential;
+      MongoStoragePlugin plugin) {
     this.fields = new BasicDBObject();
     // exclude _id field, if not mentioned by user.
     this.fields.put(DrillMongoConstants.ID, Integer.valueOf(0));
     setColumns(projectedColumns);
     this.fragmentContext = context;
+    this.plugin = plugin;
     this.filters = new BasicDBObject();
     Map<String, List<BasicDBObject>> mergedFilters = MongoUtils.mergeFilters(
         subScanSpec.getMinFilters(), subScanSpec.getMaxFilters());
@@ -138,8 +137,7 @@ public class MongoRecordReader extends AbstractRecordReader {
       for (String host : hosts) {
         addresses.add(new ServerAddress(host));
       }
-      MongoClient client = MongoCnxnManager.getClient(addresses, clientOptions,
-          credential);
+      MongoClient client = plugin.getClient(addresses);
       MongoDatabase db = client.getDatabase(subScanSpec.getDbName());
       collection = db.getCollection(subScanSpec.getCollectionName());
     } catch (UnknownHostException e) {
