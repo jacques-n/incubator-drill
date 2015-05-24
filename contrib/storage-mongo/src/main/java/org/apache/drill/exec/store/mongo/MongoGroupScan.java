@@ -243,10 +243,9 @@ public class MongoGroupScan extends AbstractGroupScan implements
               chunkHostsList.add(serverAddr.toString());
             }
             ChunkInfo chunkInfo = new ChunkInfo(chunkHostsList, chunkId);
-            DBObject minObj = (BasicDBObject) chunkObj.get(MIN);
+            Document minMap = (Document) chunkObj.get(MIN);
 
             Map<String, Object> minFilters = Maps.newHashMap();
-            Map minMap = minObj.toMap();
             Set keySet = minMap.keySet();
             for (Object keyObj : keySet) {
               Object object = minMap.get(keyObj);
@@ -256,9 +255,8 @@ public class MongoGroupScan extends AbstractGroupScan implements
             }
             chunkInfo.setMinFilters(minFilters);
 
-            DBObject maxObj = (BasicDBObject) chunkObj.get(MAX);
             Map<String, Object> maxFilters = Maps.newHashMap();
-            Map maxMap = maxObj.toMap();
+            Map maxMap = (Document) chunkObj.get(MAX);
             keySet = maxMap.keySet();
             for (Object keyObj : keySet) {
               Object object = maxMap.get(keyObj);
@@ -307,23 +305,31 @@ public class MongoGroupScan extends AbstractGroupScan implements
     ReadPreference readPreference = client.getReadPreference();
     Document command = db.runCommand(new Document("isMaster", 1));
 
+    final String primaryHost = command.getString("primary");
+    final List<String> hostsList = (List<String>) command.get("hosts");
+
     switch (readPreference.getName().toUpperCase()) {
     case "PRIMARY":
     case "PRIMARYPREFERRED":
-      String primaryHost = command.getString("primary");
+      if (primaryHost == null) {
+        return null;
+      }
       addressList.add(new ServerAddress(primaryHost));
       return addressList;
     case "SECONDARY":
     case "SECONDARYPREFERRED":
-      primaryHost = command.getString("primary");
-      List<String> hostsList = (List<String>) command.get("hosts");
+      if (primaryHost == null || hostsList == null) {
+        return null;
+      }
       hostsList.remove(primaryHost);
       for (String host : hostsList) {
         addressList.add(new ServerAddress(host));
       }
       return addressList;
     case "NEAREST":
-      hostsList = (List<String>) command.get("hosts");
+      if (hostsList == null) {
+        return null;
+      }
       for (String host : hostsList) {
         addressList.add(new ServerAddress(host));
       }
