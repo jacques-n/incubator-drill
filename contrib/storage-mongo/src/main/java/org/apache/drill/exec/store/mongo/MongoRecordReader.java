@@ -150,13 +150,18 @@ public class MongoRecordReader extends AbstractRecordReader {
     this.operatorContext = context;
     this.writer = new VectorContainerWriter(output);
     this.jsonReader = new JsonReader(fragmentContext.getManagedBuffer(), Lists.newArrayList(getColumns()), enableAllTextMode, false, readNumbersAsDouble);
-    logger.info("Filters Applied : " + filters);
-    logger.info("Fields Selected :" + fields);
-    cursor = collection.find(filters).projection(fields).iterator();
+
   }
 
   @Override
   public int next() {
+    if(cursor == null){
+      logger.info("Filters Applied : " + filters);
+      logger.info("Fields Selected :" + fields);
+      cursor = collection.find(filters).projection(fields).batchSize(100).iterator();
+    }
+
+
     writer.allocate();
     writer.reset();
 
