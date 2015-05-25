@@ -164,6 +164,9 @@ public class FragmentExecutor implements Runnable {
         }
       }
     } else {
+      // countdown so receiver fragment finished can proceed.
+      acceptExternalEvents.countDown();
+
       updateState(FragmentState.CANCELLATION_REQUESTED);
       cleanup(FragmentState.FINISHED);
     }
