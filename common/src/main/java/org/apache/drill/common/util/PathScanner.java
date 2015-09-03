@@ -17,11 +17,14 @@
  */
 package org.apache.drill.common.util;
 
+import java.io.File;
 import java.io.IOException;
 import java.lang.annotation.Annotation;
 import java.lang.reflect.Modifier;
 import java.net.URL;
+import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.Enumeration;
 import java.util.HashMap;
 import java.util.Iterator;
@@ -32,21 +35,26 @@ import java.util.concurrent.TimeUnit;
 
 import org.apache.drill.common.config.CommonConstants;
 import org.reflections.Reflections;
+import org.reflections.adapters.JavassistAdapter;
 import org.reflections.scanners.ResourcesScanner;
 import org.reflections.scanners.SubTypesScanner;
 import org.reflections.scanners.TypeAnnotationsScanner;
+import org.reflections.serializers.XmlSerializer;
 import org.reflections.util.ClasspathHelper;
 import org.reflections.util.ConfigurationBuilder;
 
 import com.google.common.base.Stopwatch;
+import com.google.common.collect.Multimap;
 import com.google.common.collect.Sets;
 
 public class PathScanner {
+
   private static final org.slf4j.Logger logger = org.slf4j.LoggerFactory.getLogger(PathScanner.class);
 
   private static final SubTypesScanner subTypeScanner = new SubTypesScanner();
   private static final TypeAnnotationsScanner annotationsScanner = new TypeAnnotationsScanner();
   private static final ResourcesScanner resourcesScanner = new ResourcesScanner();
+
   private static final Object SYNC = new Object();
   static volatile Reflections REFLECTIONS = null;
 
@@ -58,7 +66,7 @@ public class PathScanner {
     final Map<A, Class<? extends T>> map = new HashMap<A, Class<? extends T>>();
 
     for (Class<? extends T> c : providerClasses) {
-      final A annotation = (A) c.getAnnotation(annotationClass);
+      final A annotation = c.getAnnotation(annotationClass);
       if (annotation == null) {
         continue;
       }
