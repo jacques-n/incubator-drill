@@ -23,16 +23,16 @@ import java.util.List;
 import java.util.Map.Entry;
 import java.util.Set;
 
+import org.apache.calcite.sql.SqlOperator;
 import org.apache.drill.common.config.DrillConfig;
-import org.apache.drill.common.types.TypeProtos;
-import org.apache.drill.common.util.PathScanner;
+import org.apache.drill.common.util.FunctionResolver;
+import org.apache.drill.common.util.FunctionResolver.FunctionDescriptor;
+import org.apache.drill.common.util.FunctionResolver.ScanResult;
 import org.apache.drill.exec.ExecConstants;
-import org.apache.drill.exec.expr.DrillFunc;
 import org.apache.drill.exec.planner.logical.DrillConstExecutor;
 import org.apache.drill.exec.planner.sql.DrillOperatorTable;
 import org.apache.drill.exec.planner.sql.DrillSqlAggOperator;
 import org.apache.drill.exec.planner.sql.DrillSqlOperator;
-import org.apache.calcite.sql.SqlOperator;
 
 import com.google.common.collect.ArrayListMultimap;
 import com.google.common.collect.Sets;
@@ -50,9 +50,9 @@ public class DrillFunctionRegistry {
 
   public DrillFunctionRegistry(DrillConfig config) {
     FunctionConverter converter = new FunctionConverter();
-    Set<Class<? extends DrillFunc>> providerClasses = PathScanner.scanForImplementations(DrillFunc.class, config.getStringList(ExecConstants.FUNCTION_PACKAGES));
-    for (Class<? extends DrillFunc> clazz : providerClasses) {
-      DrillFuncHolder holder = converter.getHolder(clazz);
+    ScanResult result = FunctionResolver.fromPrescan(config.getStringList(ExecConstants.FUNCTION_PACKAGES));
+    for (FunctionDescriptor function : result.getFunctions()) {
+      DrillFuncHolder holder = converter.getHolder(function);
       if (holder != null) {
         // register handle for each name the function can be referred to
         String[] names = holder.getRegisteredNames();
@@ -70,15 +70,15 @@ public class DrillFunctionRegistry {
           String existingImplementation;
           if ((existingImplementation = functionSignatureMap.get(functionSignature)) != null) {
             throw new AssertionError(String.format("Conflicting functions with similar signature found. Func Name: %s, Class name: %s " +
-                " Class name: %s", functionName, clazz.getName(), existingImplementation));
+                    " Class name: %s", functionName, function.getClassName(), existingImplementation));
           } else if (holder.isAggregating() && holder.isRandom() ) {
-            logger.warn("Aggregate functions cannot be random, did not register function {}", clazz.getName());
+            logger.warn("Aggregate functions cannot be random, did not register function {}", function.getClassName());
           } else {
-            functionSignatureMap.put(functionSignature, clazz.getName());
+            functionSignatureMap.put(functionSignature, function.getClassName());
           }
         }
       } else {
-        logger.warn("Unable to initialize function for class {}", clazz.getName());
+        logger.warn("Unable to initialize function for class {}", function.getClassName());
       }
     }
     if (logger.isTraceEnabled()) {
@@ -97,6 +97,10 @@ public class DrillFunctionRegistry {
   /** Returns functions with given name. Function name is case insensitive. */
   public List<DrillFuncHolder> getMethods(String name) {
     return this.methods.get(name.toLowerCase());
+  }
+
+  public Collection<String> getFunctionNames() {
+    return this.methods.keySet();
   }
 
   public void register(DrillOperatorTable operatorTable) {

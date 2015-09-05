@@ -1,3 +1,20 @@
+/**
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package org.apache.drill.common.util;
 
 import static org.junit.Assert.assertEquals;
@@ -7,12 +24,15 @@ import java.lang.annotation.Annotation;
 import java.lang.reflect.Field;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.List;
 
+import org.apache.drill.common.config.DrillConfig;
 import org.apache.drill.common.util.FunctionResolver.AnnotationDescriptor;
 import org.apache.drill.common.util.FunctionResolver.FieldDescriptor;
 import org.apache.drill.common.util.FunctionResolver.FunctionDescriptor;
 import org.apache.drill.common.util.FunctionResolver.ScanResult;
+import org.apache.drill.exec.expr.fn.FunctionImplementationRegistry;
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -32,7 +52,7 @@ public class TestFunctionResolver {
 
   @Test
   public void test() throws Exception {
-    ScanResult result = FunctionResolver.fromPrescan();
+    ScanResult result = FunctionResolver.fromPrescan(Collections.singletonList("org"));
     // if the build has run properly. FunctionResolver.FUNCTION_REGISTRY_FILE was created with a prescan
     assertIsSuffixedBy(result.getPrescannedURLs(),
         // those paths have been scanned in the build
@@ -63,6 +83,11 @@ public class TestFunctionResolver {
       verifyAnnotations(annotations, scannedAnnotations);
     }
     // TODO: add a function in the test source dir to verify it is loaded properly
+  }
+
+  @Test
+  public void testFunctionRegistry() throws Exception {
+    new FunctionImplementationRegistry(DrillConfig.create());
   }
 
   private void verifyAnnotations(Annotation[] annotations, List<AnnotationDescriptor> scannedAnnotations) {

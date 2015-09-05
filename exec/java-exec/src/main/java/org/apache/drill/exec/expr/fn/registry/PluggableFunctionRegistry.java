@@ -15,9 +15,10 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.drill.exec.expr.fn;
+package org.apache.drill.exec.expr.fn.registry;
 
 import org.apache.drill.common.expression.FunctionCall;
+import org.apache.drill.exec.expr.fn.AbstractFuncHolder;
 import org.apache.drill.exec.planner.sql.DrillOperatorTable;
 
 public interface PluggableFunctionRegistry {

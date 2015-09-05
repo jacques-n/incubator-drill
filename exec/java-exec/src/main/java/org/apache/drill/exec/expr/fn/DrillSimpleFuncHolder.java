@@ -17,9 +17,6 @@
  */
 package org.apache.drill.exec.expr.fn;
 
-import java.util.List;
-import java.util.Map;
-
 import org.apache.drill.common.exceptions.DrillRuntimeException;
 import org.apache.drill.common.types.TypeProtos.DataMode;
 import org.apache.drill.common.types.TypeProtos.MajorType;
@@ -42,29 +39,37 @@ import com.sun.codemodel.JVar;
 public class DrillSimpleFuncHolder extends DrillFuncHolder{
   static final org.slf4j.Logger logger = org.slf4j.LoggerFactory.getLogger(DrillSimpleFuncHolder.class);
 
-  private final String setupBody;
-  private final String evalBody;
-  private final String resetBody;
-  private final String cleanupBody;
-  private final Class<? extends DrillSimpleFunc> drillFuncClass;
+  private final String drillFuncClass;
 
   public DrillSimpleFuncHolder(FunctionScope scope, NullHandling nullHandling, boolean isBinaryCommutative, boolean isRandom,
       String[] registeredNames, ValueReference[] parameters, ValueReference returnValue, WorkspaceReference[] workspaceVars,
-      Map<String, String> methods, List<String> imports) {
-    this(scope, nullHandling, isBinaryCommutative, isRandom, registeredNames, parameters, returnValue, workspaceVars, methods, imports, FunctionCostCategory.getDefault(), null);
+      FunctionInitializer initializer) {
+    this(scope, nullHandling, isBinaryCommutative, isRandom, registeredNames, parameters, returnValue, workspaceVars,
+        initializer, FunctionCostCategory.getDefault());
   }
 
   public DrillSimpleFuncHolder(FunctionScope scope, NullHandling nullHandling, boolean isBinaryCommutative, boolean isRandom,
       String[] registeredNames, ValueReference[] parameters, ValueReference returnValue, WorkspaceReference[] workspaceVars,
-      Map<String, String> methods, List<String> imports, FunctionCostCategory costCategory, Class<? extends DrillSimpleFunc> drillFuncClass) {
-    super(scope, nullHandling, isBinaryCommutative, isRandom, registeredNames, parameters, returnValue, workspaceVars, methods, imports, costCategory);
-    setupBody = methods.get("setup");
-    evalBody = methods.get("eval");
-    resetBody = methods.get("reset");
-    cleanupBody = methods.get("cleanup");
-    Preconditions.checkNotNull(evalBody);
+      FunctionInitializer initializer, FunctionCostCategory costCategory) {
+    super(scope, nullHandling, isBinaryCommutative, isRandom, registeredNames, parameters, returnValue, workspaceVars,
+        initializer, costCategory);
+    this.drillFuncClass = initializer.getClassName();
+  }
 
-    this.drillFuncClass = drillFuncClass;
+  private String setupBody() {
+    return meth("setup");
+  }
+
+  private String evalBody() {
+    return meth("eval");
+  }
+
+  private String resetBody(){
+    return meth("reset", false);
+  }
+
+  private String cleanupBody() {
+    return meth("cleanup", false);
   }
 
   @Override
@@ -74,7 +79,8 @@ public class DrillSimpleFuncHolder extends DrillFuncHolder{
 
   public DrillSimpleFunc createInterpreter() throws Exception {
     Preconditions.checkArgument(this.drillFuncClass != null, "drillFuncClass should not be null!");
-    return drillFuncClass.newInstance();
+    Class<? extends DrillSimpleFunc> clazz = (Class<? extends DrillSimpleFunc>) Class.forName(drillFuncClass);
+    return clazz.newInstance();
   }
 
   public HoldingContainer renderEnd(ClassGenerator<?> g, HoldingContainer[] inputVariables, JVar[]  workspaceJVars){
@@ -85,10 +91,10 @@ public class DrillSimpleFuncHolder extends DrillFuncHolder{
         throw new DrillRuntimeException(String.format("The argument '%s' of Function '%s' has to be constant!", parameters[i].name, this.getRegisteredNames()[0]));
       }
     }
-    generateBody(g, BlockType.SETUP, setupBody, inputVariables, workspaceJVars, true);
-    HoldingContainer c = generateEvalBody(g, inputVariables, evalBody, workspaceJVars);
-    generateBody(g, BlockType.RESET, resetBody, null, workspaceJVars, false);
-    generateBody(g, BlockType.CLEANUP, cleanupBody, null, workspaceJVars, false);
+    generateBody(g, BlockType.SETUP, setupBody(), inputVariables, workspaceJVars, true);
+    HoldingContainer c = generateEvalBody(g, inputVariables, evalBody(), workspaceJVars);
+    generateBody(g, BlockType.RESET, resetBody(), null, workspaceJVars, false);
+    generateBody(g, BlockType.CLEANUP, cleanupBody(), null, workspaceJVars, false);
     return c;
   }
 

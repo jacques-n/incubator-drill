@@ -19,6 +19,7 @@ package org.apache.drill.exec.store.sys;
 
 import java.util.Iterator;
 
+import org.apache.drill.exec.expr.fn.FunctionImplementationRegistry.FunctionDescription;
 import org.apache.drill.exec.ops.FragmentContext;
 import org.apache.drill.exec.store.sys.OptionIterator.OptionValueWrapper;
 
@@ -43,6 +44,13 @@ public enum SystemTable {
     @Override
     public Iterator<Object> getIterator(final FragmentContext context) {
       return new OptionIterator(context, OptionIterator.Mode.BOOT);
+    }
+  },
+
+  FUNCTION("functions", false, FunctionDescription.class) {
+    @Override
+    public Iterator<Object> getIterator(final FragmentContext context) {
+      return context.getFunctionRegistry().getIterator();
     }
   },
 

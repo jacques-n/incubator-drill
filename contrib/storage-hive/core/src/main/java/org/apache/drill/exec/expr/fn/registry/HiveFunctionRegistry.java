@@ -15,7 +15,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.drill.exec.expr.fn;
+package org.apache.drill.exec.expr.fn.registry;
 
 import java.util.HashSet;
 import java.util.Set;
@@ -26,7 +26,9 @@ import org.apache.drill.common.types.TypeProtos.MajorType;
 import org.apache.drill.common.types.TypeProtos.MinorType;
 import org.apache.drill.common.types.Types;
 import org.apache.drill.common.util.PathScanner;
+import org.apache.drill.exec.expr.fn.HiveFuncHolder;
 import org.apache.drill.exec.expr.fn.impl.hive.ObjectInspectorHelper;
+import org.apache.drill.exec.expr.fn.registry.PluggableFunctionRegistry;
 import org.apache.drill.exec.planner.sql.DrillOperatorTable;
 import org.apache.drill.exec.planner.sql.HiveUDFOperator;
 import org.apache.hadoop.hive.ql.exec.Description;

@@ -23,8 +23,6 @@ import org.apache.drill.common.config.CommonConstants;
 import org.apache.drill.common.config.DrillConfig;
 import org.apache.drill.common.util.PathScanner;
 
-import com.google.common.base.Joiner;
-
 
 public abstract class FormatPluginConfigBase implements FormatPluginConfig{
   private static final org.slf4j.Logger logger = org.slf4j.LoggerFactory.getLogger(FormatPluginConfigBase.class);
@@ -37,16 +35,8 @@ public abstract class FormatPluginConfigBase implements FormatPluginConfig{
    * @return - list of classes that implement the interface.
    */
   public synchronized static Class<?>[] getSubTypes(final DrillConfig config) {
-    final List<String> packages =
-        config.getStringList(CommonConstants.STORAGE_PLUGIN_CONFIG_SCAN_PACKAGES);
-    final Class<?>[] pluginClasses =
-        PathScanner.scanForImplementationsArr(FormatPluginConfig.class, packages);
-    final String lineBrokenList =
-        pluginClasses.length == 0
-        ? "" : "\n\t- " + Joiner.on("\n\t- ").join(pluginClasses);
-    logger.debug("Found {} format plugin configuration classes: {}.",
-                 pluginClasses.length, lineBrokenList);
-    return pluginClasses;
+    final List<String> packages = config.getStringList(CommonConstants.STORAGE_PLUGIN_CONFIG_SCAN_PACKAGES);
+    return PathScanner.scanForImplementationsArr(FormatPluginConfig.class, packages);
   }
 
   @Override

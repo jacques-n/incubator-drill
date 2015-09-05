@@ -18,15 +18,17 @@
 package org.apache.drill.exec.expr.fn;
 
 import java.util.List;
-import java.util.Map;
 
 import org.apache.drill.common.expression.LogicalExpression;
 import org.apache.drill.common.types.TypeProtos;
 import org.apache.drill.exec.expr.annotations.FunctionTemplate;
 
 public class DrillDecimalSumAggFuncHolder extends DrillAggFuncHolder {
-  public DrillDecimalSumAggFuncHolder(FunctionTemplate.FunctionScope scope, FunctionTemplate.NullHandling nullHandling, boolean isBinaryCommutative, boolean isRandom, String[] registeredNames, ValueReference[] parameters, ValueReference returnValue, WorkspaceReference[] workspaceVars, Map<String, String> methods, List<String> imports) {
-    super(scope, nullHandling, isBinaryCommutative, isRandom, registeredNames, parameters, returnValue, workspaceVars, methods, imports);
+  public DrillDecimalSumAggFuncHolder(FunctionTemplate.FunctionScope scope, FunctionTemplate.NullHandling nullHandling,
+      boolean isBinaryCommutative, boolean isRandom, String[] registeredNames, ValueReference[] parameters,
+      ValueReference returnValue, WorkspaceReference[] workspaceVars, FunctionInitializer initializer) {
+    super(scope, nullHandling, isBinaryCommutative, isRandom, registeredNames, parameters, returnValue, workspaceVars,
+        initializer);
   }
 
   @Override

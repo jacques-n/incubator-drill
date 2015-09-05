@@ -17,24 +17,20 @@
  */
 package org.apache.drill.exec.expr.fn;
 
-import com.google.common.base.Joiner;
-
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.StringReader;
 import java.lang.reflect.Field;
-import java.net.URL;
 import java.util.List;
-import java.util.Map;
 
 import javax.inject.Inject;
 
 import org.apache.drill.common.types.TypeProtos.MajorType;
-import org.apache.drill.common.util.FileUtils;
+import org.apache.drill.common.util.FunctionResolver.AnnotationDescriptor;
+import org.apache.drill.common.util.FunctionResolver.FieldDescriptor;
+import org.apache.drill.common.util.FunctionResolver.FunctionDescriptor;
 import org.apache.drill.exec.expr.DrillFunc;
-import org.apache.drill.exec.expr.DrillSimpleFunc;
 import org.apache.drill.exec.expr.annotations.FunctionTemplate;
+import org.apache.drill.exec.expr.annotations.FunctionTemplate.FunctionCostCategory;
 import org.apache.drill.exec.expr.annotations.FunctionTemplate.FunctionScope;
+import org.apache.drill.exec.expr.annotations.FunctionTemplate.NullHandling;
 import org.apache.drill.exec.expr.annotations.Output;
 import org.apache.drill.exec.expr.annotations.Param;
 import org.apache.drill.exec.expr.annotations.Workspace;
@@ -44,16 +40,9 @@ import org.apache.drill.exec.expr.holders.ValueHolder;
 import org.apache.drill.exec.ops.UdfUtilities;
 import org.apache.drill.exec.vector.complex.reader.FieldReader;
 import org.apache.drill.exec.vector.complex.writer.BaseWriter.ComplexWriter;
-import org.codehaus.commons.compiler.CompileException;
-import org.codehaus.janino.Java.CompilationUnit;
-import org.codehaus.janino.Parser;
-import org.codehaus.janino.Scanner;
-import org.mortbay.util.IO;
 
+import com.google.common.base.Joiner;
 import com.google.common.collect.Lists;
-import com.google.common.collect.Maps;
-import com.google.common.io.InputSupplier;
-import com.google.common.io.Resources;
 
 /**
  * Converts FunctionCalls to Java Expressions.
@@ -61,60 +50,36 @@ import com.google.common.io.Resources;
 public class FunctionConverter {
   static final org.slf4j.Logger logger = org.slf4j.LoggerFactory.getLogger(FunctionConverter.class);
 
-  private Map<String, CompilationUnit> functionUnits = Maps.newHashMap();
+  public <T extends DrillFunc> DrillFuncHolder getHolder(FunctionDescriptor function) {
 
-  private CompilationUnit get(Class<?> c) throws IOException{
-    String path = c.getName();
-    path = path.replaceFirst("\\$.*", "");
-    path = path.replace(".", FileUtils.separator);
-    path = "/" + path + ".java";
-    CompilationUnit cu = functionUnits.get(path);
-    if(cu != null) {
-      return cu;
-    }
-
-    URL u = Resources.getResource(c, path);
-    InputSupplier<InputStream> supplier = Resources.newInputStreamSupplier(u);
-    try (InputStream is = supplier.getInput()) {
-      if (is == null) {
-        throw new IOException(String.format("Failure trying to located source code for Class %s, tried to read on classpath location %s", c.getName(), path));
-      }
-      String body = IO.toString(is);
-
-      //TODO: Hack to remove annotations so Janino doesn't choke.  Need to reconsider this problem...
-      body = body.replaceAll("@\\w+(?:\\([^\\\\]*?\\))?", "");
-      try{
-        cu = new Parser(new Scanner(null, new StringReader(body))).parseCompilationUnit();
-        functionUnits.put(path, cu);
-        return cu;
-      } catch (CompileException e) {
-        logger.warn("Failure while parsing function class:\n{}", body, e);
-        return null;
-      }
-
-    }
-
-  }
-
-  /**
-   * Get the name of the class used for interpreted expression evaluation.
-   *
-   * @return - class name of interpreted evaluator
-   */
-  private String getInterpreterClassName(Class clazz)  {
-    return clazz.getName();
-  }
-
-  public <T extends DrillFunc> DrillFuncHolder getHolder(Class<T> clazz) {
-    FunctionTemplate template = clazz.getAnnotation(FunctionTemplate.class);
+    AnnotationDescriptor template = function.getAnnotation(FunctionTemplate.class);
     if (template == null) {
-      return failure("Class does not declare FunctionTemplate annotation.", clazz);
+      return failure("Class does not declare FunctionTemplate annotation.", function);
     }
 
-    if ((template.name().isEmpty() && template.names().length == 0) || // none set
-        (!template.name().isEmpty() && template.names().length != 0)) { // both are set
-      return failure("Must use only one annotations 'name' or 'names', not both", clazz);
+    final List<String> names;
+    {
+      final List<String> singleName = template.getValues("name");
+      final List<String> mutliName = template.getValues("names");
+      if ((singleName.isEmpty() && mutliName.isEmpty())) {
+        return failure("Must set either 'name' or 'names' annotation. Neither was set.", function);
+      }
+
+      if (!singleName.isEmpty() && !mutliName.isEmpty()) {
+        return failure("Must use only one annotations 'name' or 'names', not both.", function);
+      }
+      names = singleName.isEmpty() ? mutliName : singleName;
     }
+
+    final String primaryName = names.get(0);
+    final FunctionScope scope = FunctionScope.valueOf(template.getSingleValue("scope"));
+    final NullHandling nullHandling = NullHandling.valueOf(template.getSingleValue("nulls",
+        NullHandling.INTERNAL.name()));
+    final boolean isDeterministic = !"true".equalsIgnoreCase(template.getSingleValue("isRandom", "false"));
+    final boolean isBinaryCommutative = "true"
+        .equalsIgnoreCase(template.getSingleValue("isBinaryCommutative", "false"));
+    final FunctionCostCategory costCategory = FunctionCostCategory.valueOf(template.getSingleValue("costCategory",
+        FunctionCostCategory.SIMPLE.name()));
 
     // start by getting field information.
     List<ValueReference> params = Lists.newArrayList();
@@ -123,12 +88,12 @@ public class FunctionConverter {
     ValueReference outputField = null;
 
 
-    for (Field field : clazz.getDeclaredFields()) {
+    for (FieldDescriptor field : function.getFields()) {
 
-      Param param = field.getAnnotation(Param.class);
-      Output output = field.getAnnotation(Output.class);
-      Workspace workspace = field.getAnnotation(Workspace.class);
-      Inject inject = field.getAnnotation(Inject.class);
+      AnnotationDescriptor param = field.getAnnotation(Param.class);
+      AnnotationDescriptor output = field.getAnnotation(Output.class);
+      AnnotationDescriptor workspace = field.getAnnotation(Workspace.class);
+      AnnotationDescriptor inject = field.getAnnotation(Inject.class);
 
       int i =0;
       if (param != null) {
@@ -144,23 +109,27 @@ public class FunctionConverter {
         i++;
       }
       if (i == 0) {
-        return failure("The field must be either a @Param, @Output, @Inject or @Workspace field.", clazz, field);
+        return failure("The field must be either a @Param, @Output, @Inject or @Workspace field.", function, field);
       } else if(i > 1) {
-        return failure("The field must be only one of @Param, @Output, @Inject or @Workspace.  It currently has more than one of these annotations.", clazz, field);
+        return failure(
+            "The field must be only one of @Param, @Output, @Inject or @Workspace.  It currently has more than one of these annotations.",
+            function, field);
       }
 
       if (param != null || output != null) {
 
         // Special processing for @Param FieldReader
-        if (param != null && FieldReader.class.isAssignableFrom(field.getType())) {
+        if (param != null && FieldReader.class.isAssignableFrom(field.getFieldClass())) {
           params.add(ValueReference.createFieldReaderRef(field.getName()));
           continue;
         }
 
         // Special processing for @Output ComplexWriter
-        if (output != null && ComplexWriter.class.isAssignableFrom(field.getType())) {
+        if (output != null && ComplexWriter.class.isAssignableFrom(field.getFieldClass())) {
           if (outputField != null) {
-            return failure("You've declared more than one @Output field.  You must declare one and only @Output field per Function class.", clazz, field);
+            return failure(
+                "You've declared more than one @Output field.  You must declare one and only @Output field per Function class.",
+                function, field);
           }else{
             outputField = ValueReference.createComplexWriterRef(field.getName());
           }
@@ -168,28 +137,34 @@ public class FunctionConverter {
         }
 
         // check that param and output are value holders.
-        if (!ValueHolder.class.isAssignableFrom(field.getType())) {
-          return failure(String.format("The field doesn't holds value of type %s which does not implement the ValueHolder interface.  All fields of type @Param or @Output must extend this interface..", field.getType()), clazz, field);
+        if (!ValueHolder.class.isAssignableFrom(field.getFieldClass())) {
+          return failure(
+              String.format("The field doesn't holds value of type %s which does not implement the "
+                  + "ValueHolder interface.  All fields of type @Param or @Output must extend this interface..",
+                  field.getFieldClass()), function, field);
         }
 
         // get the type field from the value holder.
         MajorType type = null;
         try {
-          type = getStaticFieldValue("TYPE", field.getType(), MajorType.class);
+          type = getStaticFieldValue("TYPE", field.getFieldClass(), MajorType.class);
         } catch (Exception e) {
-          return failure("Failure while trying to access the ValueHolder's TYPE static variable.  All ValueHolders must contain a static TYPE variable that defines their MajorType.", e, clazz, field.getName());
+          return failure(
+              "Failure while trying to access the ValueHolder's TYPE static variable.  All ValueHolders must contain a static TYPE variable that defines their MajorType.",
+              e, function, field);
         }
 
 
         ValueReference p = new ValueReference(type, field.getName());
         if (param != null) {
-          if (param.constant()) {
+          List<String> constant = param.getValues("constant");
+          if (!constant.isEmpty() && "true".equalsIgnoreCase(constant.get(0))) {
             p.setConstant(true);
           }
           params.add(p);
         } else {
           if (outputField != null) {
-            return failure("You've declared more than one @Output field.  You must declare one and only @Output field per Function class.", clazz, field);
+            return failure("You've declared more than one @Output field.  You must declare one and only @Output field per Function class.", function, field);
           } else {
             outputField = p;
           }
@@ -198,23 +173,30 @@ public class FunctionConverter {
       } else {
         // workspace work.
         boolean isInject = inject != null;
-        if (isInject && UdfUtilities.INJECTABLE_GETTER_METHODS.get(field.getType()) == null) {
+        if (isInject && UdfUtilities.INJECTABLE_GETTER_METHODS.get(field.getFieldClass()) == null) {
           return failure(String.format("A %s cannot be injected into a %s, available injectable classes are: %s.",
-              field.getType(), DrillFunc.class.getSimpleName(), Joiner.on(",").join(UdfUtilities.INJECTABLE_GETTER_METHODS.keySet())), clazz, field);
+                  field.getFieldClass(), DrillFunc.class.getSimpleName(),
+                  Joiner.on(",").join(UdfUtilities.INJECTABLE_GETTER_METHODS.keySet())), function, field);
         }
-        WorkspaceReference wsReference = new WorkspaceReference(field.getType(), field.getName(), isInject);
+        WorkspaceReference wsReference = new WorkspaceReference(field.getFieldClass(), field.getName(), isInject);
 
-        if (!isInject && template.scope() == FunctionScope.POINT_AGGREGATE && !ValueHolder.class.isAssignableFrom(field.getType()) ) {
-          return failure(String.format("Aggregate function '%s' workspace variable '%s' is of type '%s'. Please change it to Holder type.", template.name(), field.getName(), field.getType()), clazz, field);
+
+        if (!isInject && scope == FunctionScope.POINT_AGGREGATE
+            && !ValueHolder.class.isAssignableFrom(field.getFieldClass())) {
+          return failure(String.format(
+              "Aggregate function '%s' workspace variable '%s' is of type '%s'. Please change it to Holder type.",
+              primaryName, field.getName(), field.getFieldClass()), function, field);
         }
 
         //If the workspace var is of Holder type, get its MajorType and assign to WorkspaceReference.
-        if (ValueHolder.class.isAssignableFrom(field.getType())) {
+        if (ValueHolder.class.isAssignableFrom(field.getFieldClass())) {
           MajorType majorType = null;
           try {
-            majorType = getStaticFieldValue("TYPE", field.getType(), MajorType.class);
+            majorType = getStaticFieldValue("TYPE", field.getFieldClass(), MajorType.class);
           } catch (Exception e) {
-            return failure("Failure while trying to access the ValueHolder's TYPE static variable.  All ValueHolders must contain a static TYPE variable that defines their MajorType.", e, clazz, field.getName());
+            return failure(
+                "Failure while trying to access the ValueHolder's TYPE static variable.  All ValueHolders must contain a static TYPE variable that defines their MajorType.",
+                e, function, field);
           }
           wsReference.setMajorType(majorType);
         }
@@ -224,125 +206,83 @@ public class FunctionConverter {
 
    // if (!workspaceFields.isEmpty()) return failure("This function declares one or more workspace fields.  However, those have not yet been implemented.", clazz);
     if (outputField == null) {
-      return failure("This function declares zero output fields.  A function must declare one output field.", clazz);
+      return failure("This function declares zero output fields.  A function must declare one output field.", function);
     }
 
-    // get function body.
-
-    CompilationUnit cu;
-    try {
-      cu = get(clazz);
-      if (cu == null) {
-        return null;
-      }
-    } catch (IOException e) {
-      return failure("Failure while getting class body.", e, clazz);
-    }
 
 
     try{
-      Map<String, String> methods = MethodGrabbingVisitor.getMethods(cu, clazz);
-      List<String> imports = ImportGrabber.getMethods(cu);
       // return holder
       ValueReference[] ps = params.toArray(new ValueReference[params.size()]);
       WorkspaceReference[] works = workspaceFields.toArray(new WorkspaceReference[workspaceFields.size()]);
+      final FunctionInitializer initializer = new FunctionInitializer(function.getClassName());
 
-
-      String[] registeredNames = ((template.name().isEmpty()) ? template.names() : new String[] {template.name()} );
-      switch (template.scope()) {
+      String[] registeredNames = names.toArray(new String[names.size()]);
+      switch (scope) {
       case POINT_AGGREGATE:
-        return new DrillAggFuncHolder(template.scope(), template.nulls(), template.isBinaryCommutative(),
-          template.isRandom(), registeredNames, ps, outputField, works, methods, imports, template.costCategory());
+        return new DrillAggFuncHolder(scope, nullHandling, isBinaryCommutative, !isDeterministic, registeredNames,
+            ps, outputField, works, initializer, costCategory);
       case DECIMAL_AGGREGATE:
-        return new DrillDecimalAggFuncHolder(template.scope(), template.nulls(), template.isBinaryCommutative(),
-          template.isRandom(), registeredNames, ps, outputField, works, methods, imports);
+        return new DrillDecimalAggFuncHolder(scope, nullHandling, isBinaryCommutative, !isDeterministic,
+            registeredNames,
+            ps, outputField, works, initializer);
       case DECIMAL_SUM_AGGREGATE:
-        return new DrillDecimalSumAggFuncHolder(template.scope(), template.nulls(), template.isBinaryCommutative(),
-          template.isRandom(), registeredNames, ps, outputField, works, methods, imports);
+        return new DrillDecimalSumAggFuncHolder(scope, nullHandling, isBinaryCommutative, !isDeterministic,
+            registeredNames, ps, outputField, works, initializer);
       case SIMPLE:
         if (outputField.isComplexWriter) {
-          return new DrillComplexWriterFuncHolder(template.scope(), template.nulls(),
-              template.isBinaryCommutative(),
-              template.isRandom(), registeredNames,
-              ps, outputField, works, methods, imports);
+          return new DrillComplexWriterFuncHolder(scope, nullHandling, isBinaryCommutative, !isDeterministic,
+              registeredNames, ps, outputField, works, initializer);
         } else {
-          return new DrillSimpleFuncHolder(template.scope(), template.nulls(),
-                                           template.isBinaryCommutative(),
-                                           template.isRandom(), registeredNames,
-                                           ps, outputField, works, methods, imports, template.costCategory(),
-                                           (Class<DrillSimpleFunc>)clazz
-                                           );
+          return new DrillSimpleFuncHolder(scope, nullHandling, isBinaryCommutative, !isDeterministic, registeredNames,
+              ps, outputField, works, initializer);
         }
       case SC_BOOLEAN_OPERATOR:
-        return new DrillBooleanOPHolder(template.scope(), template.nulls(),
-            template.isBinaryCommutative(),
-            template.isRandom(), registeredNames,
-            ps, outputField, works, methods, imports, FunctionTemplate.FunctionCostCategory.getDefault(), (Class<DrillSimpleFunc>)clazz);
+        return new DrillBooleanOPHolder(scope, nullHandling, isBinaryCommutative, !isDeterministic, registeredNames,
+            ps, outputField, works, initializer, FunctionTemplate.FunctionCostCategory.getDefault());
 
       case DECIMAL_MAX_SCALE:
-          return new DrillDecimalMaxScaleFuncHolder(template.scope(), template.nulls(), template.isBinaryCommutative(),
-                  template.isRandom(), registeredNames, ps, outputField, works, methods, imports,
-              FunctionTemplate.FunctionCostCategory.getDefault(), (Class<DrillSimpleFunc>)clazz);
+          return new DrillDecimalMaxScaleFuncHolder(scope, nullHandling, isBinaryCommutative, !isDeterministic, registeredNames,
+            ps, outputField, works, initializer, FunctionCostCategory.getDefault());
       case DECIMAL_MUL_SCALE:
-          return new DrillDecimalSumScaleFuncHolder(template.scope(), template.nulls(), template.isBinaryCommutative(),
-                  template.isRandom(), registeredNames, ps, outputField, works, methods, imports,
-              FunctionTemplate.FunctionCostCategory.getDefault(), (Class<DrillSimpleFunc>)clazz);
+        return new DrillDecimalSumScaleFuncHolder(scope, nullHandling, isBinaryCommutative, !isDeterministic,
+            registeredNames,
+            ps, outputField, works, initializer, FunctionCostCategory.getDefault());
       case DECIMAL_ADD_SCALE:
-          return new DrillDecimalAddFuncHolder(template.scope(), template.nulls(), template.isBinaryCommutative(),
-                  template.isRandom(), registeredNames, ps, outputField, works, methods, imports,
-              FunctionTemplate.FunctionCostCategory.getDefault(), (Class<DrillSimpleFunc>)clazz);
+        return new DrillDecimalAddFuncHolder(scope, nullHandling, isBinaryCommutative, !isDeterministic,
+            registeredNames,
+            ps, outputField, works, initializer, FunctionCostCategory.getDefault());
       case DECIMAL_CAST:
-          return new DrillDecimalCastFuncHolder(template.scope(), template.nulls(), template.isBinaryCommutative(),
-                  template.isRandom(), registeredNames, ps, outputField, works, methods, imports,
-              FunctionTemplate.FunctionCostCategory.getDefault(), (Class<DrillSimpleFunc>)clazz);
+        return new DrillDecimalCastFuncHolder(scope, nullHandling, isBinaryCommutative, !isDeterministic,
+            registeredNames,
+            ps, outputField, works, initializer, FunctionCostCategory.getDefault());
       case DECIMAL_DIV_SCALE:
-          return new DrillDecimalDivScaleFuncHolder(template.scope(), template.nulls(), template.isBinaryCommutative(),
-                  template.isRandom(), registeredNames, ps, outputField, works, methods, imports,
-              FunctionTemplate.FunctionCostCategory.getDefault(), (Class<DrillSimpleFunc>)clazz);
+        return new DrillDecimalDivScaleFuncHolder(scope, nullHandling, isBinaryCommutative, !isDeterministic,
+            registeredNames,
+            ps, outputField, works, initializer, FunctionCostCategory.getDefault());
       case DECIMAL_MOD_SCALE:
-          return new DrillDecimalModScaleFuncHolder(template.scope(), template.nulls(), template.isBinaryCommutative(),
-                  template.isRandom(), registeredNames, ps, outputField, works, methods, imports,
-              FunctionTemplate.FunctionCostCategory.getDefault(), (Class<DrillSimpleFunc>)clazz);
+        return new DrillDecimalModScaleFuncHolder(scope, nullHandling, isBinaryCommutative, !isDeterministic,
+            registeredNames,
+            ps, outputField, works, initializer, FunctionCostCategory.getDefault());
       case DECIMAL_SET_SCALE:
-          return new DrillDecimalSetScaleFuncHolder(template.scope(), template.nulls(), template.isBinaryCommutative(),
-                  template.isRandom(), registeredNames, ps, outputField, works, methods, imports,
-              FunctionTemplate.FunctionCostCategory.getDefault(), (Class<DrillSimpleFunc>)clazz);
+        return new DrillDecimalSetScaleFuncHolder(scope, nullHandling, isBinaryCommutative, !isDeterministic,
+            registeredNames,
+            ps, outputField, works, initializer, FunctionCostCategory.getDefault());
       case DECIMAL_ZERO_SCALE:
-          return new DrillDecimalZeroScaleFuncHolder(template.scope(), template.nulls(), template.isBinaryCommutative(),
-                  template.isRandom(), registeredNames, ps, outputField, works, methods, imports,
-              FunctionTemplate.FunctionCostCategory.getDefault(), (Class<DrillSimpleFunc>)clazz);
+        return new DrillDecimalZeroScaleFuncHolder(scope, nullHandling, isBinaryCommutative, !isDeterministic,
+            registeredNames,
+            ps, outputField, works, initializer, FunctionCostCategory.getDefault());
       case HOLISTIC_AGGREGATE:
       case RANGE_AGGREGATE:
       default:
-        return failure("Unsupported Function Type.", clazz);
+        return failure("Unsupported Function Type.", function);
       }
     } catch (Exception | NoSuchFieldError | AbstractMethodError ex) {
-      return failure("Failure while creating function holder.", ex, clazz);
+      return failure("Failure while creating function holder.", ex, function);
     }
 
   }
 
-
-
-  private String getClassBody(Class<?> c) throws CompileException, IOException{
-    String path = c.getName();
-    path = path.replaceFirst("\\$.*", "");
-    path = path.replace(".", FileUtils.separator);
-    path = "/" + path + ".java";
-    URL u = Resources.getResource(c, path);
-    InputSupplier<InputStream> supplier = Resources.newInputStreamSupplier(u);
-    try (InputStream is = supplier.getInput()) {
-      if (is == null) {
-        throw new IOException(String.format("Failure trying to located source code for Class %s, tried to read on classpath location %s", c.getName(), path));
-      }
-      String body = IO.toString(is);
-
-      //TODO: Hack to remove annotations so Janino doesn't choke.  Need to reconsider this problem...
-      //return body.replaceAll("@(?:Output|Param|Workspace|Override|SuppressWarnings\\([^\\\\]*?\\)|FunctionTemplate\\([^\\\\]*?\\))", "");
-      return body.replaceAll("@(?:\\([^\\\\]*?\\))?", "");
-    }
-
-  }
 
 
 
@@ -353,28 +293,25 @@ public class FunctionConverter {
       return (T) val;
   }
 
-  private static DrillFuncHolder failure(String message, Throwable t, Class<?> clazz, String fieldName) {
-    logger.warn("Failure loading function class {}, field {}. " + message, clazz.getName(), fieldName, t);
+  private static DrillFuncHolder failure(String message, Throwable t, FunctionDescriptor func, FieldDescriptor field) {
+    logger.warn("Failure loading function class {}, field {}. " + message, func.getClassName(), field.getName(), t);
     return null;
   }
 
-  private DrillFuncHolder failure(String message, Class<?> clazz, String fieldName) {
-    logger.warn("Failure loading function class {}, field {}. " + message, clazz.getName(), fieldName);
+  private DrillFuncHolder failure(String message, FunctionDescriptor func, FieldDescriptor field) {
+    logger.warn("Failure loading function class {}, field {}. " + message, func.getClassName(), field.getName());
     return null;
   }
 
-  private DrillFuncHolder failure(String message, Class<?> clazz) {
-    logger.warn("Failure loading function class [{}]. Message: {}", clazz.getName(), message);
+  private DrillFuncHolder failure(String message, FunctionDescriptor func) {
+    logger.warn("Failure loading function class [{}]. Message: {}", func.getClassName(), message);
     return null;
   }
 
-  private DrillFuncHolder failure(String message, Throwable t, Class<?> clazz) {
-    logger.warn("Failure loading function class [{}]. Message: {}", clazz.getName(), message, t);
+  private DrillFuncHolder failure(String message, Throwable t, FunctionDescriptor func) {
+    logger.warn("Failure loading function class [{}]. Message: {}", func.getClassName(), message, t);
     return null;
   }
 
-  private DrillFuncHolder failure(String message, Class<?> clazz, Field field) {
-    return failure(message, clazz, field.getName());
-  }
 
 }

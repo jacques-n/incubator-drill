@@ -45,6 +45,11 @@ public class TestSystemTable extends BaseTestQuery {
       .go();
   }
 
+  @Test
+  public void testFunctions() throws Exception {
+    test("select * from sys.functions");
+  }
+
   // DRILL-2670
   @Test
   public void optionsOrderBy() throws Exception {

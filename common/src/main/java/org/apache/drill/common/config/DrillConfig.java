@@ -22,9 +22,11 @@ import java.lang.management.RuntimeMXBean;
 import java.net.URL;
 import java.util.Collection;
 import java.util.List;
+import java.util.Map.Entry;
 import java.util.Properties;
 import java.util.Queue;
 import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.TimeUnit;
 
 import org.apache.drill.common.exceptions.DrillConfigurationException;
 import org.apache.drill.common.expression.LogicalExpression;
@@ -41,7 +43,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.databind.module.SimpleModule;
 import com.google.common.annotations.VisibleForTesting;
-import com.google.common.base.Joiner;
+import com.google.common.base.Stopwatch;
 import com.google.common.collect.ImmutableList;
 import com.typesafe.config.Config;
 import com.typesafe.config.ConfigFactory;
@@ -64,9 +66,10 @@ public final class DrillConfig extends NestedConfig{
   @VisibleForTesting
   public DrillConfig(Config config, boolean enableServerConfigs) {
     super(config);
-    logger.debug("Setting up DrillConfig object.");
-    logger.trace("Given Config object is:\n{}",
-                 config.root().render(ConfigRenderOptions.defaults()));
+    if (logger.isTraceEnabled()) {
+      logger.trace("Given Config object is:\n{}",
+          config.root().render(ConfigRenderOptions.defaults()));
+    }
     mapper = new ObjectMapper();
 
     if (enableServerConfigs) {
@@ -86,7 +89,6 @@ public final class DrillConfig extends NestedConfig{
 
     RuntimeMXBean bean = ManagementFactory.getRuntimeMXBean();
     this.startupArguments = ImmutableList.copyOf(bean.getInputArguments());
-    logger.debug("DrillConfig object initialized.");
   };
 
   public List<String> getStartupArguments() {
@@ -178,30 +180,34 @@ public final class DrillConfig extends NestedConfig{
             ? CommonConstants.CONFIG_OVERRIDE_RESOURCE_PATHNAME
             : overrideFileResourcePathname;
 
+    final StringBuilder logString = new StringBuilder();
+    final Stopwatch watch = new Stopwatch().start();
+
     // 1. Load defaults configuration file.
     Config fallback = null;
     final ClassLoader[] classLoaders = ClasspathHelper.classLoaders();
     for (ClassLoader classLoader : classLoaders) {
-      final URL url =
-          classLoader.getResource(CommonConstants.CONFIG_DEFAULT_RESOURCE_PATHNAME);
+      final URL url = classLoader.getResource(CommonConstants.CONFIG_DEFAULT_RESOURCE_PATHNAME);
       if (null != url) {
-        logger.info("Loading base configuration file at {}.", url);
+        logString.append("Base Configuration: ");
+        logString.append(url);
+        logString.append("\n");
         fallback =
-            ConfigFactory.load(classLoader,
-                               CommonConstants.CONFIG_DEFAULT_RESOURCE_PATHNAME);
+            ConfigFactory.load(classLoader, CommonConstants.CONFIG_DEFAULT_RESOURCE_PATHNAME);
         break;
       }
     }
 
     // 2. Load per-module configuration files.
     final Collection<URL> urls = PathScanner.getConfigURLs();
-    final String lineBrokenList =
-        urls.size() == 0 ? "" : "\n\t- " + Joiner.on("\n\t- ").join(urls);
-    logger.info("Loading {} module configuration files at: {}.",
-                urls.size(), lineBrokenList);
+    logString.append("\nIntermediate Configuration and Plugin files, in order of precedence:\n");
     for (URL url : urls) {
+      logString.append("\t-");
+      logString.append(url);
+      logString.append("\n");
       fallback = ConfigFactory.parseURL(url).withFallback(fallback);
     }
+    logString.append("\n");
 
     // 3. Load any specified overrides configuration file along with any
     //    overrides from JVM system properties (e.g., {-Dname=value").
@@ -210,19 +216,30 @@ public final class DrillConfig extends NestedConfig{
     final URL overrideFileUrl =
         Thread.currentThread().getContextClassLoader().getResource(overrideFileResourcePathname);
     if (null != overrideFileUrl ) {
-      logger.info("Loading override config. file at {}.", overrideFileUrl);
+      logString.append("Override File: ");
+      logString.append(overrideFileUrl);
+      logString.append("\n");
     }
     Config effectiveConfig =
         ConfigFactory.load(overrideFileResourcePathname).withFallback(fallback);
 
     // 4. Apply any overriding properties.
     if (overriderProps != null) {
-      logger.info("Loading override Properties parameter {}.", overriderProps);
+      logString.append("Overridden Properties:\n");
+      for(Entry<Object, Object> entry : overriderProps.entrySet()){
+        logString.append("\t-");
+        logString.append(entry.getKey());
+        logString.append(" = ");
+        logString.append(entry.getValue());
+        logString.append("\n");
+      }
+      logString.append("\n");
       effectiveConfig =
           ConfigFactory.parseProperties(overriderProps).withFallback(effectiveConfig);
-    }
 
-    // 5. Create DrillConfig object from Config object.
+    }
+    logger.info("Configuration and plugin file(s) identified in {}ms.\n{}", watch.elapsed(TimeUnit.MILLISECONDS),
+        logString);
     return new DrillConfig(effectiveConfig.resolve(), enableServerConfigs);
   }
 

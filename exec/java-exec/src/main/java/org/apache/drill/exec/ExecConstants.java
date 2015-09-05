@@ -25,8 +25,8 @@ import org.apache.drill.exec.server.options.TypeValidators.EnumeratedStringValid
 import org.apache.drill.exec.server.options.TypeValidators.LongValidator;
 import org.apache.drill.exec.server.options.TypeValidators.PositiveLongValidator;
 import org.apache.drill.exec.server.options.TypeValidators.PowerOfTwoLongValidator;
-import org.apache.drill.exec.server.options.TypeValidators.RangeLongValidator;
 import org.apache.drill.exec.server.options.TypeValidators.RangeDoubleValidator;
+import org.apache.drill.exec.server.options.TypeValidators.RangeLongValidator;
 import org.apache.drill.exec.server.options.TypeValidators.StringValidator;
 import org.apache.drill.exec.testing.ExecutionControls;
 
@@ -48,6 +48,7 @@ public interface ExecConstants {
   public static final String USER_RPC_TIMEOUT = "drill.exec.rpc.user.timeout";
   public static final String METRICS_CONTEXT_NAME = "drill.exec.metrics.context";
   public static final String FUNCTION_PACKAGES = "drill.exec.functions";
+  public static final String FUNCTION_REGISTRY_PACKAGES = "drill.exec.function.registry";
   public static final String USE_IP_ADDRESS = "drill.exec.rpc.use.ip";
   public static final String METRICS_JMX_OUTPUT_ENABLED = "drill.exec.metrics.jmx.enabled";
   public static final String METRICS_LOG_OUTPUT_ENABLED = "drill.exec.metrics.log.enabled";

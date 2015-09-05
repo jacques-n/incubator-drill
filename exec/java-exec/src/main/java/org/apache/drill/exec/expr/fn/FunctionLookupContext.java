@@ -37,7 +37,7 @@ public interface FunctionLookupContext {
    * Find function implementation for given <code>functionCall</code> in non-Drill function registries such as Hive UDF
    * registry.
    *
-   * Note: Order of searching is same as order of {@link org.apache.drill.exec.expr.fn.PluggableFunctionRegistry}
+   * Note: Order of searching is same as order of {@link org.apache.drill.exec.expr.fn.registry.PluggableFunctionRegistry}
    * implementations found on classpath.
    *
    * @param functionCall - Specifies function name and type of arguments

@@ -19,9 +19,9 @@ package org.apache.drill.exec.expr.fn;
 
 import java.util.Arrays;
 import java.util.List;
-import java.util.Map;
 
 import org.apache.drill.common.exceptions.DrillRuntimeException;
+import org.apache.drill.common.exceptions.UserException;
 import org.apache.drill.common.expression.ExpressionPosition;
 import org.apache.drill.common.expression.FunctionHolderExpression;
 import org.apache.drill.common.expression.LogicalExpression;
@@ -45,8 +45,6 @@ import org.apache.drill.exec.vector.complex.reader.FieldReader;
 
 import com.google.common.base.Preconditions;
 import com.google.common.base.Strings;
-import com.google.common.collect.ImmutableList;
-import com.google.common.collect.ImmutableMap;
 import com.sun.codemodel.JBlock;
 import com.sun.codemodel.JExpr;
 import com.sun.codemodel.JType;
@@ -55,7 +53,8 @@ import com.sun.codemodel.JVar;
 
 public abstract class DrillFuncHolder extends AbstractFuncHolder {
 
-  static final org.slf4j.Logger logger = org.slf4j.LoggerFactory.getLogger(FunctionImplementationRegistry.class);
+  private static final org.slf4j.Logger logger = org.slf4j.LoggerFactory
+      .getLogger(FunctionImplementationRegistry.class);
 
   protected final FunctionTemplate.FunctionScope scope;
   protected final FunctionTemplate.NullHandling nullHandling;
@@ -63,15 +62,14 @@ public abstract class DrillFuncHolder extends AbstractFuncHolder {
   protected final boolean isBinaryCommutative;
   protected final boolean isDeterministic;
   protected final String[] registeredNames;
-  protected final ImmutableList<String> imports;
   protected final WorkspaceReference[] workspaceVars;
   protected final ValueReference[] parameters;
   protected final ValueReference returnValue;
-  protected final ImmutableMap<String, String> methodMap;
+  private final FunctionInitializer initializer;
 
   public DrillFuncHolder(FunctionScope scope, NullHandling nullHandling, boolean isBinaryCommutative, boolean isRandom,
       String[] registeredNames, ValueReference[] parameters, ValueReference returnValue,
-      WorkspaceReference[] workspaceVars, Map<String, String> methods, List<String> imports, FunctionCostCategory costCategory) {
+      WorkspaceReference[] workspaceVars, FunctionInitializer initializer, FunctionCostCategory costCategory) {
     super();
     this.scope = scope;
     this.nullHandling = nullHandling;
@@ -79,15 +77,30 @@ public abstract class DrillFuncHolder extends AbstractFuncHolder {
     this.isBinaryCommutative = isBinaryCommutative;
     this.isDeterministic = ! isRandom;
     this.registeredNames = registeredNames;
-    this.methodMap = ImmutableMap.copyOf(methods);
     this.parameters = parameters;
     this.returnValue = returnValue;
-    this.imports = ImmutableList.copyOf(imports);
     this.costCategory = costCategory;
+    this.initializer = initializer;
   }
 
-  public List<String> getImports() {
-    return imports;
+  protected String meth(String methodName) {
+    return meth(methodName, true);
+  }
+
+  protected String meth(String methodName, boolean required) {
+    String method = initializer.getMethod(methodName);
+    if (method == null) {
+      if (!required) {
+        return "";
+      }
+      throw UserException
+          .functionError()
+          .message("Failure while trying use function. No body found for required method %s.", methodName)
+          .addContext("FunctionClass", initializer.getClassName())
+          .build(logger);
+    }
+
+    return method;
   }
 
   @Override

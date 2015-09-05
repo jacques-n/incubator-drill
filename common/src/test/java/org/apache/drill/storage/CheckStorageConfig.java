@@ -19,8 +19,6 @@ package org.apache.drill.storage;
 
 import static org.junit.Assert.assertEquals;
 
-import java.util.Collection;
-
 import org.apache.drill.common.config.DrillConfig;
 import org.apache.drill.common.logical.LogicalPlan;
 import org.apache.drill.common.logical.StoragePluginConfig;
@@ -36,8 +34,8 @@ public class CheckStorageConfig extends DrillTest {
 
   @Test
   public void ensureStorageEnginePickup() {
-    Collection<?> engines = PathScanner.scanForImplementations(StoragePluginConfig.class, Lists.newArrayList("org"));
-    assertEquals(engines.size(), 1);
+    Object[] engines = PathScanner.scanForImplementationsArr(StoragePluginConfig.class, Lists.newArrayList("org"));
+    assertEquals(engines.length, 1);
   }
 
   @Test

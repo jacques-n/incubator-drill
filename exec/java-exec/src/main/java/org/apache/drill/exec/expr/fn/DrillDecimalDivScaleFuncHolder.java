@@ -18,13 +18,11 @@
 package org.apache.drill.exec.expr.fn;
 
 import java.util.List;
-import java.util.Map;
 
 import org.apache.drill.common.expression.LogicalExpression;
 import org.apache.drill.common.types.TypeProtos;
 import org.apache.drill.common.types.TypeProtos.MajorType;
 import org.apache.drill.common.util.DecimalScalePrecisionDivideFunction;
-import org.apache.drill.exec.expr.DrillSimpleFunc;
 import org.apache.drill.exec.expr.annotations.FunctionTemplate;
 import org.apache.drill.exec.expr.annotations.FunctionTemplate.FunctionScope;
 import org.apache.drill.exec.expr.annotations.FunctionTemplate.NullHandling;
@@ -33,10 +31,19 @@ import org.apache.drill.exec.util.DecimalUtility;
 public class DrillDecimalDivScaleFuncHolder extends DrillSimpleFuncHolder{
 
 
-  public DrillDecimalDivScaleFuncHolder(FunctionScope scope, NullHandling nullHandling, boolean isBinaryCommutative, boolean isRandom,
-                                        String[] registeredNames, ValueReference[] parameters, ValueReference returnValue, WorkspaceReference[] workspaceVars,
-                                        Map<String, String> methods, List<String> imports, FunctionTemplate.FunctionCostCategory costCategory, Class<? extends DrillSimpleFunc> drillFuncClass) {
-    super(scope, nullHandling, isBinaryCommutative, isRandom, registeredNames, parameters, returnValue, workspaceVars, methods, imports, costCategory, drillFuncClass);
+  public DrillDecimalDivScaleFuncHolder(
+      FunctionScope scope,
+      NullHandling nullHandling,
+      boolean isBinaryCommutative,
+      boolean isRandom,
+      String[] registeredNames,
+      ValueReference[] parameters,
+      ValueReference returnValue,
+      WorkspaceReference[] workspaceVars,
+      FunctionInitializer initializer,
+      FunctionTemplate.FunctionCostCategory costCategory) {
+    super(scope, nullHandling, isBinaryCommutative, isRandom, registeredNames, parameters, returnValue, workspaceVars,
+        initializer, costCategory);
   }
 
   /*

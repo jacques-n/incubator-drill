@@ -30,7 +30,6 @@ import org.apache.drill.common.util.PathScanner;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonInclude.Include;
 import com.fasterxml.jackson.annotation.JsonProperty;
-import com.google.common.base.Joiner;
 
 
 public abstract class LogicalOperatorBase implements LogicalOperator{
@@ -87,14 +86,7 @@ public abstract class LogicalOperatorBase implements LogicalOperator{
   }
 
   public synchronized static Class<?>[] getSubTypes(final DrillConfig config) {
-    final List<String> packages =
-        config.getStringList(CommonConstants.LOGICAL_OPERATOR_SCAN_PACKAGES);
-    final Class<?>[] ops =
-        PathScanner.scanForImplementationsArr(LogicalOperator.class, packages);
-    final String lineBrokenList =
-        ops.length == 0 ? "" : "\n\t- " + Joiner.on("\n\t- ").join(ops);
-    logger.debug("Found {} logical operator classes: {}.", ops.length,
-                 lineBrokenList);
-    return ops;
+    final List<String> packages = config.getStringList(CommonConstants.LOGICAL_OPERATOR_SCAN_PACKAGES);
+    return PathScanner.scanForImplementationsArr(LogicalOperator.class, packages);
   }
 }

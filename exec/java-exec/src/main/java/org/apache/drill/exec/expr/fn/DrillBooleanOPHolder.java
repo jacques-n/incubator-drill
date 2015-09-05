@@ -18,10 +18,6 @@
 
 package org.apache.drill.exec.expr.fn;
 
-import java.util.List;
-import java.util.Map;
-
-import org.apache.drill.exec.expr.DrillSimpleFunc;
 import org.apache.drill.exec.expr.annotations.FunctionTemplate.FunctionCostCategory;
 import org.apache.drill.exec.expr.annotations.FunctionTemplate.FunctionScope;
 import org.apache.drill.exec.expr.annotations.FunctionTemplate.NullHandling;
@@ -30,9 +26,9 @@ public class DrillBooleanOPHolder extends DrillSimpleFuncHolder{
 
   public DrillBooleanOPHolder(FunctionScope scope, NullHandling nullHandling, boolean isBinaryCommutative, boolean isRandom,
       String[] registeredNames, ValueReference[] parameters, ValueReference returnValue, WorkspaceReference[] workspaceVars,
-      Map<String, String> methods, List<String> imports, FunctionCostCategory costCategory, Class<? extends DrillSimpleFunc> drillFuncClass) {
+      FunctionInitializer initializer, FunctionCostCategory costCategory) {
     super(scope, nullHandling, isBinaryCommutative, isRandom, registeredNames, parameters, returnValue, workspaceVars,
-        methods, imports, costCategory, drillFuncClass);
+        initializer, costCategory);
   }
 
 }

@@ -19,6 +19,9 @@ package org.apache.drill.exec.expr.fn;
 
 import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
@@ -26,16 +29,16 @@ import java.util.concurrent.TimeUnit;
 import org.apache.drill.common.config.DrillConfig;
 import org.apache.drill.common.expression.FunctionCall;
 import org.apache.drill.common.expression.fn.CastFunctions;
-import org.apache.drill.common.types.TypeProtos;
 import org.apache.drill.common.types.TypeProtos.MajorType;
 import org.apache.drill.common.util.PathScanner;
 import org.apache.drill.exec.ExecConstants;
+import org.apache.drill.exec.expr.fn.registry.PluggableFunctionRegistry;
 import org.apache.drill.exec.planner.sql.DrillOperatorTable;
 import org.apache.drill.exec.resolver.FunctionResolver;
+import org.apache.drill.exec.server.options.OptionManager;
 
 import com.google.common.base.Stopwatch;
 import com.google.common.collect.Lists;
-import org.apache.drill.exec.server.options.OptionManager;
 
 public class FunctionImplementationRegistry implements FunctionLookupContext {
   static final org.slf4j.Logger logger = org.slf4j.LoggerFactory.getLogger(FunctionImplementationRegistry.class);
@@ -51,7 +54,7 @@ public class FunctionImplementationRegistry implements FunctionLookupContext {
     drillFuncRegistry = new DrillFunctionRegistry(config);
 
     Set<Class<? extends PluggableFunctionRegistry>> registryClasses = PathScanner.scanForImplementations(
-        PluggableFunctionRegistry.class, config.getStringList(ExecConstants.FUNCTION_PACKAGES));
+        PluggableFunctionRegistry.class, config.getStringList(ExecConstants.FUNCTION_REGISTRY_PACKAGES));
 
     for (Class<? extends PluggableFunctionRegistry> clazz : registryClasses) {
       for (Constructor<?> c : clazz.getConstructors()) {
@@ -143,7 +146,7 @@ public class FunctionImplementationRegistry implements FunctionLookupContext {
    * Find function implementation for given <code>functionCall</code> in non-Drill function registries such as Hive UDF
    * registry.
    *
-   * Note: Order of searching is same as order of {@link org.apache.drill.exec.expr.fn.PluggableFunctionRegistry}
+   * Note: Order of searching is same as order of {@link org.apache.drill.exec.expr.fn.registry.PluggableFunctionRegistry}
    * implementations found on classpath.
    *
    * @param functionCall
@@ -170,5 +173,69 @@ public class FunctionImplementationRegistry implements FunctionLookupContext {
       }
     }
     return false;
+  }
+
+  public Iterator<Object> getIterator() {
+    return new FunctionIterator();
+  }
+
+  private class FunctionIterator implements Iterator<Object> {
+
+    private final Iterator<FunctionDescription> functionIterator;
+
+    public FunctionIterator() {
+      List<FunctionDescription> functions = Lists.newArrayList();
+      for (String functionName : drillFuncRegistry.getFunctionNames()) {
+        for (DrillFuncHolder holder : drillFuncRegistry.getMethods(functionName)) {
+          for (String name : holder.getRegisteredNames()) {
+            functions.add(new FunctionDescription(name, holder));
+          }
+        }
+      }
+
+      Collections.sort(functions);
+      functionIterator = functions.iterator();
+    }
+
+    @Override
+    public boolean hasNext() {
+      return functionIterator.hasNext();
+    }
+
+    @Override
+    public FunctionDescription next() {
+      return functionIterator.next();
+    }
+
+    @Override
+    public void remove() {
+      throw new UnsupportedOperationException();
+    }
+
+
+
+  }
+
+  public static class FunctionDescription implements Comparable<FunctionDescription> {
+
+    public final String name;
+    public final String description;
+    public final String inputs;
+    public final String output;
+    public final boolean deterministic;
+
+    private FunctionDescription(String name, DrillFuncHolder function) {
+      this.name = name;
+      this.description = "";
+      this.deterministic = function.isDeterministic;
+      this.inputs = Arrays.toString(function.parameters);
+      this.output = function.returnValue.name;
+    }
+
+    @Override
+    public int compareTo(FunctionDescription o) {
+      return this.name.compareTo(o.name);
+    }
+
   }
 }
