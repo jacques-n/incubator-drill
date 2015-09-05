@@ -7,6 +7,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.net.URL;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashSet;
@@ -29,6 +30,21 @@ import com.fasterxml.jackson.databind.ObjectWriter;
 import javassist.bytecode.AnnotationsAttribute;
 import javassist.bytecode.ClassFile;
 import javassist.bytecode.FieldInfo;
+import javassist.bytecode.annotation.AnnotationMemberValue;
+import javassist.bytecode.annotation.ArrayMemberValue;
+import javassist.bytecode.annotation.BooleanMemberValue;
+import javassist.bytecode.annotation.ByteMemberValue;
+import javassist.bytecode.annotation.CharMemberValue;
+import javassist.bytecode.annotation.ClassMemberValue;
+import javassist.bytecode.annotation.DoubleMemberValue;
+import javassist.bytecode.annotation.EnumMemberValue;
+import javassist.bytecode.annotation.FloatMemberValue;
+import javassist.bytecode.annotation.IntegerMemberValue;
+import javassist.bytecode.annotation.LongMemberValue;
+import javassist.bytecode.annotation.MemberValue;
+import javassist.bytecode.annotation.MemberValueVisitor;
+import javassist.bytecode.annotation.ShortMemberValue;
+import javassist.bytecode.annotation.StringMemberValue;
 
 public final class FunctionResolver {
   private static final org.slf4j.Logger logger = org.slf4j.LoggerFactory.getLogger(FunctionResolver.class);
@@ -38,7 +54,89 @@ public final class FunctionResolver {
   private static final ObjectReader reader = mapper.reader(ScanResult.class);
   private static final ObjectWriter writer = mapper.writerWithType(ScanResult.class);
 
-  static final class FunctionScanner extends AbstractScanner {
+  private static class ListingMemberValueVisitor implements MemberValueVisitor {
+    private final List<String> values;
+
+    private ListingMemberValueVisitor(List<String> values) {
+      this.values = values;
+    }
+
+    @Override
+    public void visitStringMemberValue(StringMemberValue node) {
+      values.add(node.getValue());
+    }
+
+    @Override
+    public void visitShortMemberValue(ShortMemberValue node) {
+      values.add(String.valueOf(node.getValue()));
+    }
+
+    @Override
+    public void visitLongMemberValue(LongMemberValue node) {
+      values.add(String.valueOf(node.getValue()));
+    }
+
+    @Override
+    public void visitIntegerMemberValue(IntegerMemberValue node) {
+      values.add(String.valueOf(node.getValue()));
+    }
+
+    @Override
+    public void visitFloatMemberValue(FloatMemberValue node) {
+      values.add(String.valueOf(node.getValue()));
+    }
+
+    @Override
+    public void visitEnumMemberValue(EnumMemberValue node) {
+      values.add(node.getValue());
+    }
+
+    @Override
+    public void visitDoubleMemberValue(DoubleMemberValue node) {
+      values.add(String.valueOf(node.getValue()));
+    }
+
+    @Override
+    public void visitClassMemberValue(ClassMemberValue node) {
+      values.add(node.getValue());
+    }
+
+    @Override
+    public void visitCharMemberValue(CharMemberValue node) {
+      values.add(String.valueOf(node.getValue()));
+    }
+
+    @Override
+    public void visitByteMemberValue(ByteMemberValue node) {
+      values.add(String.valueOf(node.getValue()));
+    }
+
+    @Override
+    public void visitBooleanMemberValue(BooleanMemberValue node) {
+      values.add(String.valueOf(node.getValue()));
+    }
+
+    @Override
+    public void visitArrayMemberValue(ArrayMemberValue node) {
+      MemberValue[] nestedValues = node.getValue();
+      for (MemberValue v : nestedValues) {
+        v.accept(new ListingMemberValueVisitor(values) {
+          @Override
+          public void visitArrayMemberValue(ArrayMemberValue node) {
+            values.add(Arrays.toString(node.getValue()));
+          }
+        });
+      }
+    }
+
+    @Override
+    public void visitAnnotationMemberValue(AnnotationMemberValue node) {
+      values.add(String.valueOf(node.getValue()));
+    }
+  }
+
+  private static final class FunctionScanner extends AbstractScanner {
+
     private String FUNCTION_ANN = "org.apache.drill.exec.expr.annotations.FunctionTemplate";
     public List<FunctionDescriptor> functions = new ArrayList<>();
 
@@ -81,45 +179,48 @@ public final class FunctionResolver {
         // Sigh: javassist uses raw collections (is this 2002?)
         @SuppressWarnings("unchecked")
         Set<String> memberNames = annotation.getMemberNames();
+        List<AttributeDescriptor> attributes = new ArrayList<>();
         if (memberNames != null) {
-          List<AttributeDescriptor> attributes = new ArrayList<>(memberNames.size());
           for (String name : memberNames) {
-            attributes.add(new AttributeDescriptor(name, annotation.getMemberValue(name).toString()));
+            MemberValue memberValue = annotation.getMemberValue(name);
+            final List<String> values = new ArrayList<>();
+            memberValue.accept(new ListingMemberValueVisitor(values));
+            attributes.add(new AttributeDescriptor(name, values));
           }
-          annotationDescriptors.add(new AnnotationDescriptor(annotation.getTypeName(), attributes));
         }
+        annotationDescriptors.add(new AnnotationDescriptor(annotation.getTypeName(), attributes));
       }
       return annotationDescriptors;
     }
   }
 
   public static final class AttributeDescriptor {
-    final String name;
-    final String value;
+    private final String name;
+    private final List<String> values;
     @JsonCreator
     public AttributeDescriptor(
         @JsonProperty("name")
         String name,
-        @JsonProperty("value")
-        String value) {
+        @JsonProperty("values")
+        List<String> values) {
       this.name = name;
-      this.value = value;
+      this.values = values;
     }
     public String getName() {
       return name;
     }
-    public String getValue() {
-      return value;
+    public List<String> getValues() {
+      return values;
     }
     @Override
     public String toString() {
-      return "Attribute[" + name + "=" + value + "]";
+      return "Attribute[" + name + "=" + values + "]";
     }
   }
 
   public static final class AnnotationDescriptor {
-    final String annotationType;
-    final List<AttributeDescriptor> attributes;
+    private final String annotationType;
+    private final List<AttributeDescriptor> attributes;
     @JsonCreator
     public AnnotationDescriptor(
         @JsonProperty("annotationType")
@@ -142,9 +243,9 @@ public final class FunctionResolver {
   }
 
   public static final class FieldDescriptor {
-    final String name;
-    final String descriptor;
-    final List<AnnotationDescriptor> annotations;
+    private final String name;
+    private final String descriptor;
+    private final List<AnnotationDescriptor> annotations;
     @JsonCreator
     public FieldDescriptor(
         @JsonProperty("name")
@@ -173,9 +274,9 @@ public final class FunctionResolver {
   }
 
   public static final class FunctionDescriptor {
-    final String className;
-    final List<AnnotationDescriptor> annotations;
-    final List<FieldDescriptor> fields;
+    private final String className;
+    private final List<AnnotationDescriptor> annotations;
+    private final List<FieldDescriptor> fields;
     @JsonCreator
     public FunctionDescriptor(
         @JsonProperty("className")
@@ -205,9 +306,9 @@ public final class FunctionResolver {
   }
 
   public static final class ScanResult {
-    final List<String> prescannedURLs;
-    final List<String> scannedURLs;
-    final List<FunctionDescriptor> functions;
+    private final List<String> prescannedURLs;
+    private final List<String> scannedURLs;
+    private final List<FunctionDescriptor> functions;
     @JsonCreator
     public ScanResult(
         @JsonProperty("prescannedURLs")
