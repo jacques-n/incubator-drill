@@ -23,20 +23,20 @@ import java.net.URL;
 import java.util.Collection;
 import java.util.Enumeration;
 import java.util.Iterator;
-import java.util.List;
-import java.util.Map;
 import java.util.Set;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 
 import org.apache.drill.common.config.CommonConstants;
+import org.apache.drill.common.config.DrillConfig;
 import org.reflections.Reflections;
 import org.reflections.scanners.SubTypesScanner;
 import org.reflections.util.ClasspathHelper;
 import org.reflections.util.ConfigurationBuilder;
 import org.reflections.util.FilterBuilder;
 
+import com.google.common.base.Preconditions;
 import com.google.common.base.Stopwatch;
+import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Sets;
 
 public class PathScanner {
@@ -44,103 +44,69 @@ public class PathScanner {
   private static final org.slf4j.Logger logger = org.slf4j.LoggerFactory.getLogger(PathScanner.class);
 
   private static final SubTypesScanner subTypeScanner = new SubTypesScanner();
-  static volatile Collection<URL> MARKED_PATHS;
-
-  private static Map<ScanKey, Object> SCAN_CACHE = new ConcurrentHashMap<>(64, 0.5f, 2);
-
-  /**
-   * @param  scanPackages  note:  not currently used
-   */
-  public static <T> Class<?>[] scanForImplementationsArr(final Class<T> baseClass,
-                                                         final List<String> scanPackages) {
-    Collection<Class<? extends T>> imps = scanForImplementations(baseClass, scanPackages);
-    Class<?>[] arr = imps.toArray(new Class<?>[imps.size()]);
-    return arr;
-  }
-
-  private static class ScanKey {
-    final Class<?> baseClass;
-    final List<String> scanPackages;
-
-    public ScanKey(Class<?> baseClass, List<String> scanPackages) {
-      super();
-      this.baseClass = baseClass;
-      this.scanPackages = scanPackages;
-    }
-
-    @Override
-    public int hashCode() {
-      final int prime = 31;
-      int result = 1;
-      result = prime * result + ((baseClass == null) ? 0 : baseClass.hashCode());
-      result = prime * result + ((scanPackages == null) ? 0 : scanPackages.hashCode());
-      return result;
-    }
-
-    @Override
-    public boolean equals(Object obj) {
-      if (this == obj) {
-        return true;
-      }
-      if (obj == null) {
-        return false;
-      }
-      if (getClass() != obj.getClass()) {
-        return false;
-      }
-      ScanKey other = (ScanKey) obj;
-      if (baseClass == null) {
-        if (other.baseClass != null) {
-          return false;
-        }
-      } else if (!baseClass.equals(other.baseClass)) {
-        return false;
-      }
-      if (scanPackages == null) {
-        if (other.scanPackages != null) {
-          return false;
-        }
-      } else if (!scanPackages.equals(other.scanPackages)) {
-        return false;
-      }
-      return true;
-    }
-
-
-  }
-
+  private static final Object SYNC = new Object();
+  private static volatile Collection<URL> MARKED_PATHS;
+  private static volatile Set<String> PREFIXES;
+  private static volatile Reflections REFLECTIONS;
 
   /**
-   * @param  scanPackages  note:  not currently used
+   * Note that we're taking a static reference to a local config object. This is ugly but helps us avoid recurrent
+   * scanning in testing and should have no impact on production (since only one DrillConfig is ever used in
+   * production).
+   *
+   * @param config
    */
-  public static <T> Set<Class<? extends T>> scanForImplementations(final Class<T> baseClass,
-      final List<String> scanPackages) {
+  private static void init(DrillConfig config){
+    if(REFLECTIONS == null){
+      synchronized(SYNC){
+        if(REFLECTIONS != null){
+          return;
+        }
+        final Stopwatch w = new Stopwatch().start();
 
-    final ScanKey key = new ScanKey(baseClass, scanPackages);
-    Set<Class<? extends T>> classes = (Set<Class<? extends T>>) SCAN_CACHE.get(key);
+        PREFIXES = ImmutableSet.copyOf(CommonConstants.PACKAGES_EXCLUDING_FUNCTIONS);
+        FilterBuilder filter = new FilterBuilder();
+        for (String path : PREFIXES) {
+          for (String pkg : config.getStringList(path)) {
+            filter.include(FilterBuilder.prefix(pkg));
+          }
+        }
 
-    // check cache first.
-    if (classes != null) {
-      return classes;
+        ConfigurationBuilder conf = new ConfigurationBuilder()
+            .setUrls(getMarkedPaths())
+            .filterInputsBy(filter)
+            .setScanners(subTypeScanner);
+
+        REFLECTIONS = new Reflections(conf);
+        logger.info("Initialized classpath cache in {}ms.", w.stop().elapsed(TimeUnit.MILLISECONDS));
+
+      }
     }
+  }
+  /**
+   * @param scanPackages
+   *          note: not currently used
+   */
+  public static <T> Set<Class<? extends T>> findImplementations(
+      final Class<T> baseClass,
+      final DrillConfig config,
+      final String configurationString
+      ) {
+    init(config);
+
+    // make sure a cache includes all the scan prefixes.
+    Preconditions.checkArgument(PREFIXES.contains(configurationString));
 
     final Stopwatch w = new Stopwatch().start();
     int count = 0;
 
+    Set<Class<? extends T>> classes = null;
+
     try {
 
-      FilterBuilder filter = new FilterBuilder();
-      for(String pack : scanPackages){
-        filter.include(FilterBuilder.prefix(pack));
+      synchronized (SYNC) {
+        classes = REFLECTIONS.getSubTypesOf(baseClass);
       }
-
-      ConfigurationBuilder conf = new ConfigurationBuilder()
-        .setUrls(getMarkedPaths())
-        .filterInputsBy(filter)
-          .setScanners(subTypeScanner);
-
-      Reflections reflect = new Reflections(conf);
-      classes = reflect.getSubTypesOf(baseClass);
 
       for (Iterator<Class<? extends T>> i = classes.iterator(); i.hasNext();) {
         final Class<? extends T> c = i.next();
@@ -150,7 +116,6 @@ public class PathScanner {
         }
       }
       count = classes.size();
-      SCAN_CACHE.put(key, classes);
 
       return classes;
     } finally {
@@ -160,7 +125,7 @@ public class PathScanner {
             w.elapsed(TimeUnit.MILLISECONDS), count));
         if (classes != null) {
           for (Class<?> c : classes) {
-            sb.append("\n\t-");
+            sb.append("\n\t- ");
             sb.append(c.getName());
           }
         }

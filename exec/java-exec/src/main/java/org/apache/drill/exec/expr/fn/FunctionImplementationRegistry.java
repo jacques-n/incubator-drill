@@ -20,12 +20,13 @@ package org.apache.drill.exec.expr.fn;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
-import java.util.Set;
 import java.util.concurrent.TimeUnit;
 
+import org.apache.drill.common.config.CommonConstants;
 import org.apache.drill.common.config.DrillConfig;
 import org.apache.drill.common.expression.FunctionCall;
 import org.apache.drill.common.expression.fn.CastFunctions;
@@ -53,8 +54,10 @@ public class FunctionImplementationRegistry implements FunctionLookupContext {
     logger.debug("Generating function registry.");
     drillFuncRegistry = new DrillFunctionRegistry(config);
 
-    Set<Class<? extends PluggableFunctionRegistry>> registryClasses = PathScanner.scanForImplementations(
-        PluggableFunctionRegistry.class, config.getStringList(ExecConstants.FUNCTION_REGISTRY_PACKAGES));
+    Collection<Class<? extends PluggableFunctionRegistry>> registryClasses = PathScanner.findImplementations(
+            PluggableFunctionRegistry.class,
+            config,
+            CommonConstants.FUNCTION_REGISTRY_PACKAGES);
 
     for (Class<? extends PluggableFunctionRegistry> clazz : registryClasses) {
       for (Constructor<?> c : clazz.getConstructors()) {

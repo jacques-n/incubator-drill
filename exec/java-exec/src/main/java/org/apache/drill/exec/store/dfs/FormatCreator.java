@@ -22,16 +22,16 @@ import java.lang.reflect.InvocationTargetException;
 import java.util.Collection;
 import java.util.Map;
 
+import org.apache.drill.common.config.CommonConstants;
 import org.apache.drill.common.config.DrillConfig;
 import org.apache.drill.common.logical.FormatPluginConfig;
 import org.apache.drill.common.logical.StoragePluginConfig;
 import org.apache.drill.common.util.ConstructorChecker;
 import org.apache.drill.common.util.PathScanner;
-import org.apache.drill.exec.ExecConstants;
 import org.apache.drill.exec.server.DrillbitContext;
+import org.apache.hadoop.conf.Configuration;
 
 import com.google.common.collect.Maps;
-import org.apache.hadoop.conf.Configuration;
 
 public class FormatCreator {
   private static final org.slf4j.Logger logger = org.slf4j.LoggerFactory.getLogger(FormatCreator.class);
@@ -47,7 +47,7 @@ public class FormatCreator {
     Map<String, FormatPlugin> plugins = Maps.newHashMap();
 
     Collection<Class<? extends FormatPlugin>> pluginClasses =
-        PathScanner.scanForImplementations(FormatPlugin.class, config.getStringList(ExecConstants.STORAGE_ENGINE_SCAN_PACKAGES));
+        PathScanner.findImplementations(FormatPlugin.class, config, CommonConstants.STORAGE_ENGINE_SCAN_PACKAGES);
 
     if (storageConfig.formats == null || storageConfig.formats.isEmpty()) {
 

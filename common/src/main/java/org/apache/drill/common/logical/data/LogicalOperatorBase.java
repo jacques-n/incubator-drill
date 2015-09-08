@@ -85,8 +85,10 @@ public abstract class LogicalOperatorBase implements LogicalOperator{
     this.memo = memo;
   }
 
-  public synchronized static Class<?>[] getSubTypes(final DrillConfig config) {
-    final List<String> packages = config.getStringList(CommonConstants.LOGICAL_OPERATOR_SCAN_PACKAGES);
-    return PathScanner.scanForImplementationsArr(LogicalOperator.class, packages);
+  public synchronized static Collection<Class<? extends LogicalOperator>> getSubTypes(final DrillConfig config) {
+    return PathScanner.findImplementations(
+        LogicalOperator.class,
+        config,
+        CommonConstants.LOGICAL_OPERATOR_SCAN_PACKAGES);
   }
 }

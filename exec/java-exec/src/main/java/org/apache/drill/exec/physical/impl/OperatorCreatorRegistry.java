@@ -20,6 +20,7 @@ package org.apache.drill.exec.physical.impl;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -62,8 +63,11 @@ public class OperatorCreatorRegistry {
   }
 
   private <T> void addImplementorsToMap(DrillConfig config, Class<T> baseInterface) {
-    Class<?>[] providerClasses = PathScanner.scanForImplementationsArr(baseInterface,
-        config.getStringList(CommonConstants.PHYSICAL_OPERATOR_SCAN_PACKAGES));
+    Collection<Class<? extends T>> providerClasses = PathScanner.findImplementations(
+        baseInterface,
+        config,
+        CommonConstants.PHYSICAL_OPERATOR_SCAN_PACKAGES
+        );
     for (Class<?> c : providerClasses) {
       Class<?> operatorClass = c;
       boolean interfaceFound = false;

@@ -36,12 +36,19 @@ public interface CommonConstants {
    *  operator subclasses. */
   String PHYSICAL_OPERATOR_SCAN_PACKAGES = "drill.physical.operator.packages";
 
-  /** Configuration pathname to list of names of packages to scan for function
-   *  subclasses. */
-  String LOGICAL_FUNCTION_SCAN_PACKAGES = "drill.logical.function.packages";
-
   /** Configuration pathname to list of packages to scan for storage plugin
    *  configuration subclasses. */
-  String STORAGE_PLUGIN_CONFIG_SCAN_PACKAGES = "drill.exec.storage.packages";
+  String STORAGE_ENGINE_SCAN_PACKAGES = "drill.exec.storage.packages";
+
+  String FUNCTION_PACKAGES = "drill.exec.functions";
+
+  String FUNCTION_REGISTRY_PACKAGES = "drill.exec.function.registry";
+
+  String USER_AUTHENTICATOR_IMPL_PACKAGES = "drill.exec.security.user.auth.packages";
+
+  String[] PACKAGES_EXCLUDING_FUNCTIONS = {
+      LOGICAL_OPERATOR_SCAN_PACKAGES, PHYSICAL_OPERATOR_SCAN_PACKAGES, STORAGE_ENGINE_SCAN_PACKAGES,
+      FUNCTION_REGISTRY_PACKAGES, USER_AUTHENTICATOR_IMPL_PACKAGES
+  };
 
 }

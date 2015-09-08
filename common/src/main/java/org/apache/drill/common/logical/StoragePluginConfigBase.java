@@ -17,7 +17,7 @@
  */
 package org.apache.drill.common.logical;
 
-import java.util.List;
+import java.util.Collection;
 
 import org.apache.drill.common.config.CommonConstants;
 import org.apache.drill.common.config.DrillConfig;
@@ -25,12 +25,13 @@ import org.apache.drill.common.util.PathScanner;
 
 
 public abstract class StoragePluginConfigBase extends StoragePluginConfig {
-  private static final org.slf4j.Logger logger = org.slf4j.LoggerFactory.getLogger(StoragePluginConfigBase.class);
 
-
-  public synchronized static Class<?>[] getSubTypes(final DrillConfig config) {
-    final List<String> packages = config.getStringList(CommonConstants.STORAGE_PLUGIN_CONFIG_SCAN_PACKAGES);
-    return PathScanner.scanForImplementationsArr(StoragePluginConfig.class, packages);
+  public synchronized static Collection<Class<? extends StoragePluginConfig>> getSubTypes(final DrillConfig config) {
+    return PathScanner.findImplementations(
+        StoragePluginConfig.class,
+        config,
+        CommonConstants.STORAGE_ENGINE_SCAN_PACKAGES
+        );
   }
 
   @Override

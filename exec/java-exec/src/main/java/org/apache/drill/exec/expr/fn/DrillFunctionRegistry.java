@@ -24,11 +24,11 @@ import java.util.Map.Entry;
 import java.util.Set;
 
 import org.apache.calcite.sql.SqlOperator;
+import org.apache.drill.common.config.CommonConstants;
 import org.apache.drill.common.config.DrillConfig;
 import org.apache.drill.common.util.FunctionResolver;
 import org.apache.drill.common.util.FunctionResolver.FunctionDescriptor;
 import org.apache.drill.common.util.FunctionResolver.ScanResult;
-import org.apache.drill.exec.ExecConstants;
 import org.apache.drill.exec.planner.logical.DrillConstExecutor;
 import org.apache.drill.exec.planner.sql.DrillOperatorTable;
 import org.apache.drill.exec.planner.sql.DrillSqlAggOperator;
@@ -50,7 +50,7 @@ public class DrillFunctionRegistry {
 
   public DrillFunctionRegistry(DrillConfig config) {
     FunctionConverter converter = new FunctionConverter();
-    ScanResult result = FunctionResolver.fromPrescan(config.getStringList(ExecConstants.FUNCTION_PACKAGES));
+    ScanResult result = FunctionResolver.fromPrescan(config.getStringList(CommonConstants.FUNCTION_PACKAGES));
     for (FunctionDescriptor function : result.getFunctions()) {
       DrillFuncHolder holder = converter.getHolder(function);
       if (holder != null) {

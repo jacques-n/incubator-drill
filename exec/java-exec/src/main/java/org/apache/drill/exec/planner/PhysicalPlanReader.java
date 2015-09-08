@@ -18,6 +18,7 @@
 package org.apache.drill.exec.planner;
 
 import java.io.IOException;
+import java.util.Collection;
 
 import org.apache.drill.common.config.DrillConfig;
 import org.apache.drill.common.logical.LogicalPlan;
@@ -59,7 +60,10 @@ public class PhysicalPlanReader {
 
 
     mapper.registerModule(deserModule);
-    mapper.registerSubtypes(PhysicalOperatorUtil.getSubTypes(config));
+
+    @SuppressWarnings("unchecked")
+    Collection<Class<?>> operators = (Collection<Class<?>>) (Object) PhysicalOperatorUtil.getSubTypes(config);
+    mapper.registerSubtypes(operators.toArray(new Class<?>[operators.size()]));
     InjectableValues injectables = new InjectableValues.Std() //
             .addValue(StoragePluginRegistry.class, pluginRegistry) //
         .addValue(DrillbitEndpoint.class, endpoint); //

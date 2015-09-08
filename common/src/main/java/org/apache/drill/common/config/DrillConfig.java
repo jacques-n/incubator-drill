@@ -63,6 +63,7 @@ public final class DrillConfig extends NestedConfig{
   @SuppressWarnings("unchecked")
   private volatile List<Queue<Object>> sinkQueues = new CopyOnWriteArrayList<Queue<Object>>(new Queue[1]);
 
+  @SuppressWarnings("unchecked")
   @VisibleForTesting
   public DrillConfig(Config config, boolean enableServerConfigs) {
     super(config);
@@ -82,14 +83,19 @@ public final class DrillConfig extends NestedConfig{
       mapper.configure(Feature.ALLOW_UNQUOTED_FIELD_NAMES, true);
       mapper.configure(JsonGenerator.Feature.QUOTE_FIELD_NAMES, true);
       mapper.configure(Feature.ALLOW_COMMENTS, true);
-      mapper.registerSubtypes(LogicalOperatorBase.getSubTypes(this));
-      mapper.registerSubtypes(StoragePluginConfigBase.getSubTypes(this));
-      mapper.registerSubtypes(FormatPluginConfigBase.getSubTypes(this));
+      register(mapper, (Collection<Class<?>>) (Object) LogicalOperatorBase.getSubTypes(this));
+      register(mapper, (Collection<Class<?>>) (Object) StoragePluginConfigBase.getSubTypes(this));
+      register(mapper, (Collection<Class<?>>) (Object) FormatPluginConfigBase.getSubTypes(this));
     }
 
     RuntimeMXBean bean = ManagementFactory.getRuntimeMXBean();
     this.startupArguments = ImmutableList.copyOf(bean.getInputArguments());
   };
+
+  private static void register(ObjectMapper mapper, Collection<Class<?>> classes) {
+    final Class<?>[] classesArr = classes.toArray(new Class<?>[classes.size()]);
+    mapper.registerSubtypes(classesArr);
+  }
 
   public List<String> getStartupArguments() {
     return startupArguments;
@@ -189,7 +195,7 @@ public final class DrillConfig extends NestedConfig{
     for (ClassLoader classLoader : classLoaders) {
       final URL url = classLoader.getResource(CommonConstants.CONFIG_DEFAULT_RESOURCE_PATHNAME);
       if (null != url) {
-        logString.append("Base Configuration: ");
+        logString.append("Base Configuration:\n\t- ");
         logString.append(url);
         logString.append("\n");
         fallback =
@@ -202,7 +208,7 @@ public final class DrillConfig extends NestedConfig{
     final Collection<URL> urls = PathScanner.getConfigURLs();
     logString.append("\nIntermediate Configuration and Plugin files, in order of precedence:\n");
     for (URL url : urls) {
-      logString.append("\t-");
+      logString.append("\t- ");
       logString.append(url);
       logString.append("\n");
       fallback = ConfigFactory.parseURL(url).withFallback(fallback);
