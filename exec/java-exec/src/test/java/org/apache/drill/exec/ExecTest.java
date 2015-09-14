@@ -17,11 +17,55 @@
  */
 package org.apache.drill.exec;
 
+import java.lang.reflect.Modifier;
+
+import javassist.ClassPool;
+import javassist.CtClass;
+import javassist.CtConstructor;
+import javassist.CtMethod;
+import javassist.CtNewMethod;
+
 import org.apache.drill.exec.metrics.DrillMetrics;
 import org.apache.drill.test.DrillTest;
 import org.junit.After;
 
 public class ExecTest extends DrillTest {
+
+  /**
+   * Makes Guava stopwatch look like the old version for compatibility with hbase-server (for test purposes).
+   */
+  private static void patchStopwatch() {
+
+    try{
+      ClassPool cp = ClassPool.getDefault();
+      CtClass cc = cp.get("com.google.common.base.Stopwatch");
+
+      // Expose the constructor for Stopwatch for old libraries who use the pattern new Stopwatch().start().
+      for (CtConstructor c : cc.getConstructors()) {
+        if (!Modifier.isStatic(c.getModifiers())) {
+          System.out.println("Exposed " + c);
+          c.setModifiers(Modifier.PUBLIC);
+        }
+      }
+
+      // Add back the Stopwatch.elapsedMillis() method for old consumers.
+      CtMethod newmethod = CtNewMethod.make(
+          "public long elapsedMillis() { return elapsed(java.util.concurrent.TimeUnit.MILLISECONDS); }", cc);
+      cc.addMethod(newmethod);
+
+      // Load the modified class instead of the original.
+      cc.toClass();
+    } catch (Exception e) {
+      System.err.println("Failure while patching Stopwatch. Exiting.\n");
+      e.printStackTrace();
+      System.err.flush();
+      System.exit(-100);
+    }
+  }
+
+  static {
+    patchStopwatch();
+  }
 
   @After
   public void clear(){
