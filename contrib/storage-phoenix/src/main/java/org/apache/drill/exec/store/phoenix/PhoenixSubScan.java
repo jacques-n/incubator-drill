@@ -21,6 +21,7 @@ import org.apache.drill.common.exceptions.ExecutionSetupException;
 import org.apache.drill.common.logical.StoragePluginConfig;
 import org.apache.drill.exec.physical.base.AbstractSubScan;
 import org.apache.drill.exec.store.StoragePluginRegistry;
+import org.apache.drill.exec.store.phoenix.PhoenixGroupScan.PhoenixScans;
 
 import com.fasterxml.jackson.annotation.JacksonInject;
 import com.fasterxml.jackson.annotation.JsonCreator;
@@ -31,23 +32,27 @@ import com.fasterxml.jackson.annotation.JsonTypeName;
 @JsonTypeName("jdbc-sub-scan")
 public class PhoenixSubScan extends AbstractSubScan {
 
-  private final String name;
+  private final PhoenixScans scans;
   private final PhoenixStoragePlugin plugin;
+  private final String table;
 
   @JsonCreator
   public PhoenixSubScan(
-      @JsonProperty("name") String sql,
+      @JsonProperty("scans") PhoenixScans scans,
+      @JsonProperty("table") String table,
       @JsonProperty("config") StoragePluginConfig config,
       @JacksonInject StoragePluginRegistry plugins) throws ExecutionSetupException {
     super("");
-    this.name = sql;
+    this.scans = scans;
     this.plugin = (PhoenixStoragePlugin) plugins.getPlugin(config);
+    this.table = table;
   }
 
-  PhoenixSubScan(String name, PhoenixStoragePlugin plugin) {
+  PhoenixSubScan(PhoenixScans scans, String table, PhoenixStoragePlugin plugin) {
     super("");
-    this.name = name;
+    this.scans = scans;
     this.plugin = plugin;
+    this.table = table;
   }
 
   @Override
@@ -55,8 +60,12 @@ public class PhoenixSubScan extends AbstractSubScan {
     return -1;
   }
 
-  public String getName() {
-    return name;
+  public String getTable() {
+    return table;
+  }
+
+  public PhoenixScans getScans() {
+    return scans;
   }
 
   public StoragePluginConfig getConfig() {

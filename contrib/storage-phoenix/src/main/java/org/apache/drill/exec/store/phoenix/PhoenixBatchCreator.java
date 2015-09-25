@@ -17,7 +17,7 @@
  */
 package org.apache.drill.exec.store.phoenix;
 
-import java.util.Collections;
+import java.util.ArrayList;
 import java.util.List;
 
 import org.apache.drill.common.exceptions.ExecutionSetupException;
@@ -27,6 +27,7 @@ import org.apache.drill.exec.physical.impl.ScanBatch;
 //import org.apache.drill.exec.record.CloseableRecordBatch;
 import org.apache.drill.exec.record.RecordBatch;
 import org.apache.drill.exec.store.RecordReader;
+import org.apache.hadoop.hbase.client.Scan;
 
 import com.google.common.base.Preconditions;
 
@@ -36,7 +37,12 @@ public class PhoenixBatchCreator implements BatchCreator<PhoenixSubScan> {
       List<RecordBatch> children) throws ExecutionSetupException {
     Preconditions.checkArgument(children.isEmpty());
     PhoenixStoragePlugin plugin = config.getPlugin();
-    RecordReader reader = new PhoenixRecordReader(context, plugin.getSource(), config.getName(), plugin.getName());
-    return new ScanBatch(config, context, Collections.singletonList(reader).iterator());
+
+    List<RecordReader> readers = new ArrayList<RecordReader>(config.getScans().size());
+
+    for(Scan s : config.getScans()){
+      readers.add(new PhoenixRecordReader(context, plugin.getConnection(), config.getTable(), s, plugin.getName()));
+    }
+    return new ScanBatch(config, context, readers.iterator());
   }
 }

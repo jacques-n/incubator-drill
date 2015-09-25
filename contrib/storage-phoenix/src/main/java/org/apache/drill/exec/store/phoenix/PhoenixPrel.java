@@ -18,8 +18,10 @@
 package org.apache.drill.exec.store.phoenix;
 
 import java.io.IOException;
+import java.sql.SQLException;
 import java.util.Collections;
 import java.util.Iterator;
+import java.util.List;
 
 import org.apache.calcite.plan.RelOptCluster;
 import org.apache.calcite.plan.RelTraitSet;
@@ -28,14 +30,24 @@ import org.apache.calcite.rel.AbstractRelNode;
 import org.apache.calcite.rel.RelNode;
 import org.apache.calcite.rel.RelShuttleImpl;
 import org.apache.calcite.rel.RelWriter;
+import org.apache.calcite.util.ImmutableIntList;
 import org.apache.drill.common.exceptions.ExecutionSetupException;
 import org.apache.drill.exec.physical.base.PhysicalOperator;
 import org.apache.drill.exec.planner.physical.PhysicalPlanCreator;
 import org.apache.drill.exec.planner.physical.Prel;
 import org.apache.drill.exec.planner.physical.visitor.PrelVisitor;
 import org.apache.drill.exec.record.BatchSchema.SelectionVectorMode;
+import org.apache.drill.exec.store.phoenix.PhoenixGroupScan.PhoenixScans;
+import org.apache.hadoop.hbase.client.Scan;
 import org.apache.phoenix.calcite.PhoenixTable;
+import org.apache.phoenix.calcite.rel.PhoenixRel;
+import org.apache.phoenix.calcite.rel.PhoenixRel.ImplementorContext;
+import org.apache.phoenix.calcite.rel.PhoenixRelImplementorImpl;
 import org.apache.phoenix.calcite.rel.PhoenixTableScan;
+import org.apache.phoenix.compile.QueryPlan;
+import org.apache.phoenix.execute.RuntimeContextImpl;
+
+import com.google.common.base.Preconditions;
 
 /**
  * Represents a JDBC Plan once the children nodes have been rewritten into SQL.
@@ -72,12 +84,25 @@ public class PhoenixPrel extends AbstractRelNode implements Prel {
 
   @Override
   public PhysicalOperator getPhysicalOperator(PhysicalPlanCreator creator) throws IOException {
+    final PhoenixRel.Implementor phoenixImplementor = new PhoenixRelImplementorImpl(new RuntimeContextImpl());
+    phoenixImplementor.pushContext(new ImplementorContext(true, false, ImmutableIntList.identity(tableScan.getRowType()
+        .getFieldCount())));
+    final QueryPlan plan = phoenixImplementor.visitInput(0, tableScan);
+
+
     final String storagePluginName = tableScan.getTable().getQualifiedName().iterator().next();
+
     try {
       PhoenixStoragePlugin plugin = (PhoenixStoragePlugin) creator.getContext().getStorage()
           .getPlugin(storagePluginName);
-      return new PhoenixGroupScan(hbaseTableName, plugin, rows);
-    } catch (ExecutionSetupException e) {
+
+      // generate the scans.
+      plan.iterator();
+
+      List<List<Scan>> scans = plan.getScans();
+      Preconditions.checkArgument(scans.size() == 1);
+      return new PhoenixGroupScan(new PhoenixScans(scans.get(0)), plugin, rows, hbaseTableName);
+    } catch (ExecutionSetupException | SQLException e) {
       throw new IOException(String.format("Failure while retrieving storage plugin %s", storagePluginName), e);
     }
   }

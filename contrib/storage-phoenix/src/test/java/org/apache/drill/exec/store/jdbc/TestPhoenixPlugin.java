@@ -35,6 +35,6 @@ public class TestPhoenixPlugin extends PlanTestBase {
 
   @Test
   public void firstTest() throws Exception {
-    test("select * from PHOENIX.DRILL.CALCITE");
+    test("select * from PHOENIX.A.BEER");
   }
 }

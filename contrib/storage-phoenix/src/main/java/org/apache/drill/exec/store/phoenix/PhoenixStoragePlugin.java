@@ -18,17 +18,16 @@
 package org.apache.drill.exec.store.phoenix;
 
 import java.io.IOException;
+import java.sql.SQLException;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.Set;
-
-import javax.sql.DataSource;
 
 import org.apache.calcite.plan.RelOptRule;
 import org.apache.calcite.rel.RelNode;
 import org.apache.calcite.rel.convert.ConverterRule;
 import org.apache.calcite.schema.SchemaPlus;
-import org.apache.commons.dbcp.BasicDataSource;
 import org.apache.drill.common.JSONOptions;
 import org.apache.drill.common.expression.SchemaPath;
 import org.apache.drill.exec.ops.OptimizerRulesContext;
@@ -38,8 +37,13 @@ import org.apache.drill.exec.planner.physical.Prel;
 import org.apache.drill.exec.server.DrillbitContext;
 import org.apache.drill.exec.store.AbstractStoragePlugin;
 import org.apache.drill.exec.store.SchemaConfig;
+import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.hbase.HBaseConfiguration;
+import org.apache.hadoop.hbase.client.Connection;
+import org.apache.hadoop.hbase.client.ConnectionFactory;
 import org.apache.phoenix.calcite.PhoenixSchema;
 import org.apache.phoenix.calcite.rel.PhoenixRel;
+import org.apache.phoenix.jdbc.PhoenixEmbeddedDriver.ConnectionInfo;
 
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Maps;
@@ -52,16 +56,20 @@ public class PhoenixStoragePlugin extends AbstractStoragePlugin {
   private final PhoenixStorageConfig config;
   private final DrillbitContext context;
   private final String name;
-  private final BasicDataSource source;
+  private final Connection connection;
 
-
-  public PhoenixStoragePlugin(PhoenixStorageConfig config, DrillbitContext context, String name) {
+  public PhoenixStoragePlugin(PhoenixStorageConfig config, DrillbitContext context, String name) throws IOException,
+      SQLException {
     this.context = context;
     this.config = config;
     this.name = name;
-    this.source = new BasicDataSource();
-    source.setDriverClassName("org.apache.phoenix.jdbc.PhoenixDriver");
-    source.setUrl(config.getUrl());
+    ConnectionInfo info = ConnectionInfo.create(config.getUrl());
+    Configuration hbaseConfig = HBaseConfiguration.create();
+    for (Entry<String, String> entry : info.asProps()) {
+      hbaseConfig.set(entry.getKey(), entry.getValue());
+
+    }
+    this.connection = ConnectionFactory.createConnection(hbaseConfig);
   }
 
   static {
@@ -102,7 +110,6 @@ public class PhoenixStoragePlugin extends AbstractStoragePlugin {
 
   }
 
-
   @Override
   public void registerSchemas(SchemaConfig config, SchemaPlus parent) {
     Map<String, Object> operand = Maps.newHashMap();
@@ -128,8 +135,8 @@ public class PhoenixStoragePlugin extends AbstractStoragePlugin {
     return true;
   }
 
-  public DataSource getSource() {
-    return source;
+  public Connection getConnection() {
+    return connection;
   }
 
   @Override
