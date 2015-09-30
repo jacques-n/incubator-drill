@@ -85,10 +85,10 @@ public class PhoenixPrel extends AbstractRelNode implements Prel {
   @Override
   public PhysicalOperator getPhysicalOperator(PhysicalPlanCreator creator) throws IOException {
     final PhoenixRel.Implementor phoenixImplementor = new PhoenixRelImplementorImpl(new RuntimeContextImpl());
-    phoenixImplementor.pushContext(new ImplementorContext(true, false, ImmutableIntList.identity(tableScan.getRowType()
+    phoenixImplementor.pushContext(new ImplementorContext(false, true, ImmutableIntList.identity(tableScan.getRowType()
         .getFieldCount())));
     final QueryPlan plan = phoenixImplementor.visitInput(0, tableScan);
-
+    phoenixImplementor.popContext();
 
     final String storagePluginName = tableScan.getTable().getQualifiedName().iterator().next();
 

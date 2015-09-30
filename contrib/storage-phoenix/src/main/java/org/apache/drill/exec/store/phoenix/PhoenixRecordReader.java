@@ -162,8 +162,8 @@ class PhoenixRecordReader extends AbstractRecordReader {
       ImmutableList.Builder<ValueVector> vectorBuilder = ImmutableList.builder();
       ImmutableList.Builder<Copier<?>> copierBuilder = ImmutableList.builder();
 
-      int i = 0;
-      for (ValueSchema.Field phoenixField : kvSchema.getFields()) {
+      for (int i = 0; i < kvSchema.getFieldCount(); i++) {
+        ValueSchema.Field phoenixField = kvSchema.getField(i);
         final PDataType phoenixType = phoenixField.getDataType();
         MinorType minorType = JDBC_TYPE_MAPPINGS.get(phoenixType.getSqlType());
         if (minorType == null) {
@@ -182,7 +182,7 @@ class PhoenixRecordReader extends AbstractRecordReader {
             minorType, type.getMode());
         ValueVector vector = output.addField(field, clazz);
         vectorBuilder.add(vector);
-        copierBuilder.add(getCopier(i++, vector));
+        copierBuilder.add(getCopier(i, vector));
       }
 
       vectors = vectorBuilder.build();
