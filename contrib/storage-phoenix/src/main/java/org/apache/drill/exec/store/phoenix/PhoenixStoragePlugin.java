@@ -43,6 +43,7 @@ import org.apache.hadoop.hbase.client.Connection;
 import org.apache.hadoop.hbase.client.ConnectionFactory;
 import org.apache.phoenix.calcite.PhoenixSchema;
 import org.apache.phoenix.calcite.rel.PhoenixRel;
+import org.apache.phoenix.calcite.rules.PhoenixFilterScanMergeRule;
 import org.apache.phoenix.jdbc.PhoenixEmbeddedDriver.ConnectionInfo;
 
 import com.google.common.collect.ImmutableSet;
@@ -76,6 +77,7 @@ public class PhoenixStoragePlugin extends AbstractStoragePlugin {
     ImmutableSet.Builder<RelOptRule> builder = ImmutableSet.builder();
     builder.add(new PhoenixPrule());
     builder.add(new PhoenixDrelConverterRule());
+    builder.add(PhoenixFilterScanMergeRule.INSTANCE);
     RULES = builder.build();
   }
 

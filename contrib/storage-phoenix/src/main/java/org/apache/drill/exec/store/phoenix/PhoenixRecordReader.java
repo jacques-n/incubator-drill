@@ -158,12 +158,13 @@ class PhoenixRecordReader extends AbstractRecordReader {
       ResultScanner s = table.getScanner(scan);
       this.result = new ScanningResultIterator(s, CombinableMetric.NoOpRequestMetric.INSTANCE);
       this.kvSchema = TupleProjector.deserializeProjectorFromScan(scan).getSchema();
-
+      String[] columnNames = PhoenixPrel.deserializeColumnInfoFromScan(scan);
+      
       ImmutableList.Builder<ValueVector> vectorBuilder = ImmutableList.builder();
       ImmutableList.Builder<Copier<?>> copierBuilder = ImmutableList.builder();
 
-      int i = 0;
-      for (ValueSchema.Field phoenixField : kvSchema.getFields()) {
+      for (int i = 0; i < kvSchema.getFieldCount(); i++) {
+        ValueSchema.Field phoenixField = kvSchema.getField(i);
         final PDataType phoenixType = phoenixField.getDataType();
         MinorType minorType = JDBC_TYPE_MAPPINGS.get(phoenixType.getSqlType());
         if (minorType == null) {
@@ -177,12 +178,12 @@ class PhoenixRecordReader extends AbstractRecordReader {
         }
 
         final MajorType type = Types.optional(minorType);
-        final MaterializedField field = MaterializedField.create(Integer.toString(i), type);
+        final MaterializedField field = MaterializedField.create(columnNames[i], type);
         final Class<? extends ValueVector> clazz = (Class<? extends ValueVector>) TypeHelper.getValueVectorClass(
             minorType, type.getMode());
         ValueVector vector = output.addField(field, clazz);
         vectorBuilder.add(vector);
-        copierBuilder.add(getCopier(i++, vector));
+        copierBuilder.add(getCopier(i, vector));
       }
 
       vectors = vectorBuilder.build();
