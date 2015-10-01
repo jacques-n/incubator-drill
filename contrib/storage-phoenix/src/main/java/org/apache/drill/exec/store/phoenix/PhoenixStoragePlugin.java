@@ -37,6 +37,7 @@ import org.apache.drill.exec.planner.physical.Prel;
 import org.apache.drill.exec.server.DrillbitContext;
 import org.apache.drill.exec.store.AbstractStoragePlugin;
 import org.apache.drill.exec.store.SchemaConfig;
+import org.apache.drill.exec.store.phoenix.rel.PhoenixServerSortRule;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.HBaseConfiguration;
 import org.apache.hadoop.hbase.client.Connection;
@@ -78,6 +79,7 @@ public class PhoenixStoragePlugin extends AbstractStoragePlugin {
     builder.add(new PhoenixPrule());
     builder.add(new PhoenixDrelConverterRule());
     builder.add(PhoenixFilterScanMergeRule.INSTANCE);
+    builder.add(PhoenixServerSortRule.CONVERTIBLE_SERVER);
     RULES = builder.build();
   }
 
@@ -116,7 +118,13 @@ public class PhoenixStoragePlugin extends AbstractStoragePlugin {
   public void registerSchemas(SchemaConfig config, SchemaPlus parent) {
     Map<String, Object> operand = Maps.newHashMap();
     operand.put("url", this.getConfig().getUrl());
-    parent.add(name, PhoenixSchema.FACTORY.create(parent, name, operand));
+    PhoenixSchema phoenixSchema = (PhoenixSchema) PhoenixSchema.FACTORY.create(parent, name, operand);
+    parent.add(name, phoenixSchema);
+    phoenixSchema.defineIndexesAsMaterializations();
+    for (String subSchemaName : phoenixSchema.getSubSchemaNames()) {
+      PhoenixSchema subSchema = (PhoenixSchema) phoenixSchema.getSubSchema(subSchemaName);
+      subSchema.defineIndexesAsMaterializations();
+    }
   }
 
   @Override
