@@ -55,6 +55,7 @@ import org.apache.phoenix.execute.TupleProjectionPlan;
 import org.apache.phoenix.execute.TupleProjector;
 
 import com.google.common.base.Preconditions;
+import com.google.common.collect.Lists;
 
 /**
  * Represents a JDBC Plan once the children nodes have been rewritten into SQL.
@@ -116,8 +117,14 @@ public class PhoenixPrel extends AbstractRelNode implements Prel {
       plan.iterator();
 
       List<List<Scan>> scans = plan.getScans();
-      Preconditions.checkArgument(scans.size() == 1);
-      return new PhoenixGroupScan(new PhoenixScans(scans.get(0)), plugin, rows, hbaseTableName);
+      List<Scan> scanList = Lists.newArrayList();
+      for (List<Scan> ss : scans) {
+        for (Scan s : ss) {
+          scanList.add(s);
+        }
+      }
+      Preconditions.checkArgument(scanList.size() > 0);
+      return new PhoenixGroupScan(new PhoenixScans(scanList), plugin, rows, hbaseTableName);
     } catch (ExecutionSetupException | SQLException e) {
       throw new IOException(String.format("Failure while retrieving storage plugin %s", storagePluginName), e);
     }
