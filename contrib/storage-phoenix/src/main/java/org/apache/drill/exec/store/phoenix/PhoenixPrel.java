@@ -51,6 +51,8 @@ import org.apache.phoenix.calcite.rel.PhoenixRel.ImplementorContext;
 import org.apache.phoenix.calcite.rel.PhoenixRelImplementorImpl;
 import org.apache.phoenix.compile.QueryPlan;
 import org.apache.phoenix.execute.RuntimeContextImpl;
+import org.apache.phoenix.execute.TupleProjectionPlan;
+import org.apache.phoenix.execute.TupleProjector;
 
 import com.google.common.base.Preconditions;
 
@@ -58,6 +60,7 @@ import com.google.common.base.Preconditions;
  * Represents a JDBC Plan once the children nodes have been rewritten into SQL.
  */
 public class PhoenixPrel extends AbstractRelNode implements Prel {
+  public static final String CLIENT_PROJECTION_ATTR = "clientProjector";
   private static final String COLUMN_INFO_ATTR = "columnInfo";
 
   private final PhoenixRel input;
@@ -90,10 +93,17 @@ public class PhoenixPrel extends AbstractRelNode implements Prel {
     final PhoenixRel.Implementor phoenixImplementor = new PhoenixRelImplementorImpl(new RuntimeContextImpl());
     phoenixImplementor.pushContext(new ImplementorContext(false, true, ImmutableIntList.identity(input.getRowType()
         .getFieldCount())));
-    final QueryPlan plan = phoenixImplementor.visitInput(0, input);
+    QueryPlan plan = phoenixImplementor.visitInput(0, input);
     phoenixImplementor.popContext();
     
     serializeColumnInfoIntoScan(plan.getContext().getScan(), input.getRowType());
+    if (plan instanceof TupleProjectionPlan) {
+      final TupleProjectionPlan projectionPlan = (TupleProjectionPlan) plan;
+      final QueryPlan innerPlan = projectionPlan.getDelegate();
+      TupleProjector.serializeProjectorIntoScan(innerPlan.getContext().getScan(), 
+          projectionPlan.getTupleProjector(), CLIENT_PROJECTION_ATTR);
+      plan = innerPlan;
+    }
 
     final String hbaseTableName = plan.getTableRef().getTable().getPhysicalName().getString();
     final String storagePluginName = getStoragePluginName();

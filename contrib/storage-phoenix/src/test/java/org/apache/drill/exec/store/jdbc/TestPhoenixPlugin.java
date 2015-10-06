@@ -35,7 +35,9 @@ public class TestPhoenixPlugin extends PlanTestBase {
 
   @Test
   public void firstTest() throws Exception {
-    test("explain plan for select * from PHOENIX.A.BEER where e1 >= 1 order by e1 desc");
-    test("select * from PHOENIX.A.BEER where e1 >= 1 order by e1 desc");
+    test("explain plan for select * from PHOENIX.A.BEER where e1 >= 1");
+    test("select * from PHOENIX.A.BEER where e1 >= 1");
+    test("explain plan for select b, min(e1) from PHOENIX.A.BEER where e1 >= 1 group by b");
+    test("select b, min(e1) from PHOENIX.A.BEER where e1 >= 1 group by b");
   }
 }

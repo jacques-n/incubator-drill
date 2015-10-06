@@ -24,6 +24,7 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
 
+import org.apache.calcite.plan.Convention;
 import org.apache.calcite.plan.RelOptRule;
 import org.apache.calcite.rel.RelNode;
 import org.apache.calcite.rel.convert.ConverterRule;
@@ -37,13 +38,15 @@ import org.apache.drill.exec.planner.physical.Prel;
 import org.apache.drill.exec.server.DrillbitContext;
 import org.apache.drill.exec.store.AbstractStoragePlugin;
 import org.apache.drill.exec.store.SchemaConfig;
-import org.apache.drill.exec.store.phoenix.rel.PhoenixServerSortRule;
+import org.apache.drill.exec.store.phoenix.rel.PhoenixDrillRel;
+import org.apache.drill.exec.store.phoenix.rel.PhoenixHashAggPrule;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.HBaseConfiguration;
 import org.apache.hadoop.hbase.client.Connection;
 import org.apache.hadoop.hbase.client.ConnectionFactory;
 import org.apache.phoenix.calcite.PhoenixSchema;
 import org.apache.phoenix.calcite.rel.PhoenixRel;
+import org.apache.phoenix.calcite.rules.PhoenixConverterRules;
 import org.apache.phoenix.calcite.rules.PhoenixFilterScanMergeRule;
 import org.apache.phoenix.jdbc.PhoenixEmbeddedDriver.ConnectionInfo;
 
@@ -77,9 +80,11 @@ public class PhoenixStoragePlugin extends AbstractStoragePlugin {
   static {
     ImmutableSet.Builder<RelOptRule> builder = ImmutableSet.builder();
     builder.add(new PhoenixPrule());
-    builder.add(new PhoenixDrelConverterRule());
+    builder.add(new PhoenixDrelConverterRule(PhoenixRel.SERVER_CONVENTION));
+    builder.add(new PhoenixDrelConverterRule(PhoenixDrillRel.SERVER_INTERMEDIATE_CONVENTION));
+    builder.add(PhoenixHashAggPrule.INSTANCE);
     builder.add(PhoenixFilterScanMergeRule.INSTANCE);
-    builder.add(PhoenixServerSortRule.CONVERTIBLE_SERVER);
+    builder.add(PhoenixConverterRules.PhoenixServerProjectRule.CONVERTIBLE);
     RULES = builder.build();
   }
 
@@ -102,8 +107,8 @@ public class PhoenixStoragePlugin extends AbstractStoragePlugin {
 
   private static class PhoenixDrelConverterRule extends ConverterRule {
 
-    public PhoenixDrelConverterRule() {
-      super(RelNode.class, PhoenixRel.SERVER_CONVENTION, DrillRel.DRILL_LOGICAL, "PHOENIX_DREL_Converter");
+    public PhoenixDrelConverterRule(Convention inConvention) {
+      super(RelNode.class, inConvention, DrillRel.DRILL_LOGICAL, "PHOENIX_DREL_Converter:" + inConvention.getName());
     }
 
     @Override

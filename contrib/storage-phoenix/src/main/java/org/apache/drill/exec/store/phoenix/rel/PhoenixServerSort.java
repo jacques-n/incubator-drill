@@ -34,13 +34,13 @@ import org.apache.phoenix.compile.QueryPlan;
 import org.apache.phoenix.compile.OrderByCompiler.OrderBy;
 import org.apache.phoenix.execute.ScanPlan;
 
-public class PhoenixServerSort extends PhoenixAbstractSort {
+public class PhoenixServerSort extends PhoenixAbstractSort implements PhoenixDrillRel {
   
   public static PhoenixServerSort create(RelNode input, RelCollation collation) {
       RelOptCluster cluster = input.getCluster();
       collation = RelCollationTraitDef.INSTANCE.canonize(collation);
       RelTraitSet traits =
-          input.getTraitSet().replace(PhoenixRel.SERVER_CONVENTION).replace(collation);
+          input.getTraitSet().replace(PhoenixDrillRel.SERVER_INTERMEDIATE_CONVENTION).replace(collation);
       return new PhoenixServerSort(cluster, traits, input, collation);
   }
 
