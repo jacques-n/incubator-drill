@@ -34,6 +34,7 @@ import org.apache.calcite.rel.AbstractRelNode;
 import org.apache.calcite.rel.RelNode;
 import org.apache.calcite.rel.RelShuttleImpl;
 import org.apache.calcite.rel.RelWriter;
+import org.apache.calcite.rel.core.TableScan;
 import org.apache.calcite.rel.type.RelDataType;
 import org.apache.calcite.util.ImmutableIntList;
 import org.apache.drill.common.exceptions.ExecutionSetupException;
@@ -45,24 +46,26 @@ import org.apache.drill.exec.record.BatchSchema.SelectionVectorMode;
 import org.apache.drill.exec.store.phoenix.PhoenixGroupScan.PhoenixScans;
 import org.apache.hadoop.hbase.client.Scan;
 import org.apache.hadoop.io.WritableUtils;
-import org.apache.phoenix.calcite.PhoenixTable;
 import org.apache.phoenix.calcite.rel.PhoenixRel;
 import org.apache.phoenix.calcite.rel.PhoenixRel.ImplementorContext;
 import org.apache.phoenix.calcite.rel.PhoenixRelImplementorImpl;
-import org.apache.phoenix.calcite.rel.PhoenixTableScan;
 import org.apache.phoenix.compile.QueryPlan;
 import org.apache.phoenix.execute.RuntimeContextImpl;
+import org.apache.phoenix.execute.TupleProjectionPlan;
+import org.apache.phoenix.execute.TupleProjector;
+
 import com.google.common.base.Preconditions;
+import com.google.common.collect.Lists;
 
 /**
  * Represents a JDBC Plan once the children nodes have been rewritten into SQL.
  */
 public class PhoenixPrel extends AbstractRelNode implements Prel {
+  public static final String CLIENT_PROJECTION_ATTR = "clientProjector";
   private static final String COLUMN_INFO_ATTR = "columnInfo";
 
-  private final String hbaseTableName;
+  private final PhoenixRel input;
   private final double rows;
-  private final PhoenixTableScan tableScan;
 
   private class SubsetRemover extends RelShuttleImpl {
 
@@ -80,10 +83,8 @@ public class PhoenixPrel extends AbstractRelNode implements Prel {
   public PhoenixPrel(RelOptCluster cluster, RelTraitSet traitSet, PhoenixIntermediatePrel prel) {
     super(cluster, traitSet);
 
-    final RelNode input = prel.getInput().accept(new SubsetRemover());
+    input = (PhoenixRel) prel.getInput().accept(new SubsetRemover());
     rows = input.getRows();
-    tableScan = (PhoenixTableScan) input;
-    hbaseTableName = tableScan.getTable().unwrap(PhoenixTable.class).pTable.getName().getString();
     rowType = prel.getRowType();
 
   }
@@ -91,14 +92,22 @@ public class PhoenixPrel extends AbstractRelNode implements Prel {
   @Override
   public PhysicalOperator getPhysicalOperator(PhysicalPlanCreator creator) throws IOException {
     final PhoenixRel.Implementor phoenixImplementor = new PhoenixRelImplementorImpl(new RuntimeContextImpl());
-    phoenixImplementor.pushContext(new ImplementorContext(false, true, ImmutableIntList.identity(tableScan.getRowType()
+    phoenixImplementor.pushContext(new ImplementorContext(false, true, ImmutableIntList.identity(input.getRowType()
         .getFieldCount())));
-    final QueryPlan plan = phoenixImplementor.visitInput(0, tableScan);
+    QueryPlan plan = phoenixImplementor.visitInput(0, input);
     phoenixImplementor.popContext();
     
-    serializeColumnInfoIntoScan(plan.getContext().getScan(), tableScan.getRowType());
+    serializeColumnInfoIntoScan(plan.getContext().getScan(), input.getRowType());
+    if (plan instanceof TupleProjectionPlan) {
+      final TupleProjectionPlan projectionPlan = (TupleProjectionPlan) plan;
+      final QueryPlan innerPlan = projectionPlan.getDelegate();
+      TupleProjector.serializeProjectorIntoScan(innerPlan.getContext().getScan(), 
+          projectionPlan.getTupleProjector(), CLIENT_PROJECTION_ATTR);
+      plan = innerPlan;
+    }
 
-    final String storagePluginName = tableScan.getTable().getQualifiedName().iterator().next();
+    final String hbaseTableName = plan.getTableRef().getTable().getPhysicalName().getString();
+    final String storagePluginName = getStoragePluginName();
 
     try {
       PhoenixStoragePlugin plugin = (PhoenixStoragePlugin) creator.getContext().getStorage()
@@ -108,8 +117,14 @@ public class PhoenixPrel extends AbstractRelNode implements Prel {
       plan.iterator();
 
       List<List<Scan>> scans = plan.getScans();
-      Preconditions.checkArgument(scans.size() == 1);
-      return new PhoenixGroupScan(new PhoenixScans(scans.get(0)), plugin, rows, hbaseTableName);
+      List<Scan> scanList = Lists.newArrayList();
+      for (List<Scan> ss : scans) {
+        for (Scan s : ss) {
+          scanList.add(s);
+        }
+      }
+      Preconditions.checkArgument(scanList.size() > 0);
+      return new PhoenixGroupScan(new PhoenixScans(scanList), plugin, rows, hbaseTableName);
     } catch (ExecutionSetupException | SQLException e) {
       throw new IOException(String.format("Failure while retrieving storage plugin %s", storagePluginName), e);
     }
@@ -117,7 +132,8 @@ public class PhoenixPrel extends AbstractRelNode implements Prel {
 
   @Override
   public RelWriter explainTerms(RelWriter pw) {
-    return super.explainTerms(pw).item("table", hbaseTableName);
+    input.explain(pw);
+    return pw;
   }
 
   @Override
@@ -148,6 +164,22 @@ public class PhoenixPrel extends AbstractRelNode implements Prel {
   @Override
   public boolean needsFinalColumnReordering() {
     return false;
+  }
+  
+  private String getStoragePluginName() {
+    RelNode rel = input;
+    while (rel != null && !(rel instanceof TableScan)) {
+      if (rel.getInputs().isEmpty()) {
+        rel = null;
+      } else {
+        rel = rel.getInputs().get(0);
+      }
+    }
+    
+    if (rel == null)
+      return null;
+    
+    return ((TableScan) rel).getTable().getQualifiedName().iterator().next();
   }
   
   protected static void serializeColumnInfoIntoScan(Scan scan, RelDataType rowType) {

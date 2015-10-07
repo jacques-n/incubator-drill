@@ -18,6 +18,8 @@
 package org.apache.drill.exec.store.phoenix;
 
 import java.io.IOException;
+import java.sql.SQLException;
+import java.util.List;
 
 import org.apache.drill.common.exceptions.ExecutionSetupException;
 import org.apache.drill.common.exceptions.UserException;
@@ -49,7 +51,14 @@ import org.apache.hadoop.hbase.client.ResultScanner;
 import org.apache.hadoop.hbase.client.Scan;
 import org.apache.hadoop.hbase.client.Table;
 import org.apache.hadoop.hbase.io.ImmutableBytesWritable;
+import org.apache.phoenix.coprocessor.BaseScannerRegionObserver;
 import org.apache.phoenix.execute.TupleProjector;
+import org.apache.phoenix.expression.Expression;
+import org.apache.phoenix.expression.aggregator.ClientAggregators;
+import org.apache.phoenix.expression.function.SingleAggregateFunction;
+import org.apache.phoenix.iterate.DelegateResultIterator;
+import org.apache.phoenix.iterate.GroupedAggregatingResultIterator;
+import org.apache.phoenix.iterate.LookAheadResultIterator;
 import org.apache.phoenix.iterate.ResultIterator;
 import org.apache.phoenix.iterate.ScanningResultIterator;
 import org.apache.phoenix.monitoring.CombinableMetric;
@@ -61,6 +70,7 @@ import org.apache.phoenix.schema.tuple.Tuple;
 import org.apache.phoenix.schema.types.PDataType;
 import org.apache.phoenix.util.SQLCloseable;
 
+import com.beust.jcommander.internal.Lists;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 
@@ -157,7 +167,41 @@ class PhoenixRecordReader extends AbstractRecordReader {
       Table table = connection.getTable(TableName.valueOf(tableName));
       ResultScanner s = table.getScanner(scan);
       this.result = new ScanningResultIterator(s, CombinableMetric.NoOpRequestMetric.INSTANCE);
-      this.kvSchema = TupleProjector.deserializeProjectorFromScan(scan).getSchema();
+      if (scan.getAttribute(BaseScannerRegionObserver.NON_AGGREGATE_QUERY) != null) {
+        this.kvSchema = TupleProjector.deserializeProjectorFromScan(scan).getSchema();        
+      } else {
+        final TupleProjector tupleProjector = TupleProjector.deserializeProjectorFromScan(
+            scan, PhoenixPrel.CLIENT_PROJECTION_ATTR);
+        boolean isUngroupedAggregation = scan.getAttribute(BaseScannerRegionObserver.UNGROUPED_AGG) != null;
+        List<SingleAggregateFunction> aggFuncs = Lists.newArrayList();
+        int minNullableIndex = -1;
+        for (Expression e  : tupleProjector.getExpressions()) {
+          if (e instanceof SingleAggregateFunction) {
+            SingleAggregateFunction aggFunc = (SingleAggregateFunction) e;
+            if (minNullableIndex < 0
+                && isUngroupedAggregation ? aggFunc.getAggregator().isNullable() : aggFunc.getAggregatorExpression().isNullable()) {
+              minNullableIndex = aggFuncs.size();
+            }
+            aggFuncs.add(aggFunc);
+          }
+        }
+        if (minNullableIndex < 0) {
+          minNullableIndex = aggFuncs.size();
+        }
+        final ClientAggregators clientAggregators = new ClientAggregators(aggFuncs, minNullableIndex);
+        final ResultIterator iter = new GroupedAggregatingResultIterator(
+            LookAheadResultIterator.wrap(this.result), clientAggregators);
+        this.result = new DelegateResultIterator(iter) {
+          @Override
+          public Tuple next() throws SQLException {
+              Tuple tuple = super.next();
+              if (tuple == null)
+                  return null;              
+              return tupleProjector.projectResults(tuple);
+          }
+        };
+        this.kvSchema = tupleProjector.getSchema();
+      }
       String[] columnNames = PhoenixPrel.deserializeColumnInfoFromScan(scan);
       
       ImmutableList.Builder<ValueVector> vectorBuilder = ImmutableList.builder();
