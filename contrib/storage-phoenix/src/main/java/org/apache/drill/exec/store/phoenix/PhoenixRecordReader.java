@@ -172,13 +172,23 @@ class PhoenixRecordReader extends AbstractRecordReader {
       } else {
         final TupleProjector tupleProjector = TupleProjector.deserializeProjectorFromScan(
             scan, PhoenixPrel.CLIENT_PROJECTION_ATTR);
+        boolean isUngroupedAggregation = scan.getAttribute(BaseScannerRegionObserver.UNGROUPED_AGG) != null;
         List<SingleAggregateFunction> aggFuncs = Lists.newArrayList();
+        int minNullableIndex = -1;
         for (Expression e  : tupleProjector.getExpressions()) {
           if (e instanceof SingleAggregateFunction) {
-            aggFuncs.add((SingleAggregateFunction) e);
+            SingleAggregateFunction aggFunc = (SingleAggregateFunction) e;
+            if (minNullableIndex < 0
+                && isUngroupedAggregation ? aggFunc.getAggregator().isNullable() : aggFunc.getAggregatorExpression().isNullable()) {
+              minNullableIndex = aggFuncs.size();
+            }
+            aggFuncs.add(aggFunc);
           }
         }
-        final ClientAggregators clientAggregators = new ClientAggregators(aggFuncs, 0);
+        if (minNullableIndex < 0) {
+          minNullableIndex = aggFuncs.size();
+        }
+        final ClientAggregators clientAggregators = new ClientAggregators(aggFuncs, minNullableIndex);
         final ResultIterator iter = new GroupedAggregatingResultIterator(
             LookAheadResultIterator.wrap(this.result), clientAggregators);
         this.result = new DelegateResultIterator(iter) {
