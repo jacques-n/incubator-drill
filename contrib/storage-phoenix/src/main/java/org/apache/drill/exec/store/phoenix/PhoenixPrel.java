@@ -49,10 +49,13 @@ import org.apache.hadoop.io.WritableUtils;
 import org.apache.phoenix.calcite.rel.PhoenixRel;
 import org.apache.phoenix.calcite.rel.PhoenixRel.ImplementorContext;
 import org.apache.phoenix.calcite.rel.PhoenixRelImplementorImpl;
+import org.apache.phoenix.compile.ColumnProjector;
 import org.apache.phoenix.compile.QueryPlan;
 import org.apache.phoenix.execute.RuntimeContextImpl;
 import org.apache.phoenix.execute.TupleProjectionPlan;
-import org.apache.phoenix.execute.TupleProjector;
+import org.apache.phoenix.expression.Expression;
+import org.apache.phoenix.expression.ExpressionType;
+import org.apache.phoenix.expression.RowKeyColumnExpression;
 
 import com.google.common.base.Preconditions;
 import com.google.common.collect.Lists;
@@ -63,6 +66,7 @@ import com.google.common.collect.Lists;
 public class PhoenixPrel extends AbstractRelNode implements Prel {
   public static final String CLIENT_PROJECTION_ATTR = "clientProjector";
   private static final String COLUMN_INFO_ATTR = "columnInfo";
+  private static final String ROWKEY_EXPRESSIONS_ATTR = "rowkeyExpressions";
 
   private final PhoenixRel input;
   private final double rows;
@@ -92,19 +96,30 @@ public class PhoenixPrel extends AbstractRelNode implements Prel {
   @Override
   public PhysicalOperator getPhysicalOperator(PhysicalPlanCreator creator) throws IOException {
     final PhoenixRel.Implementor phoenixImplementor = new PhoenixRelImplementorImpl(new RuntimeContextImpl());
-    phoenixImplementor.pushContext(new ImplementorContext(false, true, ImmutableIntList.identity(input.getRowType()
+    phoenixImplementor.pushContext(new ImplementorContext(true, true, ImmutableIntList.identity(input.getRowType()
         .getFieldCount())));
     QueryPlan plan = phoenixImplementor.visitInput(0, input);
     phoenixImplementor.popContext();
     
-    serializeColumnInfoIntoScan(plan.getContext().getScan(), input.getRowType());
+    List<Expression> keyExpressions = Lists.newArrayList();
     if (plan instanceof TupleProjectionPlan) {
-      final TupleProjectionPlan projectionPlan = (TupleProjectionPlan) plan;
-      final QueryPlan innerPlan = projectionPlan.getDelegate();
-      TupleProjector.serializeProjectorIntoScan(innerPlan.getContext().getScan(), 
-          projectionPlan.getTupleProjector(), CLIENT_PROJECTION_ATTR);
-      plan = innerPlan;
+      TupleProjectionPlan projectionPlan = (TupleProjectionPlan) plan;
+      for (Expression expr : projectionPlan.getTupleProjector().getExpressions()) {
+        if (expr instanceof RowKeyColumnExpression) {
+          keyExpressions.add(expr);
+        }
+      }
+      plan = projectionPlan.getDelegate();
+    } else {
+      for (ColumnProjector columnProjector : phoenixImplementor.createRowProjector().getColumnProjectors()) {
+        Expression expr = columnProjector.getExpression();
+        if (expr instanceof RowKeyColumnExpression) {
+          keyExpressions.add(expr);
+        }
+      }
     }
+    serializeKeyExpressionsIntoScan(plan.getContext().getScan(), keyExpressions.toArray(new Expression[keyExpressions.size()]));    
+    serializeColumnInfoIntoScan(plan.getContext().getScan(), input.getRowType());
 
     final String hbaseTableName = plan.getTableRef().getTable().getPhysicalName().getString();
     final String storagePluginName = getStoragePluginName();
@@ -217,6 +232,56 @@ public class PhoenixPrel extends AbstractRelNode implements Prel {
         columnNames[i] = WritableUtils.readString(input);
       }
       return columnNames;
+    } catch (IOException e) {
+      throw new RuntimeException(e);
+    } finally {
+      try {
+        stream.close();
+      } catch (IOException e) {
+        throw new RuntimeException(e);
+      }
+    }
+  }
+  
+  protected static void serializeKeyExpressionsIntoScan(Scan scan, Expression[] exprs) {
+    ByteArrayOutputStream stream = new ByteArrayOutputStream();
+    try {
+      DataOutputStream output = new DataOutputStream(stream);
+      int count = exprs.length;
+      WritableUtils.writeVInt(output, count);
+      for (int i = 0; i < count; i++) {
+        Expression expr = exprs[i];
+        WritableUtils.writeVInt(output, ExpressionType.valueOf(expr).ordinal());
+        expr.write(output);
+      }
+      scan.setAttribute(ROWKEY_EXPRESSIONS_ATTR, stream.toByteArray());
+    } catch (IOException e) {
+      throw new RuntimeException(e);
+    } finally {
+      try {
+        stream.close();
+      } catch (IOException e) {
+        throw new RuntimeException(e);
+      }
+    }    
+  }
+  
+  protected static Expression[] deserializeRowKeyExpressionsFromScan(Scan scan) {
+    byte[] info = scan.getAttribute(ROWKEY_EXPRESSIONS_ATTR);
+    if (info == null) {
+      return null;
+    }
+    ByteArrayInputStream stream = new ByteArrayInputStream(info);
+    try {
+      DataInputStream input = new DataInputStream(stream);
+      int count = WritableUtils.readVInt(input);
+      Expression[] exprs = new Expression[count];
+      for (int i = 0; i < count; i++) {
+        int ordinal = WritableUtils.readVInt(input);
+        exprs[i] = ExpressionType.values()[ordinal].newInstance();
+        exprs[i].readFields(input);
+      }
+      return exprs;
     } catch (IOException e) {
       throw new RuntimeException(e);
     } finally {
