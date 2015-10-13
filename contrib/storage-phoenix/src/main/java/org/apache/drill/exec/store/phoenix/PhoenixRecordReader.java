@@ -18,7 +18,6 @@
 package org.apache.drill.exec.store.phoenix;
 
 import java.io.IOException;
-import java.util.Arrays;
 import java.util.List;
 
 import org.apache.drill.common.exceptions.ExecutionSetupException;
@@ -52,6 +51,7 @@ import org.apache.hadoop.hbase.client.Scan;
 import org.apache.hadoop.hbase.client.Table;
 import org.apache.hadoop.hbase.io.ImmutableBytesWritable;
 import org.apache.phoenix.coprocessor.BaseScannerRegionObserver;
+import org.apache.phoenix.coprocessor.GroupedAggregateRegionObserver;
 import org.apache.phoenix.execute.TupleProjector;
 import org.apache.phoenix.expression.Expression;
 import org.apache.phoenix.expression.aggregator.ServerAggregators;
@@ -61,6 +61,7 @@ import org.apache.phoenix.monitoring.CombinableMetric;
 import org.apache.phoenix.query.QueryServicesOptions;
 import org.apache.phoenix.schema.KeyValueSchema;
 import org.apache.phoenix.schema.PDatum;
+import org.apache.phoenix.schema.RowKeySchema;
 import org.apache.phoenix.schema.SortOrder;
 import org.apache.phoenix.schema.ValueBitSet;
 import org.apache.phoenix.schema.tuple.Tuple;
@@ -69,7 +70,6 @@ import org.apache.phoenix.util.SQLCloseable;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
-import com.google.common.collect.Lists;
 
 @SuppressWarnings("unchecked")
 class PhoenixRecordReader extends AbstractRecordReader {
@@ -84,7 +84,7 @@ class PhoenixRecordReader extends AbstractRecordReader {
   private final String tableName;
 
   private ResultIterator result;
-  private Expression[] keyExpressions;
+  private RowKeySchema rowKeySchema;
   private KeyValueSchema kvSchema;
   private ImmutableList<ValueVector> vectors;
   private ImmutableList<Copier<?>> copiers;
@@ -162,13 +162,14 @@ class PhoenixRecordReader extends AbstractRecordReader {
   @Override
   public void setup(OperatorContext operatorContext, OutputMutator output) throws ExecutionSetupException {
     try {
-      Table table = connection.getTable(TableName.valueOf(tableName));
-      ResultScanner s = table.getScanner(scan);
+      final Table table = connection.getTable(TableName.valueOf(tableName));
+      final ResultScanner s = table.getScanner(scan);
       this.result = new ScanningResultIterator(s, CombinableMetric.NoOpRequestMetric.INSTANCE);
-      this.keyExpressions = PhoenixPrel.deserializeRowKeyExpressionsFromScan(scan);
       if (scan.getAttribute(BaseScannerRegionObserver.NON_AGGREGATE_QUERY) != null) {
+        this.rowKeySchema = PhoenixPrel.deserializeRowKeySchemaFromScan(scan);
         this.kvSchema = TupleProjector.deserializeProjectorFromScan(scan).getSchema();        
       } else {
+        this.rowKeySchema = buildRowKeySchemaForAggregate(scan);
         ServerAggregators aggregators =
             ServerAggregators.deserialize(
                 scan.getAttribute(BaseScannerRegionObserver.AGGREGATORS), 
@@ -176,19 +177,22 @@ class PhoenixRecordReader extends AbstractRecordReader {
         this.kvSchema = aggregators.getValueSchema();
       }
       
-      String[] columnNames = PhoenixPrel.deserializeColumnInfoFromScan(scan);
-      assert columnNames.length == this.keyExpressions.length + kvSchema.getFieldCount();
-      List<PDatum> columns = Lists.newArrayListWithExpectedSize(columnNames.length);
-      columns.addAll(Arrays.asList(this.keyExpressions));
+      final String[] columnNames = PhoenixPrel.deserializeColumnInfoFromScan(scan);
+      final int keyCount = rowKeySchema.getFieldCount();
+      assert columnNames.length == keyCount + kvSchema.getFieldCount();
+      final PDatum[] columns = new PDatum[columnNames.length];
+      for (int i = 0; i < rowKeySchema.getFieldCount(); i++) {
+        columns[i] = rowKeySchema.getField(i);
+      }
       for (int i = 0; i < kvSchema.getFieldCount(); i++) {
-        columns.add(kvSchema.getField(i));
+        columns[i + keyCount] = kvSchema.getField(i);
       }
       
       ImmutableList.Builder<ValueVector> vectorBuilder = ImmutableList.builder();
       ImmutableList.Builder<Copier<?>> copierBuilder = ImmutableList.builder();
 
-      for (int i = 0; i < columns.size(); i++) {
-        PDatum phoenixField = columns.get(i);
+      for (int i = 0; i < columns.length; i++) {
+        PDatum phoenixField = columns[i];
         final PDataType phoenixType = phoenixField.getDataType();
         MinorType minorType = JDBC_TYPE_MAPPINGS.get(phoenixType.getSqlType());
         if (minorType == null) {
@@ -221,6 +225,24 @@ class PhoenixRecordReader extends AbstractRecordReader {
           .build(logger);
     }
   }
+  
+  private RowKeySchema buildRowKeySchemaForAggregate(Scan scan) throws IOException {
+    byte[] expressionBytes = scan.getAttribute(BaseScannerRegionObserver.UNORDERED_GROUP_BY_EXPRESSIONS);
+    if (expressionBytes == null) {
+        expressionBytes = scan.getAttribute(BaseScannerRegionObserver.KEY_ORDERED_GROUP_BY_EXPRESSIONS);
+    }
+    
+    if (expressionBytes == null) {
+      return RowKeySchema.EMPTY_SCHEMA;
+    }
+    
+    List<Expression> expressions = GroupedAggregateRegionObserver.deserializeGroupByExpressions(expressionBytes, 0);
+    RowKeySchema.RowKeySchemaBuilder builder = new RowKeySchema.RowKeySchemaBuilder(expressions.size());
+    for (Expression expression : expressions) {
+        builder.addField(expression, expression.isNullable(), expression.getSortOrder());
+    }
+    return builder.build();
+  }
 
   @Override
   public int next() {
@@ -233,30 +255,43 @@ class PhoenixRecordReader extends AbstractRecordReader {
           break;
         }
         
-        for (int i = 0; i < keyExpressions.length; i++) {
-          if (keyExpressions[i].evaluate(tuple, ptr)) {
-            copiers.get(i).copy(counter);
+        final int keyCount = rowKeySchema.getFieldCount();
+        if (keyCount > 0) {
+          tuple.getKey(ptr);
+          final int maxOffset = ptr.getOffset() + ptr.getLength();
+          rowKeySchema.iterator(ptr);
+          for (int i = 0;; i++) {
+            final Boolean hasValue = rowKeySchema.next(ptr, i, maxOffset);
+            if (hasValue == null) {
+              break;
+            }
+            if (hasValue) {
+              copiers.get(i).copy(counter);
+            }
           }
         }
 
-        final Cell value = tuple.getValue(0);
-        ptr.set(value.getValueArray(),
-            value.getValueOffset(),
-            value.getValueLength());
-        valueSet.clear();
-        valueSet.or(ptr);
+        if (kvSchema.getFieldCount() > 0) {
+          final Cell value = tuple.getValue(0);
+          ptr.set(value.getValueArray(),
+              value.getValueOffset(),
+              value.getValueLength());
+          valueSet.clear();
+          valueSet.or(ptr);
 
-        final int maxOffset = ptr.getOffset() + ptr.getLength();
-        kvSchema.iterator(ptr);
-        for (int i = 0;; i++) {
-          final Boolean hasValue = kvSchema.next(ptr, i, maxOffset, valueSet);
-          if (hasValue == null) {
-            break;
-          }
-          if (hasValue) {
-            copiers.get(i + keyExpressions.length).copy(counter);
+          final int maxOffset = ptr.getOffset() + ptr.getLength();
+          kvSchema.iterator(ptr);
+          for (int i = 0;; i++) {
+            final Boolean hasValue = kvSchema.next(ptr, i, maxOffset, valueSet);
+            if (hasValue == null) {
+              break;
+            }
+            if (hasValue) {
+              copiers.get(i + keyCount).copy(counter);
+            }
           }
         }
+        
         if (++counter == 4095) {
           // loop at 4095 since nullables use one more than record count and we
           // allocate on powers of two.

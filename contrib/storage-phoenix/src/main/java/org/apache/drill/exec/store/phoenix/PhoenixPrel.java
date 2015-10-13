@@ -20,6 +20,7 @@ package org.apache.drill.exec.store.phoenix;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.DataInputStream;
+import java.io.DataOutput;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.sql.SQLException;
@@ -45,17 +46,17 @@ import org.apache.drill.exec.planner.physical.visitor.PrelVisitor;
 import org.apache.drill.exec.record.BatchSchema.SelectionVectorMode;
 import org.apache.drill.exec.store.phoenix.PhoenixGroupScan.PhoenixScans;
 import org.apache.hadoop.hbase.client.Scan;
+import org.apache.hadoop.hbase.io.ImmutableBytesWritable;
 import org.apache.hadoop.io.WritableUtils;
 import org.apache.phoenix.calcite.rel.PhoenixRel;
 import org.apache.phoenix.calcite.rel.PhoenixRel.ImplementorContext;
 import org.apache.phoenix.calcite.rel.PhoenixRelImplementorImpl;
-import org.apache.phoenix.compile.ColumnProjector;
 import org.apache.phoenix.compile.QueryPlan;
 import org.apache.phoenix.execute.RuntimeContextImpl;
-import org.apache.phoenix.execute.TupleProjectionPlan;
-import org.apache.phoenix.expression.Expression;
-import org.apache.phoenix.expression.ExpressionType;
-import org.apache.phoenix.expression.RowKeyColumnExpression;
+import org.apache.phoenix.execute.ScanPlan;
+import org.apache.phoenix.schema.RowKeySchema;
+import org.apache.phoenix.util.ByteUtil;
+import org.apache.phoenix.util.TrustedByteArrayOutputStream;
 
 import com.google.common.base.Preconditions;
 import com.google.common.collect.Lists;
@@ -66,7 +67,7 @@ import com.google.common.collect.Lists;
 public class PhoenixPrel extends AbstractRelNode implements Prel {
   public static final String CLIENT_PROJECTION_ATTR = "clientProjector";
   private static final String COLUMN_INFO_ATTR = "columnInfo";
-  private static final String ROWKEY_EXPRESSIONS_ATTR = "rowkeyExpressions";
+  private static final String ROW_KEY_SCHEMA_ATTR = "rowKeySchema";
 
   private final PhoenixRel input;
   private final double rows;
@@ -101,24 +102,9 @@ public class PhoenixPrel extends AbstractRelNode implements Prel {
     QueryPlan plan = phoenixImplementor.visitInput(0, input);
     phoenixImplementor.popContext();
     
-    List<Expression> keyExpressions = Lists.newArrayList();
-    if (plan instanceof TupleProjectionPlan) {
-      TupleProjectionPlan projectionPlan = (TupleProjectionPlan) plan;
-      for (Expression expr : projectionPlan.getTupleProjector().getExpressions()) {
-        if (expr instanceof RowKeyColumnExpression) {
-          keyExpressions.add(expr);
-        }
-      }
-      plan = projectionPlan.getDelegate();
-    } else {
-      for (ColumnProjector columnProjector : phoenixImplementor.createRowProjector().getColumnProjectors()) {
-        Expression expr = columnProjector.getExpression();
-        if (expr instanceof RowKeyColumnExpression) {
-          keyExpressions.add(expr);
-        }
-      }
+    if (plan instanceof ScanPlan) {
+      serializeRowKeySchemaIntoScan(plan.getContext().getScan(), phoenixImplementor.getTableRef().getTable().getRowKeySchema());    
     }
-    serializeKeyExpressionsIntoScan(plan.getContext().getScan(), keyExpressions.toArray(new Expression[keyExpressions.size()]));    
     serializeColumnInfoIntoScan(plan.getContext().getScan(), input.getRowType());
 
     final String hbaseTableName = plan.getTableRef().getTable().getPhysicalName().getString();
@@ -243,45 +229,33 @@ public class PhoenixPrel extends AbstractRelNode implements Prel {
     }
   }
   
-  protected static void serializeKeyExpressionsIntoScan(Scan scan, Expression[] exprs) {
-    ByteArrayOutputStream stream = new ByteArrayOutputStream();
+  protected static void serializeRowKeySchemaIntoScan(Scan scan, RowKeySchema schema) {
+    if (schema.getFieldCount() == 0) {
+      return;
+    }
+    
+    TrustedByteArrayOutputStream stream = new TrustedByteArrayOutputStream(schema.getEstimatedByteSize());
+    DataOutput output = new DataOutputStream(stream);
     try {
-      DataOutputStream output = new DataOutputStream(stream);
-      int count = exprs.length;
-      WritableUtils.writeVInt(output, count);
-      for (int i = 0; i < count; i++) {
-        Expression expr = exprs[i];
-        WritableUtils.writeVInt(output, ExpressionType.valueOf(expr).ordinal());
-        expr.write(output);
-      }
-      scan.setAttribute(ROWKEY_EXPRESSIONS_ATTR, stream.toByteArray());
+        schema.write(output);
     } catch (IOException e) {
-      throw new RuntimeException(e);
-    } finally {
-      try {
-        stream.close();
-      } catch (IOException e) {
-        throw new RuntimeException(e);
-      }
-    }    
+        throw new RuntimeException(e); // Impossible
+    }
+    scan.setAttribute(ROW_KEY_SCHEMA_ATTR, ByteUtil.copyKeyBytesIfNecessary(new ImmutableBytesWritable(stream.getBuffer(), 0, stream.size())));
   }
   
-  protected static Expression[] deserializeRowKeyExpressionsFromScan(Scan scan) {
-    byte[] info = scan.getAttribute(ROWKEY_EXPRESSIONS_ATTR);
+  protected static RowKeySchema deserializeRowKeySchemaFromScan(Scan scan) {
+    byte[] info = scan.getAttribute(ROW_KEY_SCHEMA_ATTR);
     if (info == null) {
-      return null;
+      return RowKeySchema.EMPTY_SCHEMA;
     }
+    
     ByteArrayInputStream stream = new ByteArrayInputStream(info);
     try {
       DataInputStream input = new DataInputStream(stream);
-      int count = WritableUtils.readVInt(input);
-      Expression[] exprs = new Expression[count];
-      for (int i = 0; i < count; i++) {
-        int ordinal = WritableUtils.readVInt(input);
-        exprs[i] = ExpressionType.values()[ordinal].newInstance();
-        exprs[i].readFields(input);
-      }
-      return exprs;
+      RowKeySchema schema = new RowKeySchema();
+      schema.readFields(input);
+      return schema;
     } catch (IOException e) {
       throw new RuntimeException(e);
     } finally {

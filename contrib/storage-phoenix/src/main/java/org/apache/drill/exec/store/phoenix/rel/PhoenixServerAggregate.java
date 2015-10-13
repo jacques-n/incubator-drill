@@ -17,7 +17,6 @@
  */
 package org.apache.drill.exec.store.phoenix.rel;
 
-import java.util.Arrays;
 import java.util.List;
 
 import org.apache.calcite.plan.RelOptCluster;
@@ -83,10 +82,6 @@ public class PhoenixServerAggregate extends PhoenixAbstractAggregate implements 
     GroupBy groupBy = super.getGroupBy(implementor);       
     super.serializeAggregators(implementor, context, groupBy.isEmpty());
 
-    QueryPlan aggPlan = new AggregatePlan(context, scanPlan.getStatement(), scanPlan.getTableRef(), RowProjector.EMPTY_PROJECTOR, null, OrderBy.EMPTY_ORDER_BY, null, groupBy, null, scanPlan.getDynamicFilter());
-    return PhoenixAbstractAggregate.wrapWithProject(
-        implementor, aggPlan, groupBy.getKeyExpressions(), 
-        Arrays.asList(context.getAggregationManager().getAggregators().getFunctions()));
+    return new AggregatePlan(context, scanPlan.getStatement(), scanPlan.getTableRef(), RowProjector.EMPTY_PROJECTOR, null, OrderBy.EMPTY_ORDER_BY, null, groupBy, null, scanPlan.getDynamicFilter());
   }
-
 }
