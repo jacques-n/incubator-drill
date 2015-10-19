@@ -40,6 +40,7 @@ import org.apache.drill.exec.store.AbstractStoragePlugin;
 import org.apache.drill.exec.store.SchemaConfig;
 import org.apache.drill.exec.store.phoenix.rel.PhoenixDrillRel;
 import org.apache.drill.exec.store.phoenix.rel.PhoenixHashAggPrule;
+import org.apache.drill.exec.store.phoenix.rel.PhoenixStreamAggPrule;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.HBaseConfiguration;
 import org.apache.hadoop.hbase.client.Connection;
@@ -83,6 +84,7 @@ public class PhoenixStoragePlugin extends AbstractStoragePlugin {
     builder.add(new PhoenixDrelConverterRule(PhoenixRel.SERVER_CONVENTION));
     builder.add(new PhoenixDrelConverterRule(PhoenixDrillRel.SERVER_INTERMEDIATE_CONVENTION));
     builder.add(PhoenixHashAggPrule.INSTANCE);
+    builder.add(PhoenixStreamAggPrule.INSTANCE);
     builder.add(PhoenixFilterScanMergeRule.INSTANCE);
     builder.add(PhoenixConverterRules.PhoenixServerProjectRule.CONVERTIBLE);
     RULES = builder.build();

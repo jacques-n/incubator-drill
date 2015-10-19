@@ -20,6 +20,7 @@ package org.apache.drill.exec.store.phoenix;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.DataInputStream;
+import java.io.DataOutput;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.sql.SQLException;
@@ -45,14 +46,17 @@ import org.apache.drill.exec.planner.physical.visitor.PrelVisitor;
 import org.apache.drill.exec.record.BatchSchema.SelectionVectorMode;
 import org.apache.drill.exec.store.phoenix.PhoenixGroupScan.PhoenixScans;
 import org.apache.hadoop.hbase.client.Scan;
+import org.apache.hadoop.hbase.io.ImmutableBytesWritable;
 import org.apache.hadoop.io.WritableUtils;
 import org.apache.phoenix.calcite.rel.PhoenixRel;
 import org.apache.phoenix.calcite.rel.PhoenixRel.ImplementorContext;
 import org.apache.phoenix.calcite.rel.PhoenixRelImplementorImpl;
 import org.apache.phoenix.compile.QueryPlan;
 import org.apache.phoenix.execute.RuntimeContextImpl;
-import org.apache.phoenix.execute.TupleProjectionPlan;
-import org.apache.phoenix.execute.TupleProjector;
+import org.apache.phoenix.execute.ScanPlan;
+import org.apache.phoenix.schema.RowKeySchema;
+import org.apache.phoenix.util.ByteUtil;
+import org.apache.phoenix.util.TrustedByteArrayOutputStream;
 
 import com.google.common.base.Preconditions;
 import com.google.common.collect.Lists;
@@ -63,6 +67,7 @@ import com.google.common.collect.Lists;
 public class PhoenixPrel extends AbstractRelNode implements Prel {
   public static final String CLIENT_PROJECTION_ATTR = "clientProjector";
   private static final String COLUMN_INFO_ATTR = "columnInfo";
+  private static final String ROW_KEY_SCHEMA_ATTR = "rowKeySchema";
 
   private final PhoenixRel input;
   private final double rows;
@@ -92,19 +97,15 @@ public class PhoenixPrel extends AbstractRelNode implements Prel {
   @Override
   public PhysicalOperator getPhysicalOperator(PhysicalPlanCreator creator) throws IOException {
     final PhoenixRel.Implementor phoenixImplementor = new PhoenixRelImplementorImpl(new RuntimeContextImpl());
-    phoenixImplementor.pushContext(new ImplementorContext(false, true, ImmutableIntList.identity(input.getRowType()
+    phoenixImplementor.pushContext(new ImplementorContext(true, true, ImmutableIntList.identity(input.getRowType()
         .getFieldCount())));
     QueryPlan plan = phoenixImplementor.visitInput(0, input);
     phoenixImplementor.popContext();
     
-    serializeColumnInfoIntoScan(plan.getContext().getScan(), input.getRowType());
-    if (plan instanceof TupleProjectionPlan) {
-      final TupleProjectionPlan projectionPlan = (TupleProjectionPlan) plan;
-      final QueryPlan innerPlan = projectionPlan.getDelegate();
-      TupleProjector.serializeProjectorIntoScan(innerPlan.getContext().getScan(), 
-          projectionPlan.getTupleProjector(), CLIENT_PROJECTION_ATTR);
-      plan = innerPlan;
+    if (plan instanceof ScanPlan) {
+      serializeRowKeySchemaIntoScan(plan.getContext().getScan(), phoenixImplementor.getTableRef().getTable().getRowKeySchema());    
     }
+    serializeColumnInfoIntoScan(plan.getContext().getScan(), input.getRowType());
 
     final String hbaseTableName = plan.getTableRef().getTable().getPhysicalName().getString();
     final String storagePluginName = getStoragePluginName();
@@ -217,6 +218,44 @@ public class PhoenixPrel extends AbstractRelNode implements Prel {
         columnNames[i] = WritableUtils.readString(input);
       }
       return columnNames;
+    } catch (IOException e) {
+      throw new RuntimeException(e);
+    } finally {
+      try {
+        stream.close();
+      } catch (IOException e) {
+        throw new RuntimeException(e);
+      }
+    }
+  }
+  
+  protected static void serializeRowKeySchemaIntoScan(Scan scan, RowKeySchema schema) {
+    if (schema.getFieldCount() == 0) {
+      return;
+    }
+    
+    TrustedByteArrayOutputStream stream = new TrustedByteArrayOutputStream(schema.getEstimatedByteSize());
+    DataOutput output = new DataOutputStream(stream);
+    try {
+        schema.write(output);
+    } catch (IOException e) {
+        throw new RuntimeException(e); // Impossible
+    }
+    scan.setAttribute(ROW_KEY_SCHEMA_ATTR, ByteUtil.copyKeyBytesIfNecessary(new ImmutableBytesWritable(stream.getBuffer(), 0, stream.size())));
+  }
+  
+  protected static RowKeySchema deserializeRowKeySchemaFromScan(Scan scan) {
+    byte[] info = scan.getAttribute(ROW_KEY_SCHEMA_ATTR);
+    if (info == null) {
+      return RowKeySchema.EMPTY_SCHEMA;
+    }
+    
+    ByteArrayInputStream stream = new ByteArrayInputStream(info);
+    try {
+      DataInputStream input = new DataInputStream(stream);
+      RowKeySchema schema = new RowKeySchema();
+      schema.readFields(input);
+      return schema;
     } catch (IOException e) {
       throw new RuntimeException(e);
     } finally {

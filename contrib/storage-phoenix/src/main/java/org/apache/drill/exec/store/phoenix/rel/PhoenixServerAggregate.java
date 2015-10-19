@@ -17,7 +17,6 @@
  */
 package org.apache.drill.exec.store.phoenix.rel;
 
-import java.util.Arrays;
 import java.util.List;
 
 import org.apache.calcite.plan.RelOptCluster;
@@ -36,7 +35,6 @@ import org.apache.phoenix.compile.RowProjector;
 import org.apache.phoenix.compile.StatementContext;
 import org.apache.phoenix.execute.AggregatePlan;
 import org.apache.phoenix.execute.ScanPlan;
-import org.apache.phoenix.execute.TupleProjectionPlan;
 
 public class PhoenixServerAggregate extends PhoenixAbstractAggregate implements PhoenixDrillRel {
 
@@ -72,7 +70,7 @@ public class PhoenixServerAggregate extends PhoenixAbstractAggregate implements 
 
   @Override
   public QueryPlan implement(Implementor implementor) {
-    implementor.pushContext(implementor.getCurrentContext().withColumnRefList(getColumnRefList()));
+    implementor.pushContext(new ImplementorContext(true, false, getColumnRefList()));
     QueryPlan plan = implementor.visitInput(0, (PhoenixRel) getInput());
     implementor.popContext();
 
@@ -84,9 +82,6 @@ public class PhoenixServerAggregate extends PhoenixAbstractAggregate implements 
     GroupBy groupBy = super.getGroupBy(implementor);       
     super.serializeAggregators(implementor, context, groupBy.isEmpty());
 
-    QueryPlan aggPlan = new AggregatePlan(context, scanPlan.getStatement(), scanPlan.getTableRef(), RowProjector.EMPTY_PROJECTOR, null, OrderBy.EMPTY_ORDER_BY, null, groupBy, null, scanPlan.getDynamicFilter());
-    TupleProjectionPlan wrappedPlan = (TupleProjectionPlan) PhoenixAbstractAggregate.wrapWithProject(implementor, aggPlan, groupBy.getKeyExpressions(), Arrays.asList(context.getAggregationManager().getAggregators().getFunctions()));
-    return wrappedPlan;
+    return new AggregatePlan(context, scanPlan.getStatement(), scanPlan.getTableRef(), RowProjector.EMPTY_PROJECTOR, null, OrderBy.EMPTY_ORDER_BY, null, groupBy, null, scanPlan.getDynamicFilter());
   }
-
 }

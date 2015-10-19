@@ -18,7 +18,6 @@
 package org.apache.drill.exec.store.phoenix;
 
 import java.io.IOException;
-import java.sql.SQLException;
 import java.util.List;
 
 import org.apache.drill.common.exceptions.ExecutionSetupException;
@@ -52,25 +51,23 @@ import org.apache.hadoop.hbase.client.Scan;
 import org.apache.hadoop.hbase.client.Table;
 import org.apache.hadoop.hbase.io.ImmutableBytesWritable;
 import org.apache.phoenix.coprocessor.BaseScannerRegionObserver;
+import org.apache.phoenix.coprocessor.GroupedAggregateRegionObserver;
 import org.apache.phoenix.execute.TupleProjector;
 import org.apache.phoenix.expression.Expression;
-import org.apache.phoenix.expression.aggregator.ClientAggregators;
-import org.apache.phoenix.expression.function.SingleAggregateFunction;
-import org.apache.phoenix.iterate.DelegateResultIterator;
-import org.apache.phoenix.iterate.GroupedAggregatingResultIterator;
-import org.apache.phoenix.iterate.LookAheadResultIterator;
+import org.apache.phoenix.expression.aggregator.ServerAggregators;
 import org.apache.phoenix.iterate.ResultIterator;
 import org.apache.phoenix.iterate.ScanningResultIterator;
 import org.apache.phoenix.monitoring.CombinableMetric;
+import org.apache.phoenix.query.QueryServicesOptions;
 import org.apache.phoenix.schema.KeyValueSchema;
+import org.apache.phoenix.schema.PDatum;
+import org.apache.phoenix.schema.RowKeySchema;
 import org.apache.phoenix.schema.SortOrder;
 import org.apache.phoenix.schema.ValueBitSet;
-import org.apache.phoenix.schema.ValueSchema;
 import org.apache.phoenix.schema.tuple.Tuple;
 import org.apache.phoenix.schema.types.PDataType;
 import org.apache.phoenix.util.SQLCloseable;
 
-import com.beust.jcommander.internal.Lists;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 
@@ -87,6 +84,7 @@ class PhoenixRecordReader extends AbstractRecordReader {
   private final String tableName;
 
   private ResultIterator result;
+  private RowKeySchema rowKeySchema;
   private KeyValueSchema kvSchema;
   private ImmutableList<ValueVector> vectors;
   private ImmutableList<Copier<?>> copiers;
@@ -135,27 +133,27 @@ class PhoenixRecordReader extends AbstractRecordReader {
         .build();
   }
 
-  private Copier<?> getCopier(int offset, ValueVector v) {
+  private Copier<?> getCopier(PDatum field, ValueVector v) {
     if (v instanceof NullableBigIntVector) {
-      return new BigIntCopier(offset, (NullableBigIntVector.Mutator) v.getMutator());
+      return new BigIntCopier(field, (NullableBigIntVector.Mutator) v.getMutator());
     } else if (v instanceof NullableFloat4Vector) {
-      return new Float4Copier(offset, (NullableFloat4Vector.Mutator) v.getMutator());
+      return new Float4Copier(field, (NullableFloat4Vector.Mutator) v.getMutator());
     } else if (v instanceof NullableFloat8Vector) {
-      return new Float8Copier(offset, (NullableFloat8Vector.Mutator) v.getMutator());
+      return new Float8Copier(field, (NullableFloat8Vector.Mutator) v.getMutator());
     } else if (v instanceof NullableIntVector) {
-      return new IntCopier(offset, (NullableIntVector.Mutator) v.getMutator());
+      return new IntCopier(field, (NullableIntVector.Mutator) v.getMutator());
     } else if (v instanceof NullableVarCharVector) {
-      return new VarCharCopier(offset, (NullableVarCharVector.Mutator) v.getMutator());
+      return new VarCharCopier(field, (NullableVarCharVector.Mutator) v.getMutator());
     } else if (v instanceof NullableVarBinaryVector) {
-      return new VarBinaryCopier(offset, (NullableVarBinaryVector.Mutator) v.getMutator());
+      return new VarBinaryCopier(field, (NullableVarBinaryVector.Mutator) v.getMutator());
     } else if (v instanceof NullableDateVector) {
-      return new DateCopier(offset, (NullableDateVector.Mutator) v.getMutator());
+      return new DateCopier(field, (NullableDateVector.Mutator) v.getMutator());
     } else if (v instanceof NullableTimeVector) {
-      return new TimeCopier(offset, (NullableTimeVector.Mutator) v.getMutator());
+      return new TimeCopier(field, (NullableTimeVector.Mutator) v.getMutator());
     } else if (v instanceof NullableTimeStampVector) {
-      return new TimeStampCopier(offset, (NullableTimeStampVector.Mutator) v.getMutator());
+      return new TimeStampCopier(field, (NullableTimeStampVector.Mutator) v.getMutator());
     } else if (v instanceof NullableBitVector) {
-      return new BitCopier(offset, (NullableBitVector.Mutator) v.getMutator());
+      return new BitCopier(field, (NullableBitVector.Mutator) v.getMutator());
     }
 
     throw new IllegalArgumentException("Unknown how to handle vector.");
@@ -164,51 +162,37 @@ class PhoenixRecordReader extends AbstractRecordReader {
   @Override
   public void setup(OperatorContext operatorContext, OutputMutator output) throws ExecutionSetupException {
     try {
-      Table table = connection.getTable(TableName.valueOf(tableName));
-      ResultScanner s = table.getScanner(scan);
+      final Table table = connection.getTable(TableName.valueOf(tableName));
+      final ResultScanner s = table.getScanner(scan);
       this.result = new ScanningResultIterator(s, CombinableMetric.NoOpRequestMetric.INSTANCE);
       if (scan.getAttribute(BaseScannerRegionObserver.NON_AGGREGATE_QUERY) != null) {
+        this.rowKeySchema = PhoenixPrel.deserializeRowKeySchemaFromScan(scan);
         this.kvSchema = TupleProjector.deserializeProjectorFromScan(scan).getSchema();        
       } else {
-        final TupleProjector tupleProjector = TupleProjector.deserializeProjectorFromScan(
-            scan, PhoenixPrel.CLIENT_PROJECTION_ATTR);
-        boolean isUngroupedAggregation = scan.getAttribute(BaseScannerRegionObserver.UNGROUPED_AGG) != null;
-        List<SingleAggregateFunction> aggFuncs = Lists.newArrayList();
-        int minNullableIndex = -1;
-        for (Expression e  : tupleProjector.getExpressions()) {
-          if (e instanceof SingleAggregateFunction) {
-            SingleAggregateFunction aggFunc = (SingleAggregateFunction) e;
-            if (minNullableIndex < 0
-                && isUngroupedAggregation ? aggFunc.getAggregator().isNullable() : aggFunc.getAggregatorExpression().isNullable()) {
-              minNullableIndex = aggFuncs.size();
-            }
-            aggFuncs.add(aggFunc);
-          }
-        }
-        if (minNullableIndex < 0) {
-          minNullableIndex = aggFuncs.size();
-        }
-        final ClientAggregators clientAggregators = new ClientAggregators(aggFuncs, minNullableIndex);
-        final ResultIterator iter = new GroupedAggregatingResultIterator(
-            LookAheadResultIterator.wrap(this.result), clientAggregators);
-        this.result = new DelegateResultIterator(iter) {
-          @Override
-          public Tuple next() throws SQLException {
-              Tuple tuple = super.next();
-              if (tuple == null)
-                  return null;              
-              return tupleProjector.projectResults(tuple);
-          }
-        };
-        this.kvSchema = tupleProjector.getSchema();
+        this.rowKeySchema = buildRowKeySchemaForAggregate(scan);
+        ServerAggregators aggregators =
+            ServerAggregators.deserialize(
+                scan.getAttribute(BaseScannerRegionObserver.AGGREGATORS), 
+                QueryServicesOptions.withDefaults().getConfiguration());
+        this.kvSchema = aggregators.getValueSchema();
       }
-      String[] columnNames = PhoenixPrel.deserializeColumnInfoFromScan(scan);
+      
+      final String[] columnNames = PhoenixPrel.deserializeColumnInfoFromScan(scan);
+      final int keyCount = rowKeySchema.getFieldCount();
+      assert columnNames.length == keyCount + kvSchema.getFieldCount();
+      final PDatum[] columns = new PDatum[columnNames.length];
+      for (int i = 0; i < rowKeySchema.getFieldCount(); i++) {
+        columns[i] = rowKeySchema.getField(i);
+      }
+      for (int i = 0; i < kvSchema.getFieldCount(); i++) {
+        columns[i + keyCount] = kvSchema.getField(i);
+      }
       
       ImmutableList.Builder<ValueVector> vectorBuilder = ImmutableList.builder();
       ImmutableList.Builder<Copier<?>> copierBuilder = ImmutableList.builder();
 
-      for (int i = 0; i < kvSchema.getFieldCount(); i++) {
-        ValueSchema.Field phoenixField = kvSchema.getField(i);
+      for (int i = 0; i < columns.length; i++) {
+        PDatum phoenixField = columns[i];
         final PDataType phoenixType = phoenixField.getDataType();
         MinorType minorType = JDBC_TYPE_MAPPINGS.get(phoenixType.getSqlType());
         if (minorType == null) {
@@ -227,7 +211,7 @@ class PhoenixRecordReader extends AbstractRecordReader {
             minorType, type.getMode());
         ValueVector vector = output.addField(field, clazz);
         vectorBuilder.add(vector);
-        copierBuilder.add(getCopier(i, vector));
+        copierBuilder.add(getCopier(phoenixField, vector));
       }
 
       vectors = vectorBuilder.build();
@@ -241,6 +225,24 @@ class PhoenixRecordReader extends AbstractRecordReader {
           .build(logger);
     }
   }
+  
+  private RowKeySchema buildRowKeySchemaForAggregate(Scan scan) throws IOException {
+    byte[] expressionBytes = scan.getAttribute(BaseScannerRegionObserver.UNORDERED_GROUP_BY_EXPRESSIONS);
+    if (expressionBytes == null) {
+        expressionBytes = scan.getAttribute(BaseScannerRegionObserver.KEY_ORDERED_GROUP_BY_EXPRESSIONS);
+    }
+    
+    if (expressionBytes == null) {
+      return RowKeySchema.EMPTY_SCHEMA;
+    }
+    
+    List<Expression> expressions = GroupedAggregateRegionObserver.deserializeGroupByExpressions(expressionBytes, 0);
+    RowKeySchema.RowKeySchemaBuilder builder = new RowKeySchema.RowKeySchemaBuilder(expressions.size());
+    for (Expression expression : expressions) {
+        builder.addField(expression, expression.isNullable(), expression.getSortOrder());
+    }
+    return builder.build();
+  }
 
   @Override
   public int next() {
@@ -252,26 +254,44 @@ class PhoenixRecordReader extends AbstractRecordReader {
         if (tuple == null) {
           break;
         }
-
-        final Cell value = tuple.getValue(0);
-        ptr.set(value.getValueArray(),
-            value.getValueOffset(),
-            value.getValueLength());
-        valueSet.clear();
-        valueSet.or(ptr);
-
-        final int maxOffset = ptr.getOffset() + ptr.getLength();
-        kvSchema.iterator(ptr);
-        for (int i = 0;; i++) {
-          final Boolean hasValue = kvSchema.next(ptr, i, maxOffset, valueSet);
-          if (hasValue == null) {
-            break;
-          }
-          final Copier<?> copier = copiers.get(i);
-          if (hasValue) {
-            copier.copy(counter);
+        
+        final int keyCount = rowKeySchema.getFieldCount();
+        if (keyCount > 0) {
+          tuple.getKey(ptr);
+          final int maxOffset = ptr.getOffset() + ptr.getLength();
+          rowKeySchema.iterator(ptr);
+          for (int i = 0;; i++) {
+            final Boolean hasValue = rowKeySchema.next(ptr, i, maxOffset);
+            if (hasValue == null) {
+              break;
+            }
+            if (hasValue) {
+              copiers.get(i).copy(counter);
+            }
           }
         }
+
+        if (kvSchema.getFieldCount() > 0) {
+          final Cell value = tuple.getValue(0);
+          ptr.set(value.getValueArray(),
+              value.getValueOffset(),
+              value.getValueLength());
+          valueSet.clear();
+          valueSet.or(ptr);
+
+          final int maxOffset = ptr.getOffset() + ptr.getLength();
+          kvSchema.iterator(ptr);
+          for (int i = 0;; i++) {
+            final Boolean hasValue = kvSchema.next(ptr, i, maxOffset, valueSet);
+            if (hasValue == null) {
+              break;
+            }
+            if (hasValue) {
+              copiers.get(i + keyCount).copy(counter);
+            }
+          }
+        }
+        
         if (++counter == 4095) {
           // loop at 4095 since nullables use one more than record count and we
           // allocate on powers of two.
@@ -313,15 +333,12 @@ class PhoenixRecordReader extends AbstractRecordReader {
   }
 
   private abstract class Copier<T extends ValueVector.Mutator> {
-    protected final int columnIndex;
     protected final PDataType.PDataCodec codec;
     protected final SortOrder sortOrder;
     protected final T mutator;
 
-    public Copier(int columnIndex, T mutator) {
+    public Copier(PDatum field, T mutator) {
       super();
-      this.columnIndex = columnIndex;
-      final ValueSchema.Field field = kvSchema.getField(columnIndex);
       this.codec = field.getDataType().getCodec();
       this.mutator = mutator;
       this.sortOrder = field.getSortOrder();
@@ -331,8 +348,8 @@ class PhoenixRecordReader extends AbstractRecordReader {
   }
 
   private class IntCopier extends Copier<NullableIntVector.Mutator> {
-    public IntCopier(int offset, NullableIntVector.Mutator mutator) {
-      super(offset, mutator);
+    public IntCopier(PDatum field, NullableIntVector.Mutator mutator) {
+      super(field, mutator);
     }
 
     @Override
@@ -342,8 +359,8 @@ class PhoenixRecordReader extends AbstractRecordReader {
   }
 
   private class BigIntCopier extends Copier<NullableBigIntVector.Mutator> {
-    public BigIntCopier(int offset, NullableBigIntVector.Mutator mutator) {
-      super(offset, mutator);
+    public BigIntCopier(PDatum field, NullableBigIntVector.Mutator mutator) {
+      super(field, mutator);
     }
 
     @Override
@@ -355,8 +372,8 @@ class PhoenixRecordReader extends AbstractRecordReader {
 
   private class Float4Copier extends Copier<NullableFloat4Vector.Mutator> {
 
-    public Float4Copier(int columnIndex, NullableFloat4Vector.Mutator mutator) {
-      super(columnIndex, mutator);
+    public Float4Copier(PDatum field, NullableFloat4Vector.Mutator mutator) {
+      super(field, mutator);
     }
 
     @Override
@@ -368,8 +385,8 @@ class PhoenixRecordReader extends AbstractRecordReader {
 
   private class Float8Copier extends Copier<NullableFloat8Vector.Mutator> {
 
-    public Float8Copier(int columnIndex, NullableFloat8Vector.Mutator mutator) {
-      super(columnIndex, mutator);
+    public Float8Copier(PDatum field, NullableFloat8Vector.Mutator mutator) {
+      super(field, mutator);
     }
 
     @Override
@@ -381,8 +398,8 @@ class PhoenixRecordReader extends AbstractRecordReader {
 
   private class VarCharCopier extends Copier<NullableVarCharVector.Mutator> {
 
-    public VarCharCopier(int columnIndex, NullableVarCharVector.Mutator mutator) {
-      super(columnIndex, mutator);
+    public VarCharCopier(PDatum field, NullableVarCharVector.Mutator mutator) {
+      super(field, mutator);
     }
 
     @Override
@@ -394,8 +411,8 @@ class PhoenixRecordReader extends AbstractRecordReader {
 
   private class VarBinaryCopier extends Copier<NullableVarBinaryVector.Mutator> {
 
-    public VarBinaryCopier(int columnIndex, NullableVarBinaryVector.Mutator mutator) {
-      super(columnIndex, mutator);
+    public VarBinaryCopier(PDatum field, NullableVarBinaryVector.Mutator mutator) {
+      super(field, mutator);
     }
 
     @Override
@@ -407,8 +424,8 @@ class PhoenixRecordReader extends AbstractRecordReader {
 
   private class DateCopier extends Copier<NullableDateVector.Mutator> {
 
-    public DateCopier(int columnIndex, NullableDateVector.Mutator mutator) {
-      super(columnIndex, mutator);
+    public DateCopier(PDatum field, NullableDateVector.Mutator mutator) {
+      super(field, mutator);
     }
 
     @Override
@@ -420,8 +437,8 @@ class PhoenixRecordReader extends AbstractRecordReader {
 
   private class TimeCopier extends Copier<NullableTimeVector.Mutator> {
 
-    public TimeCopier(int columnIndex, NullableTimeVector.Mutator mutator) {
-      super(columnIndex, mutator);
+    public TimeCopier(PDatum field, NullableTimeVector.Mutator mutator) {
+      super(field, mutator);
     }
 
     @Override
@@ -433,8 +450,8 @@ class PhoenixRecordReader extends AbstractRecordReader {
 
   private class TimeStampCopier extends Copier<NullableTimeStampVector.Mutator> {
 
-    public TimeStampCopier(int columnIndex, NullableTimeStampVector.Mutator mutator) {
-      super(columnIndex, mutator);
+    public TimeStampCopier(PDatum field, NullableTimeStampVector.Mutator mutator) {
+      super(field, mutator);
     }
 
     @Override
@@ -446,8 +463,8 @@ class PhoenixRecordReader extends AbstractRecordReader {
 
   private class BitCopier extends Copier<NullableBitVector.Mutator> {
 
-    public BitCopier(int columnIndex, NullableBitVector.Mutator mutator) {
-      super(columnIndex, mutator);
+    public BitCopier(PDatum field, NullableBitVector.Mutator mutator) {
+      super(field, mutator);
     }
 
     @Override
