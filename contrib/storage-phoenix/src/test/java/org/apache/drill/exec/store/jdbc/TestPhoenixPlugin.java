@@ -32,12 +32,17 @@ public class TestPhoenixPlugin extends PlanTestBase {
     // BaseHBaseManagedTimeIT.doTeardown();
   }
 
-
   @Test
   public void firstTest() throws Exception {
     test("explain plan for select * from PHOENIX.A.BEER where e1 >= 1");
     test("select * from PHOENIX.A.BEER where e1 >= 1");
-    test("explain plan for select e1, count(*) from PHOENIX.A.BEER where e1 >= 1 group by e1");
-    test("select e1, count(*) from PHOENIX.A.BEER where e1 >= 1 group by e1");
+    test("explain plan for select b from PHOENIX.A.BEER where e1 >= 1");
+    test("select b from PHOENIX.A.BEER where e1 >= 1");
+    test("explain plan for select count(b) from PHOENIX.A.BEER");
+    test("select count(b) from PHOENIX.A.BEER");
+    test("explain plan for select e1, count(*) from PHOENIX.A.BEER group by e1");
+    test("select e2, count(*) from PHOENIX.A.BEER group by e2");
+    test("explain plan for select e1, e2, count(b) from PHOENIX.A.BEER group by e1, e2");
+    test("select e1, e2, count(b) from PHOENIX.A.BEER group by e1, e2");
   }
 }

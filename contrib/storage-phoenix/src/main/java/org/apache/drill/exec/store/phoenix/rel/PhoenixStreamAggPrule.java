@@ -22,15 +22,15 @@ import org.apache.calcite.plan.RelOptRuleCall;
 import org.apache.calcite.rel.RelNode;
 import org.apache.calcite.rel.core.Aggregate;
 import org.apache.drill.exec.planner.logical.DrillRel;
-import org.apache.drill.exec.planner.physical.HashAggPrel;
 import org.apache.drill.exec.planner.physical.Prel;
+import org.apache.drill.exec.planner.physical.StreamAggPrel;
 import org.apache.drill.exec.store.phoenix.PhoenixIntermediatePrel;
 import org.apache.phoenix.calcite.rel.PhoenixRel;
 import org.apache.phoenix.calcite.rules.PhoenixConverterRules;
 
 import com.google.common.base.Predicate;
 
-public class PhoenixHashAggPrule extends RelOptRule {
+public class PhoenixStreamAggPrule extends RelOptRule {
 
   /** Predicate that returns true if a filter is Phoenix implementable. */
   private static Predicate<Aggregate> IS_CONVERTIBLE = 
@@ -41,17 +41,17 @@ public class PhoenixHashAggPrule extends RelOptRule {
     }            
   };
   
-  public static final PhoenixHashAggPrule INSTANCE = new PhoenixHashAggPrule();
+  public static final PhoenixStreamAggPrule INSTANCE = new PhoenixStreamAggPrule();
 
-  public PhoenixHashAggPrule() {
+  public PhoenixStreamAggPrule() {
     super(
-        operand(HashAggPrel.class, null, IS_CONVERTIBLE,
+        operand(StreamAggPrel.class, null, IS_CONVERTIBLE,
                 operand(PhoenixIntermediatePrel.class, any())));
   }
 
   @Override
   public void onMatch(RelOptRuleCall call) {
-    HashAggPrel hashAgg = (HashAggPrel) call.rel(0);
+    StreamAggPrel hashAgg = (StreamAggPrel) call.rel(0);
     PhoenixIntermediatePrel phoenixPrel = (PhoenixIntermediatePrel) call.rel(1);
     RelNode child = phoenixPrel.getInput();
     if (child.getConvention() != PhoenixRel.SERVER_CONVENTION)
