@@ -6,5 +6,42 @@
       driver:"org.apache.derby.jdbc.ClientDriver",
       url:"jdbc:derby://localhost:20000/memory:testDB;"
     }
+    ,
+    
+    oracle: {
+      type: "jdbc",
+      enabled: true,
+      driver: "oracle.jdbc.OracleDriver",
+      url:"jdbc:oracle:thin:root/<password>@172.31.43.72:1521/ORCL"
+    }
+    ,
+    mssql: {
+      type: "jdbc",
+      enabled: true,
+      driver: "com.microsoft.sqlserver.jdbc.SQLServerDriver",
+      url:"jdbc:sqlserver://172.31.36.88:1433;databaseName=msdb",
+      username:"root",
+      password:"<password>"
+    }
+    ,
+    mysql: {
+      type: "jdbc",
+      enabled: true,
+      driver: "com.mysql.jdbc.Driver",
+      url:"jdbc:mysql://172.31.3.46",
+      username:"root",
+      password:"<password>"
+    }
+    ,
+    customers: {
+      type: "jdbc",
+      enabled: true,
+      driver: "org.postgresql.Driver",
+      url:"jdbc:postgresql://172.31.0.147/example",
+      username:"root",
+      password:"<password>"
+    }    
+    
+    
   }
 }

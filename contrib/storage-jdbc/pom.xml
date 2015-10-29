@@ -69,7 +69,29 @@
       <artifactId>derbynet</artifactId>
       <version>10.11.1.1</version>
       <scope>test</scope>
+    </dependency>
+
+    <dependency>
+      <groupId>com.oracle</groupId>
+      <artifactId>ojdbc7</artifactId>
+      <version>12.1.0.2</version>
+    </dependency>
+    <dependency>
+      <groupId>postgresql</groupId>
+      <artifactId>postgresql</artifactId>
+      <version>9.1-901-1.jdbc4</version>
+    </dependency>
+    <dependency>
+      <groupId>com.microsoft</groupId>
+      <artifactId>sqljdbc41</artifactId>
+      <version>4.2.6420.100</version>
+    </dependency>
+    <dependency>
+      <groupId>com.oracle</groupId>
+      <artifactId>mysql.jdbc</artifactId>
+      <version>5.1.37</version>
     </dependency>    
+
   </dependencies>
 
   
