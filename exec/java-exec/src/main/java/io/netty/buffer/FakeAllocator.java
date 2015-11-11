@@ -18,10 +18,10 @@
 package io.netty.buffer;
 
 import org.apache.drill.exec.memory.Accountor;
+import org.apache.drill.exec.memory.AllocationReservation;
+import org.apache.drill.exec.memory.AllocatorOwner;
 import org.apache.drill.exec.memory.BufferAllocator;
-import org.apache.drill.exec.memory.OutOfMemoryException;
 import org.apache.drill.exec.ops.FragmentContext;
-import org.apache.drill.exec.proto.ExecProtos.FragmentHandle;
 import org.apache.drill.exec.util.Pointer;
 
 class FakeAllocator implements BufferAllocator {
@@ -48,8 +48,7 @@ class FakeAllocator implements BufferAllocator {
 
   @Override
   public BufferAllocator getChildAllocator(FragmentContext context, long initialReservation, long maximumReservation,
-                                           boolean applyFragmentLimit)
-      throws OutOfMemoryException {
+      boolean applyFragmentLimit) {
     throw new UnsupportedOperationException();
   }
 
@@ -60,16 +59,6 @@ class FakeAllocator implements BufferAllocator {
 
   @Override
   public boolean takeOwnership(DrillBuf buf) {
-    throw new UnsupportedOperationException();
-  }
-
-  @Override
-  public PreAllocator getNewPreAllocator() {
-    throw new UnsupportedOperationException();
-  }
-
-  @Override
-  public void resetFragmentLimits() {
     throw new UnsupportedOperationException();
   }
 
@@ -152,13 +141,26 @@ class FakeAllocator implements BufferAllocator {
     public void close() {
 
     }
-
-
   }
 
   @Override
-  public boolean takeOwnership(DrillBuf buf, Pointer<DrillBuf> bufOut) {
+  public BufferAllocator newChildAllocator(AllocatorOwner allocatorOwner,
+      long initReservation, long maxAllocation, int flags) {
     throw new UnsupportedOperationException();
   }
 
+  @Override
+  public boolean shareOwnership(DrillBuf buf, Pointer<DrillBuf> bufOut) {
+    throw new UnsupportedOperationException();
+  }
+
+  @Override
+  public int getId() {
+    throw new UnsupportedOperationException();
+  }
+
+  @Override
+  public AllocationReservation newReservation() {
+    throw new UnsupportedOperationException();
+  }
 }

@@ -22,8 +22,8 @@ import io.netty.buffer.DrillBuf;
 import java.util.List;
 
 import org.apache.drill.exec.exception.SchemaChangeException;
+import org.apache.drill.exec.memory.AllocationReservation;
 import org.apache.drill.exec.memory.BufferAllocator;
-import org.apache.drill.exec.memory.BufferAllocator.PreAllocator;
 import org.apache.drill.exec.physical.impl.sort.RecordBatchData;
 import org.apache.drill.exec.record.BatchSchema;
 import org.apache.drill.exec.record.MaterializedField;
@@ -42,14 +42,13 @@ public class MergeJoinBatchBuilder implements AutoCloseable {
   private int runningBytes;
   private int runningBatches;
   private int recordCount;
-  private PreAllocator svAllocator;
-  private boolean svAllocatorUsed = false;
+  private AllocationReservation svAllocator;
   private JoinStatus status;
 
   public MergeJoinBatchBuilder(BufferAllocator allocator, JoinStatus status) {
     this.container = new VectorContainer();
     this.status = status;
-    this.svAllocator = allocator.getNewPreAllocator();
+    this.svAllocator = allocator.newReservation();
   }
 
   public boolean add(RecordBatch batch) {
@@ -68,7 +67,7 @@ public class MergeJoinBatchBuilder implements AutoCloseable {
     if (runningBatches++ >= Character.MAX_VALUE) {
       return false;     // allowed in batch.
     }
-    if (!svAllocator.preAllocate(batch.getRecordCount()*4)) {
+    if (!svAllocator.add(batch.getRecordCount() * 4)) {
       return false;     // sv allocation available.
     }
 
@@ -93,8 +92,7 @@ public class MergeJoinBatchBuilder implements AutoCloseable {
     if (queuedRightBatches.size() > Character.MAX_VALUE) {
       throw new SchemaChangeException("Join cannot work on more than %d batches at a time.", (int) Character.MAX_VALUE);
     }
-    final DrillBuf drillBuf = svAllocator.getAllocation();
-    svAllocatorUsed = true;
+    final DrillBuf drillBuf = svAllocator.buffer();
     status.sv4 = new SelectionVector4(drillBuf, recordCount, Character.MAX_VALUE);
     BatchSchema schema = queuedRightBatches.keySet().iterator().next();
     List<RecordBatchData> data = queuedRightBatches.get(schema);
@@ -147,11 +145,6 @@ public class MergeJoinBatchBuilder implements AutoCloseable {
 
   @Override
   public void close() {
-    if (!svAllocatorUsed) {
-      final DrillBuf drillBuf = svAllocator.getAllocation();
-      if (drillBuf != null) {
-        drillBuf.release();
-      }
-    }
+    svAllocator.close();
   }
 }

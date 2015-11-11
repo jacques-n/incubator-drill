@@ -407,7 +407,7 @@ public class Foreman implements Runnable {
     setupRootFragment(rootPlanFragment, work.getRootOperator());
 
     setupNonRootFragments(planFragments);
-    drillbitContext.getAllocator().resetFragmentLimits(); // TODO a global effect for this query?!?
+    drillbitContext.getAllocator();
 
     moveToState(QueryState.RUNNING, null);
     logger.debug("Fragments running.");

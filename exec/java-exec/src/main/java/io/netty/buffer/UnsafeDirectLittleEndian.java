@@ -21,18 +21,56 @@ package io.netty.buffer;
 import io.netty.util.internal.PlatformDependent;
 
 import java.nio.ByteOrder;
+import java.util.IdentityHashMap;
+import java.util.LinkedList;
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicLong;
 
+import org.apache.drill.common.StackTrace;
 import org.apache.drill.exec.util.AssertionUtil;
+import org.slf4j.Logger;
 
 public final class UnsafeDirectLittleEndian extends WrappedByteBuf {
     private static final boolean NATIVE_ORDER = ByteOrder.nativeOrder() == ByteOrder.LITTLE_ENDIAN;
   private final AbstractByteBuf wrapped;
   private final long memoryAddress;
+  private static final boolean TRACK_BUFFERS = false;
   private AtomicLong bufferCount;
   private AtomicLong bufferSize;
   private long initCap = -1;
 
+  private final static IdentityHashMap<UnsafeDirectLittleEndian, StackTrace> bufferMap =
+      TRACK_BUFFERS ? new IdentityHashMap<UnsafeDirectLittleEndian, StackTrace>()
+      : null;
+
+
+
+  public static int getBufferCount() {
+    return bufferMap.size();
+  }
+
+  public static void releaseBuffers() {
+    synchronized(bufferMap) {
+      final Set<UnsafeDirectLittleEndian> bufferSet = bufferMap.keySet();
+      final LinkedList<UnsafeDirectLittleEndian> bufferList = new LinkedList<>(bufferSet);
+      while(!bufferList.isEmpty()) {
+        final UnsafeDirectLittleEndian udle = bufferList.removeFirst();
+        udle.release(udle.refCnt());
+      }
+    }
+  }
+
+  public static void logBuffers(final Logger logger) {
+    synchronized (bufferMap) {
+      int count = 0;
+      final Set<UnsafeDirectLittleEndian> bufferSet = bufferMap.keySet();
+      for (final UnsafeDirectLittleEndian udle : bufferSet) {
+        final StackTrace stackTrace = bufferMap.get(udle);
+        ++count;
+        logger.debug("#" + count + " active buffer allocated at\n" + stackTrace);
+      }
+    }
+  }
   UnsafeDirectLittleEndian(LargeBuffer buf) {
     this(buf, true);
   }
@@ -52,7 +90,7 @@ public final class UnsafeDirectLittleEndian extends WrappedByteBuf {
       throw new IllegalStateException("Drill only runs on LittleEndian systems.");
     }
     wrapped = buf;
-    this.memoryAddress = buf.memoryAddress();
+    memoryAddress = buf.memoryAddress();
   }
     private long addr(int index) {
         return memoryAddress + index;
@@ -236,12 +274,24 @@ public final class UnsafeDirectLittleEndian extends WrappedByteBuf {
   @Override
   public boolean release(int decrement) {
     boolean released = super.release(decrement);
-    if (released && initCap != -1) {
-      bufferCount.decrementAndGet();
-      bufferSize.addAndGet(-initCap);
-    }
-    return released;
-  }
+    if (TRACK_BUFFERS) {
+      if (released) {
+        final Object object;
+        synchronized (bufferMap) {
+          object = bufferMap.remove(this);
+        }
+        if (object == null) {
+          throw new IllegalStateException("no such buffer");
+        }
 
+        if (initCap != -1) {
+          bufferCount.decrementAndGet();
+          bufferSize.addAndGet(-initCap);
+        }
+      }
+    }
+
+    return released;
+    }
 
 }
