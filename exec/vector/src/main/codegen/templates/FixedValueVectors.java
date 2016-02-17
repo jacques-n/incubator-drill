@@ -111,7 +111,7 @@ public final class ${minor.class}Vector extends BaseDataValueVector implements F
 
     try{
       allocateBytes(curAllocationSize);
-    } catch (DrillRuntimeException ex) {
+    } catch (RuntimeException ex) {
       return false;
     }
     return true;
@@ -181,22 +181,22 @@ public final class ${minor.class}Vector extends BaseDataValueVector implements F
     data.setZero(0, data.capacity());
   }
 
-  @Override
-  public void load(SerializedField metadata, DrillBuf buffer) {
-    Preconditions.checkArgument(this.field.getPath().equals(metadata.getNamePart().getName()), "The field %s doesn't match the provided metadata %s.", this.field, metadata);
-    final int actualLength = metadata.getBufferLength();
-    final int valueCount = metadata.getValueCount();
-    final int expectedLength = valueCount * ${type.width};
-    assert actualLength == expectedLength : String.format("Expected to load %d bytes but actually loaded %d bytes", expectedLength, actualLength);
-
-    clear();
-    if (data != null) {
-      data.release(1);
-    }
-    data = buffer.slice(0, actualLength);
-    data.retain(1);
-    data.writerIndex(actualLength);
-    }
+//  @Override
+//  public void load(SerializedField metadata, DrillBuf buffer) {
+//    Preconditions.checkArgument(this.field.getPath().equals(metadata.getNamePart().getName()), "The field %s doesn't match the provided metadata %s.", this.field, metadata);
+//    final int actualLength = metadata.getBufferLength();
+//    final int valueCount = metadata.getValueCount();
+//    final int expectedLength = valueCount * ${type.width};
+//    assert actualLength == expectedLength : String.format("Expected to load %d bytes but actually loaded %d bytes", expectedLength, actualLength);
+//
+//    clear();
+//    if (data != null) {
+//      data.release(1);
+//    }
+//    data = buffer.slice(0, actualLength);
+//    data.retain(1);
+//    data.writerIndex(actualLength);
+//    }
 
   public TransferPair getTransferPair(BufferAllocator allocator){
     return new TransferImpl(getField(), allocator);

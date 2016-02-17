@@ -29,6 +29,9 @@ import org.apache.drill.exec.expr.BasicTypeHelper;
 import org.apache.drill.exec.memory.BufferAllocator;
 import org.apache.drill.exec.proto.UserBitShared;
 import org.apache.drill.exec.record.MaterializedField;
+import org.apache.drill.exec.types.Types.DataMode;
+import org.apache.drill.exec.types.Types.MajorType;
+import org.apache.drill.exec.types.Types.MinorType;
 import org.apache.drill.exec.vector.AddOrGetResult;
 import org.apache.drill.exec.vector.BaseValueVector;
 import org.apache.drill.exec.vector.UInt4Vector;
@@ -46,7 +49,7 @@ public abstract class BaseRepeatedValueVector extends BaseValueVector implements
   public final static String DATA_VECTOR_NAME = "$data$";
 
   public final static MaterializedField OFFSETS_FIELD =
-      MaterializedField.create(OFFSETS_VECTOR_NAME, Types.required(TypeProtos.MinorType.UINT4));
+    MaterializedField.create(OFFSETS_VECTOR_NAME, new MajorType(MinorType.UINT4, DataMode.REQUIRED));
 
   protected final UInt4Vector offsets;
   protected ValueVector vector;
@@ -109,12 +112,12 @@ public abstract class BaseRepeatedValueVector extends BaseValueVector implements
     return Math.min(vector.getValueCapacity(), offsetValueCapacity);
   }
 
-  @Override
-  protected UserBitShared.SerializedField.Builder getMetadataBuilder() {
-    return super.getMetadataBuilder()
-        .addChild(offsets.getMetadata())
-        .addChild(vector.getMetadata());
-  }
+//  @Override
+//  protected UserBitShared.SerializedField.Builder getMetadataBuilder() {
+//    return super.getMetadataBuilder()
+//        .addChild(offsets.getMetadata())
+//        .addChild(vector.getMetadata());
+//  }
 
   @Override
   public int getBufferSize() {
@@ -157,20 +160,20 @@ public abstract class BaseRepeatedValueVector extends BaseValueVector implements
     return buffers;
   }
 
-  @Override
-  public void load(UserBitShared.SerializedField metadata, DrillBuf buffer) {
-    final UserBitShared.SerializedField offsetMetadata = metadata.getChild(0);
-    offsets.load(offsetMetadata, buffer);
-
-    final UserBitShared.SerializedField vectorMetadata = metadata.getChild(1);
-    if (getDataVector() == DEFAULT_DATA_VECTOR) {
-      addOrGetVector(VectorDescriptor.create(vectorMetadata.getMajorType()));
-    }
-
-    final int offsetLength = offsetMetadata.getBufferLength();
-    final int vectorLength = vectorMetadata.getBufferLength();
-    vector.load(vectorMetadata, buffer.slice(offsetLength, vectorLength));
-  }
+//  @Override
+//  public void load(UserBitShared.SerializedField metadata, DrillBuf buffer) {
+//    final UserBitShared.SerializedField offsetMetadata = metadata.getChild(0);
+//    offsets.load(offsetMetadata, buffer);
+//
+//    final UserBitShared.SerializedField vectorMetadata = metadata.getChild(1);
+//    if (getDataVector() == DEFAULT_DATA_VECTOR) {
+//      addOrGetVector(VectorDescriptor.create(vectorMetadata.getMajorType()));
+//    }
+//
+//    final int offsetLength = offsetMetadata.getBufferLength();
+//    final int vectorLength = vectorMetadata.getBufferLength();
+//    vector.load(vectorMetadata, buffer.slice(offsetLength, vectorLength));
+//  }
 
   /**
    * Returns 1 if inner vector is explicitly set via #addOrGetVector else 0
@@ -185,7 +188,7 @@ public abstract class BaseRepeatedValueVector extends BaseValueVector implements
   @Override
   public <T extends ValueVector> AddOrGetResult<T> addOrGetVector(VectorDescriptor descriptor) {
     boolean created = false;
-    if (vector == DEFAULT_DATA_VECTOR && descriptor.getType().getMinorType() != TypeProtos.MinorType.LATE) {
+    if (vector == DEFAULT_DATA_VECTOR && descriptor.getType().getMinorType() != MinorType.LATE) {
       final MaterializedField field = descriptor.withName(DATA_VECTOR_NAME).getField();
       vector = BasicTypeHelper.getNewVector(field, allocator);
       // returned vector must have the same field
@@ -194,7 +197,7 @@ public abstract class BaseRepeatedValueVector extends BaseValueVector implements
       created = true;
     }
 
-    final TypeProtos.MajorType actual = vector.getField().getType();
+    final MajorType actual = vector.getField().getType();
     if (!actual.equals(descriptor.getType())) {
       final String msg = String.format("Inner vector type mismatch. Requested type: [%s], actual type: [%s]",
           descriptor.getType(), actual);

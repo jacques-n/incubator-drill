@@ -21,12 +21,12 @@ import java.util.Collection;
 
 import javax.annotation.Nullable;
 
-import org.apache.drill.common.types.TypeProtos.DataMode;
-import org.apache.drill.common.types.TypeProtos.MajorType;
-import org.apache.drill.common.types.TypeProtos.MinorType;
 import org.apache.drill.exec.exception.OutOfMemoryException;
 import org.apache.drill.exec.memory.BufferAllocator;
 import org.apache.drill.exec.record.MaterializedField;
+import org.apache.drill.exec.types.Types.DataMode;
+import org.apache.drill.exec.types.Types.MajorType;
+import org.apache.drill.exec.types.Types.MinorType;
 import org.apache.drill.exec.util.CallBack;
 import org.apache.drill.exec.vector.ValueVector;
 
@@ -119,7 +119,7 @@ public abstract class AbstractContainerVector implements ValueVector {
       }
     } else if (this.getField().getType().getMinorType() == MinorType.MAP  &&
         this.getField().getType().getMode() == DataMode.REPEATED) {  // Use Required Map
-      return this.getField().getType().toBuilder().setMode(DataMode.REQUIRED).build();
+      return new MajorType(MinorType.MAP, DataMode.REQUIRED);
     }
 
     return this.getField().getType();

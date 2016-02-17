@@ -56,7 +56,7 @@ public final class ${minor.class}Vector extends BaseDataValueVector implements V
   private static final int MIN_BYTE_COUNT = 4096;
 
   public final static String OFFSETS_VECTOR_NAME = "$offsets$";
-  private final MaterializedField offsetsField = MaterializedField.create(OFFSETS_VECTOR_NAME, Types.required(MinorType.UINT4));
+  private final MaterializedField offsetsField = MaterializedField.create(OFFSETS_VECTOR_NAME, new MajorType(MinorType.UINT4, DataMode.REQUIRED));
   private final UInt${type.width}Vector offsetVector = new UInt${type.width}Vector(offsetsField, allocator);
   private final FieldReader reader = new ${minor.class}ReaderImpl(${minor.class}Vector.this);
 
@@ -125,26 +125,26 @@ public final class ${minor.class}Vector extends BaseDataValueVector implements V
     return offsetVector.getAccessor().get(valueCount);
   }
 
-  @Override
-  public SerializedField getMetadata() {
-    return getMetadataBuilder() //
-             .addChild(offsetVector.getMetadata())
-             .setValueCount(getAccessor().getValueCount()) //
-             .setBufferLength(getBufferSize()) //
-             .build();
-  }
-
-  @Override
-  public void load(SerializedField metadata, DrillBuf buffer) {
-    // the bits vector is the first child (the order in which the children are added in getMetadataBuilder is significant)
-    final SerializedField offsetField = metadata.getChild(0);
-    offsetVector.load(offsetField, buffer);
-
-    final int capacity = buffer.capacity();
-    final int offsetsLength = offsetField.getBufferLength();
-    data = buffer.slice(offsetsLength, capacity - offsetsLength);
-    data.retain();
-  }
+//  @Override
+//  public SerializedField getMetadata() {
+//    return getMetadataBuilder() //
+//             .addChild(offsetVector.getMetadata())
+//             .setValueCount(getAccessor().getValueCount()) //
+//             .setBufferLength(getBufferSize()) //
+//             .build();
+//  }
+//
+//  @Override
+//  public void load(SerializedField metadata, DrillBuf buffer) {
+//     the bits vector is the first child (the order in which the children are added in getMetadataBuilder is significant)
+//    final SerializedField offsetField = metadata.getChild(0);
+//    offsetVector.load(offsetField, buffer);
+//
+//    final int capacity = buffer.capacity();
+//    final int offsetsLength = offsetField.getBufferLength();
+//    data = buffer.slice(offsetsLength, capacity - offsetsLength);
+//    data.retain();
+//  }
 
   @Override
   public void clear() {
@@ -329,7 +329,7 @@ public final class ${minor.class}Vector extends BaseDataValueVector implements V
     try {
       data = allocator.buffer(totalBytes);
       offsetVector.allocateNew(valueCount + 1);
-    } catch (DrillRuntimeException e) {
+    } catch (RuntimeException e) {
       clear();
       throw e;
     }

@@ -33,13 +33,13 @@ import org.apache.drill.common.types.TypeProtos;
 public class NullReader extends AbstractBaseReader implements FieldReader{
   
   public static final NullReader INSTANCE = new NullReader();
-  public static final NullReader EMPTY_LIST_INSTANCE = new NullReader(Types.repeated(TypeProtos.MinorType.NULL));
-  public static final NullReader EMPTY_MAP_INSTANCE = new NullReader(Types.required(TypeProtos.MinorType.MAP));
+  public static final NullReader EMPTY_LIST_INSTANCE = new NullReader(Types.repeated(MinorType.NULL));
+  public static final NullReader EMPTY_MAP_INSTANCE = new NullReader(Types.required(MinorType.MAP));
   private MajorType type;
   
   private NullReader(){
     super();
-    type = Types.NULL;
+    type = Types.required(MinorType.NULL);
   }
 
   private NullReader(MajorType type){

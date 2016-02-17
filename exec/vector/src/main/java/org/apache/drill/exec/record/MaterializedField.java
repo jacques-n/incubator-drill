@@ -23,11 +23,11 @@ import java.util.Iterator;
 import java.util.LinkedHashSet;
 import java.util.Objects;
 
-import org.apache.drill.common.types.TypeProtos.DataMode;
-import org.apache.drill.common.types.TypeProtos.MajorType;
 import org.apache.drill.exec.expr.BasicTypeHelper;
 import org.apache.drill.exec.proto.UserBitShared.NamePart;
 import org.apache.drill.exec.proto.UserBitShared.SerializedField;
+import org.apache.drill.exec.types.Types.DataMode;
+import org.apache.drill.exec.types.Types.MajorType;
 
 
 public class MaterializedField {
@@ -36,36 +36,10 @@ public class MaterializedField {
   // use an ordered set as existing code relies on order (e,g. parquet writer)
   private final LinkedHashSet<MaterializedField> children;
 
-  private MaterializedField(String name, MajorType type, LinkedHashSet<MaterializedField> children) {
+  MaterializedField(String name, MajorType type, LinkedHashSet<MaterializedField> children) {
     this.name = name;
     this.type = type;
     this.children = children;
-  }
-
-  public static MaterializedField create(SerializedField serField){
-    LinkedHashSet<MaterializedField> children = new LinkedHashSet<>();
-    for (SerializedField sf:serField.getChildList()) {
-      children.add(MaterializedField.create(sf));
-    }
-    return new MaterializedField(serField.getNamePart().getName(), serField.getMajorType(), children);
-  }
-
-  /**
-   * Create and return a serialized field based on the current state.
-   */
-  public SerializedField getSerializedField() {
-    SerializedField.Builder serializedFieldBuilder = getAsBuilder();
-    for(MaterializedField childMaterializedField : getChildren()) {
-      serializedFieldBuilder.addChild(childMaterializedField.getSerializedField());
-    }
-    return serializedFieldBuilder.build();
-  }
-
-
-  public SerializedField.Builder getAsBuilder(){
-    return SerializedField.newBuilder()
-        .setMajorType(type)
-        .setNamePart(NamePart.newBuilder().setName(name).build());
   }
 
   public Collection<MaterializedField> getChildren() {
@@ -112,10 +86,10 @@ public class MaterializedField {
 
 
   // TODO: rewrite without as direct match rather than conversion then match.
-  public boolean matches(SerializedField field){
-    MaterializedField f = create(field);
-    return f.equals(this);
-  }
+//  public boolean matches(SerializedField booleanfield){
+//    MaterializedField f = create(field);
+//    return f.equals(this);
+//  }
 
   public static MaterializedField create(String name, MajorType type){
     return new MaterializedField(name, type, new LinkedHashSet<MaterializedField>());
@@ -154,9 +128,9 @@ public class MaterializedField {
     return name;
   }
 
-  public int getWidth() {
-    return type.getWidth();
-  }
+//  public int getWidth() {
+//    return type.getWidth();
+//  }
 
   public MajorType getType() {
     return type;
@@ -189,7 +163,7 @@ public class MaterializedField {
     default:
       throw new UnsupportedOperationException();
     }
-    return new MaterializedField(name, mt.toBuilder().setMode(newDataMode).build(), children);
+    return new MaterializedField(name, new MajorType(mt.getMinorType(), newDataMode, mt.getPrecision(), mt.getScale(), mt.getTimezone(), mt.getSubTypes()), children);
   }
 
   public Class<?> getValueClass() {

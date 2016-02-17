@@ -17,13 +17,13 @@
  */
 package org.apache.drill.exec.expr.holders;
 
-import org.apache.drill.common.types.TypeProtos.MajorType;
-import org.apache.drill.common.types.TypeProtos.MinorType;
-import org.apache.drill.common.types.Types;
+import org.apache.drill.exec.types.Types.DataMode;
+import org.apache.drill.exec.types.Types.MajorType;
+import org.apache.drill.exec.types.Types.MinorType;
 import org.apache.drill.exec.vector.complex.reader.FieldReader;
 
 public class UnionHolder implements ValueHolder {
-  public static final MajorType TYPE = Types.optional(MinorType.UNION);
+  public static final MajorType TYPE = new MajorType(MinorType.UNION, DataMode.OPTIONAL);
   public FieldReader reader;
   public int isSet;
 

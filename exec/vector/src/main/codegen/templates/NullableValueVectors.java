@@ -50,7 +50,7 @@ public final class ${className} extends BaseDataValueVector implements <#if type
 
   private final FieldReader reader = new Nullable${minor.class}ReaderImpl(Nullable${minor.class}Vector.this);
 
-  private final MaterializedField bitsField = MaterializedField.create("$bits$", Types.required(MinorType.UINT1));
+  private final MaterializedField bitsField = MaterializedField.create("$bits$", new MajorType(MinorType.UINT1, DataMode.REQUIRED));
   private final UInt1Vector bits = new UInt1Vector(bitsField, allocator);
   private final ${valuesName} values = new ${minor.class}Vector(field, allocator);
 
@@ -128,12 +128,12 @@ public final class ${className} extends BaseDataValueVector implements <#if type
     values.setInitialCapacity(numRecords);
   }
 
-  @Override
-  public SerializedField.Builder getMetadataBuilder() {
-    return super.getMetadataBuilder()
-      .addChild(bits.getMetadata())
-      .addChild(values.getMetadata());
-  }
+//  @Override
+//  public SerializedField.Builder getMetadataBuilder() {
+//    return super.getMetadataBuilder()
+//      .addChild(bits.getMetadata())
+//      .addChild(values.getMetadata());
+//  }
 
   @Override
   public void allocateNew() {
@@ -169,7 +169,7 @@ public final class ${className} extends BaseDataValueVector implements <#if type
     try {
       values.allocateNew(totalBytes, valueCount);
       bits.allocateNew(valueCount);
-    } catch(DrillRuntimeException e) {
+    } catch(RuntimeException e) {
       clear();
       throw e;
     }
@@ -229,18 +229,18 @@ public final class ${className} extends BaseDataValueVector implements <#if type
   </#if>
 
 
-  @Override
-  public void load(SerializedField metadata, DrillBuf buffer) {
-    clear();
+//  @Override
+//  public void load(SerializedField metadata, DrillBuf buffer) {
+//    clear();
     // the bits vector is the first child (the order in which the children are added in getMetadataBuilder is significant)
-    final SerializedField bitsField = metadata.getChild(0);
-    bits.load(bitsField, buffer);
-
-    final int capacity = buffer.capacity();
-    final int bitsLength = bitsField.getBufferLength();
-    final SerializedField valuesField = metadata.getChild(1);
-    values.load(valuesField, buffer.slice(bitsLength, capacity - bitsLength));
-  }
+//    final SerializedField bitsField = metadata.getChild(0);
+//    bits.load(bitsField, buffer);
+//
+//    final int capacity = buffer.capacity();
+//    final int bitsLength = bitsField.getBufferLength();
+//    final SerializedField valuesField = metadata.getChild(1);
+//    values.load(valuesField, buffer.slice(bitsLength, capacity - bitsLength));
+//  }
 
   @Override
   public TransferPair getTransferPair(BufferAllocator allocator){

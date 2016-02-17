@@ -18,10 +18,10 @@
  ******************************************************************************/
 package org.apache.drill.exec.vector.complex.impl;
 
-import org.apache.drill.common.types.TypeProtos.MajorType;
-import org.apache.drill.common.types.TypeProtos.MinorType;
-import org.apache.drill.common.types.Types;
 import org.apache.drill.exec.expr.holders.UnionHolder;
+import org.apache.drill.exec.types.Types.DataMode;
+import org.apache.drill.exec.types.Types.MajorType;
+import org.apache.drill.exec.types.Types.MinorType;
 import org.apache.drill.exec.vector.UInt4Vector;
 import org.apache.drill.exec.vector.ValueVector;
 import org.apache.drill.exec.vector.complex.ListVector;
@@ -48,7 +48,7 @@ public class UnionListReader extends AbstractFieldReader {
     return true;
   }
 
-  MajorType type = Types.optional(MinorType.LIST);
+  MajorType type = new MajorType(MinorType.LIST, DataMode.OPTIONAL);
 
   public MajorType getType() {
     return type;

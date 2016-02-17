@@ -24,10 +24,10 @@
 package org.apache.drill.exec.expr;
 
 <#include "/@includes/vv_imports.ftl" />
+import org.apache.drill.exec.types.Types.DataMode;
+import org.apache.drill.exec.types.Types.MajorType;
+import org.apache.drill.exec.types.Types.MinorType;
 import org.apache.drill.exec.vector.complex.UnionVector;
-import org.apache.drill.common.types.TypeProtos.DataMode;
-import org.apache.drill.common.types.TypeProtos.MinorType;
-import org.apache.drill.common.types.TypeProtos.MajorType;
 import org.apache.drill.exec.record.MaterializedField;
 import org.apache.drill.exec.vector.complex.RepeatedMapVector;
 import org.apache.drill.exec.util.CallBack;
@@ -60,9 +60,9 @@ public class BasicTypeHelper {
                                minor.class?substring(0, 3) == "MSG"> + WIDTH_ESTIMATE</#if>;
   </#list>
 </#list>
-      case FIXEDCHAR: return major.getWidth();
-      case FIXED16CHAR: return major.getWidth();
-      case FIXEDBINARY: return major.getWidth();
+//      case FIXEDCHAR: return major.getWidth();
+//      case FIXED16CHAR: return major.getWidth();
+//      case FIXEDBINARY: return major.getWidth();
     }
     throw new UnsupportedOperationException(buildErrorMessage("get size", major));
   }

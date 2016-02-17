@@ -24,10 +24,6 @@ import java.util.List;
 import java.util.Map;
 
 import org.apache.commons.lang3.ArrayUtils;
-import org.apache.drill.common.types.TypeProtos.DataMode;
-import org.apache.drill.common.types.TypeProtos.MajorType;
-import org.apache.drill.common.types.TypeProtos.MinorType;
-import org.apache.drill.common.types.Types;
 import org.apache.drill.exec.exception.OutOfMemoryException;
 import org.apache.drill.exec.expr.BasicTypeHelper;
 import org.apache.drill.exec.expr.holders.ComplexHolder;
@@ -36,6 +32,9 @@ import org.apache.drill.exec.memory.BufferAllocator;
 import org.apache.drill.exec.proto.UserBitShared.SerializedField;
 import org.apache.drill.exec.record.MaterializedField;
 import org.apache.drill.exec.record.TransferPair;
+import org.apache.drill.exec.types.Types.DataMode;
+import org.apache.drill.exec.types.Types.MajorType;
+import org.apache.drill.exec.types.Types.MinorType;
 import org.apache.drill.exec.util.CallBack;
 import org.apache.drill.exec.util.JsonStringArrayList;
 import org.apache.drill.exec.vector.AddOrGetResult;
@@ -54,7 +53,7 @@ public class RepeatedMapVector extends AbstractMapVector
     implements RepeatedValueVector, RepeatedFixedWidthVectorLike {
   //private static final org.slf4j.Logger logger = org.slf4j.LoggerFactory.getLogger(RepeatedMapVector.class);
 
-  public final static MajorType TYPE = MajorType.newBuilder().setMinorType(MinorType.MAP).setMode(DataMode.REPEATED).build();
+  public final static MajorType TYPE = new MajorType(MinorType.MAP, DataMode.REPEATED);
 
   private final UInt4Vector offsets;   // offsets to start of each record (considering record indices are 0-indexed)
   private final RepeatedMapReaderImpl reader = new RepeatedMapReaderImpl(RepeatedMapVector.this);
@@ -235,7 +234,7 @@ public class RepeatedMapVector extends AbstractMapVector
     private final TransferPair[] pairs;
     private final RepeatedMapVector from;
     private final MapVector to;
-    private static final MajorType MAP_TYPE = Types.required(MinorType.MAP);
+    private static final MajorType MAP_TYPE = new MajorType(MinorType.MAP, DataMode.REQUIRED);
 
     public SingleMapTransferPair(RepeatedMapVector from, String path, BufferAllocator allocator) {
       this(from, new MapVector(MaterializedField.create(path, MAP_TYPE), allocator, from.callBack), false);
@@ -420,45 +419,45 @@ public class RepeatedMapVector extends AbstractMapVector
   }
 
 
-  @Override
-  public void load(SerializedField metadata, DrillBuf buffer) {
-    final List<SerializedField> children = metadata.getChildList();
-
-    final SerializedField offsetField = children.get(0);
-    offsets.load(offsetField, buffer);
-    int bufOffset = offsetField.getBufferLength();
-
-    for (int i = 1; i < children.size(); i++) {
-      final SerializedField child = children.get(i);
-      final MaterializedField fieldDef = MaterializedField.create(child);
-      ValueVector vector = getChild(fieldDef.getLastName());
-      if (vector == null) {
+//  @Override
+//  public void load(SerializedField metadata, DrillBuf buffer) {
+//    final List<SerializedField> children = metadata.getChildList();
+//
+//    final SerializedField offsetField = children.get(0);
+//    offsets.load(offsetField, buffer);
+//    int bufOffset = offsetField.getBufferLength();
+//
+//    for (int i = 1; i < children.size(); i++) {
+//      final SerializedField child = children.get(i);
+//      final MaterializedField fieldDef = SerializedFieldHelper.create(child);
+//      ValueVector vector = getChild(fieldDef.getLastName());
+//      if (vector == null) {
         // if we arrive here, we didn't have a matching vector.
-        vector = BasicTypeHelper.getNewVector(fieldDef, allocator);
-        putChild(fieldDef.getLastName(), vector);
-      }
-      final int vectorLength = child.getBufferLength();
-      vector.load(child, buffer.slice(bufOffset, vectorLength));
-      bufOffset += vectorLength;
-    }
-
-    assert bufOffset == buffer.capacity();
-  }
-
-
-  @Override
-  public SerializedField getMetadata() {
-    SerializedField.Builder builder = getField() //
-        .getAsBuilder() //
-        .setBufferLength(getBufferSize()) //
+//        vector = BasicTypeHelper.getNewVector(fieldDef, allocator);
+//        putChild(fieldDef.getLastName(), vector);
+//      }
+//      final int vectorLength = child.getBufferLength();
+//      vector.load(child, buffer.slice(bufOffset, vectorLength));
+//      bufOffset += vectorLength;
+//    }
+//
+//    assert bufOffset == buffer.capacity();
+//  }
+//
+//
+//  @Override
+//  public SerializedField getMetadata() {
+//    SerializedField.Builder builder = getField() //
+//        .getAsBuilder() //
+//        .setBufferLength(getBufferSize()) //
         // while we don't need to actually read this on load, we need it to make sure we don't skip deserialization of this vector
-        .setValueCount(accessor.getValueCount());
-    builder.addChild(offsets.getMetadata());
-    for (final ValueVector child : getChildren()) {
-      builder.addChild(child.getMetadata());
-    }
-    return builder.build();
-  }
+//        .setValueCount(accessor.getValueCount());
+//    builder.addChild(offsets.getMetadata());
+//    for (final ValueVector child : getChildren()) {
+//      builder.addChild(child.getMetadata());
+//    }
+//    return builder.build();
+//  }
 
   @Override
   public Mutator getMutator() {

@@ -19,11 +19,12 @@ package org.apache.drill.exec.vector.complex.impl;
 
 import java.lang.reflect.Constructor;
 
-import org.apache.drill.common.types.TypeProtos.MinorType;
-import org.apache.drill.common.types.Types;
 import org.apache.drill.exec.expr.BasicTypeHelper;
 import org.apache.drill.exec.record.MaterializedField;
 import org.apache.drill.exec.record.TransferPair;
+import org.apache.drill.exec.types.Types.DataMode;
+import org.apache.drill.exec.types.Types.MajorType;
+import org.apache.drill.exec.types.Types.MinorType;
 import org.apache.drill.exec.vector.ValueVector;
 import org.apache.drill.exec.vector.VectorDescriptor;
 import org.apache.drill.exec.vector.ZeroVector;
@@ -128,7 +129,7 @@ public class PromotableWriter extends AbstractPromotableFieldWriter {
       if (type == null) {
         return null;
       }
-      ValueVector v = listVector.addOrGetVector(new VectorDescriptor(Types.optional(type))).getVector();
+      ValueVector v = listVector.addOrGetVector(new VectorDescriptor(new MajorType(type, DataMode.OPTIONAL))).getVector();
       v.allocateNew();
       setWriter(v);
       writer.setPosition(position);
@@ -153,7 +154,7 @@ public class PromotableWriter extends AbstractPromotableFieldWriter {
     TransferPair tp = vector.getTransferPair(vector.getField().getType().getMinorType().name().toLowerCase(), vector.getAllocator());
     tp.transfer();
     if (parentContainer != null) {
-      unionVector = parentContainer.addOrGet(name, Types.optional(MinorType.UNION), UnionVector.class);
+      unionVector = parentContainer.addOrGet(name, new MajorType(MinorType.UNION, DataMode.OPTIONAL), UnionVector.class);
     } else if (listVector != null) {
       unionVector = listVector.promoteToUnion();
     }

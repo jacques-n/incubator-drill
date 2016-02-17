@@ -20,19 +20,19 @@ package org.apache.drill.exec.vector;
 import java.util.Collection;
 
 import com.google.common.base.Preconditions;
-import org.apache.drill.common.types.TypeProtos;
 import org.apache.drill.exec.record.MaterializedField;
+import org.apache.drill.exec.types.Types.MajorType;
 
 public class VectorDescriptor {
   private static final String DEFAULT_NAME = "NONE";
 
   private final MaterializedField field;
 
-  public VectorDescriptor(final TypeProtos.MajorType type) {
+  public VectorDescriptor(final MajorType type) {
     this(DEFAULT_NAME, type);
   }
 
-  public VectorDescriptor(final String name, final TypeProtos.MajorType type) {
+  public VectorDescriptor(final String name, final MajorType type) {
     this(MaterializedField.create(name, type));
   }
 
@@ -44,7 +44,7 @@ public class VectorDescriptor {
     return field;
   }
 
-  public TypeProtos.MajorType getType() {
+  public MajorType getType() {
     return field.getType();
   }
 
@@ -64,15 +64,15 @@ public class VectorDescriptor {
     return new VectorDescriptor(field.withPath(name));
   }
 
-  public VectorDescriptor withType(final TypeProtos.MajorType type) {
+  public VectorDescriptor withType(final MajorType type) {
     return new VectorDescriptor(field.withType(type));
   }
 
-  public static VectorDescriptor create(final String name, final TypeProtos.MajorType type) {
+  public static VectorDescriptor create(final String name, final MajorType type) {
     return new VectorDescriptor(name, type);
   }
 
-  public static VectorDescriptor create(final TypeProtos.MajorType type) {
+  public static VectorDescriptor create(final MajorType type) {
     return new VectorDescriptor(type);
   }
 

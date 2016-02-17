@@ -31,6 +31,7 @@ import org.apache.drill.exec.proto.UserBitShared;
 import org.apache.drill.exec.proto.UserBitShared.SerializedField;
 import org.apache.drill.exec.record.BatchSchema;
 import org.apache.drill.exec.record.MaterializedField;
+import org.apache.drill.exec.record.SerializedFieldHelper;
 import org.apache.drill.exec.record.VectorContainer;
 import org.apache.drill.exec.record.WritableBatch;
 import org.apache.drill.exec.record.selection.SelectionVector2;
@@ -108,7 +109,7 @@ public class VectorAccessibleSerializable extends AbstractStreamSerializable {
     final List<SerializedField> fieldList = batchDef.getFieldList();
     for (SerializedField metaData : fieldList) {
       final int dataLength = metaData.getBufferLength();
-      final MaterializedField field = MaterializedField.create(metaData);
+      final MaterializedField field = SerializedFieldHelper.create(metaData);
       final DrillBuf buf = allocator.buffer(dataLength);
       final ValueVector vector;
       try {

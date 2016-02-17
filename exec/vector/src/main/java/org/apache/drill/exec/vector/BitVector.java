@@ -182,19 +182,19 @@ public final class BitVector extends BaseDataValueVector implements FixedWidthVe
     return true;
   }
 
-  @Override
-  public void load(SerializedField metadata, DrillBuf buffer) {
-    Preconditions.checkArgument(this.field.getPath().equals(metadata.getNamePart().getName()), "The field %s doesn't match the provided metadata %s.", this.field, metadata);
-    final int valueCount = metadata.getValueCount();
-    final int expectedLength = getSizeFromCount(valueCount);
-    final int actualLength = metadata.getBufferLength();
-    assert expectedLength == actualLength: "expected and actual buffer sizes do not match";
-
-    clear();
-    data = buffer.slice(0, actualLength);
-    data.retain();
-    this.valueCount = valueCount;
-  }
+//  @Override
+//  public void load(SerializedField metadata, DrillBuf buffer) {
+//    Preconditions.checkArgument(this.field.getPath().equals(metadata.getNamePart().getName()), "The field %s doesn't match the provided metadata %s.", this.field, metadata);
+//    final int valueCount = metadata.getValueCount();
+//    final int expectedLength = getSizeFromCount(valueCount);
+//    final int actualLength = metadata.getBufferLength();
+//    assert expectedLength == actualLength: "expected and actual buffer sizes do not match";
+//
+//    clear();
+//    data = buffer.slice(0, actualLength);
+//    data.retain();
+//    this.valueCount = valueCount;
+//  }
 
   @Override
   public Mutator getMutator() {

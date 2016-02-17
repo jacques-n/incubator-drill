@@ -55,7 +55,7 @@ public final class Repeated${minor.class}Vector extends BaseRepeatedValueVector 
 
   public Repeated${minor.class}Vector(MaterializedField field, BufferAllocator allocator) {
     super(field, allocator);
-    addOrGetVector(VectorDescriptor.create(Types.required(field.getType().getMinorType())));
+    addOrGetVector(VectorDescriptor.create(new MajorType(field.getType().getMinorType(), DataMode.REQUIRED)));
   }
 
   @Override
@@ -213,11 +213,11 @@ public final class Repeated${minor.class}Vector extends BaseRepeatedValueVector 
   }
 
   <#if type.major == "VarLen">
-  @Override
-  protected SerializedField.Builder getMetadataBuilder() {
-    return super.getMetadataBuilder()
-            .setVarByteLength(values.getVarByteLength());
-  }
+//  @Override
+//  protected SerializedField.Builder getMetadataBuilder() {
+//    return super.getMetadataBuilder()
+//            .setVarByteLength(values.getVarByteLength());
+//  }
 
   public void allocateNew(int totalBytes, int valueCount, int innerValueCount) {
     try {

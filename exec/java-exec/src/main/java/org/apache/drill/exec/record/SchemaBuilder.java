@@ -66,7 +66,7 @@ public class SchemaBuilder {
 
   public SchemaBuilder addSerializedFields(Iterable<SerializedField> fields) {
     for (SerializedField f : fields) {
-      addField(MaterializedField.create(f));
+      addField(SerializedFieldHelper.create(f));
     }
     return this;
   }

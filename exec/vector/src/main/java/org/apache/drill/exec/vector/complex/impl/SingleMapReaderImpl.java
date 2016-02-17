@@ -23,7 +23,7 @@ package org.apache.drill.exec.vector.complex.impl;
 
 import java.util.Map;
 
-import org.apache.drill.common.types.TypeProtos.MajorType;
+import org.apache.drill.exec.types.Types.MajorType;
 import org.apache.drill.exec.vector.ValueVector;
 import org.apache.drill.exec.vector.complex.MapVector;
 import org.apache.drill.exec.vector.complex.reader.FieldReader;

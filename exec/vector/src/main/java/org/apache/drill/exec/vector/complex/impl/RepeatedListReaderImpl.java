@@ -19,10 +19,10 @@
 package org.apache.drill.exec.vector.complex.impl;
 
 
-import org.apache.drill.common.types.TypeProtos.MajorType;
-import org.apache.drill.common.types.TypeProtos.MinorType;
-import org.apache.drill.common.types.Types;
 import org.apache.drill.exec.expr.holders.RepeatedListHolder;
+import org.apache.drill.exec.types.Types.DataMode;
+import org.apache.drill.exec.types.Types.MajorType;
+import org.apache.drill.exec.types.Types.MinorType;
 import org.apache.drill.exec.vector.ValueVector;
 import org.apache.drill.exec.vector.complex.RepeatedListVector;
 import org.apache.drill.exec.vector.complex.reader.FieldReader;
@@ -31,7 +31,7 @@ import org.apache.drill.exec.vector.complex.writer.BaseWriter.MapWriter;
 
 public class RepeatedListReaderImpl extends AbstractFieldReader{
   private static final int NO_VALUES = Integer.MAX_VALUE - 1;
-  private static final MajorType TYPE = Types.repeated(MinorType.LIST);
+  private static final MajorType TYPE = new MajorType(MinorType.LIST, DataMode.REPEATED);
   private final String name;
   private final RepeatedListVector container;
   private FieldReader reader;

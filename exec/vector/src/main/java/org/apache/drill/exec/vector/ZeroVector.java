@@ -21,19 +21,20 @@ import java.util.Iterator;
 
 import com.google.common.collect.Iterators;
 import io.netty.buffer.DrillBuf;
-import org.apache.drill.common.types.Types;
 import org.apache.drill.exec.memory.BufferAllocator;
 import org.apache.drill.exec.exception.OutOfMemoryException;
 import org.apache.drill.exec.proto.UserBitShared;
 import org.apache.drill.exec.record.MaterializedField;
 import org.apache.drill.exec.record.TransferPair;
+import org.apache.drill.exec.types.Types;
+import org.apache.drill.exec.types.Types.MinorType;
 import org.apache.drill.exec.vector.complex.impl.NullReader;
 import org.apache.drill.exec.vector.complex.reader.FieldReader;
 
 public class ZeroVector implements ValueVector {
   public final static ZeroVector INSTANCE = new ZeroVector();
 
-  private final MaterializedField field = MaterializedField.create("[DEFAULT]", Types.LATE_BIND_TYPE);
+  private final MaterializedField field = MaterializedField.create("[DEFAULT]", Types.required(MinorType.LATE));
 
   private final TransferPair defaultPair = new TransferPair() {
     @Override
@@ -97,14 +98,14 @@ public class ZeroVector implements ValueVector {
     return defaultPair;
   }
 
-  @Override
-  public UserBitShared.SerializedField getMetadata() {
-    return getField()
-        .getAsBuilder()
-        .setBufferLength(getBufferSize())
-        .setValueCount(getAccessor().getValueCount())
-        .build();
-  }
+//  @Override
+//  public UserBitShared.SerializedField getMetadata() {
+//    return getField()
+//        .getAsBuilder()
+//        .setBufferLength(getBufferSize())
+//        .setValueCount(getAccessor().getValueCount())
+//        .build();
+//  }
 
   @Override
   public Iterator iterator() {
@@ -174,6 +175,6 @@ public class ZeroVector implements ValueVector {
     return NullReader.INSTANCE;
   }
 
-  @Override
-  public void load(UserBitShared.SerializedField metadata, DrillBuf buffer) { }
+//  @Override
+//  public void load(UserBitShared.SerializedField metadata, DrillBuf buffer) { }
 }

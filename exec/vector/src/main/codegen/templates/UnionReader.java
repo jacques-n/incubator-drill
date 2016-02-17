@@ -17,6 +17,8 @@
  */
 
 import org.apache.drill.common.types.TypeProtos.MinorType;
+import org.apache.drill.exec.types.Types.DataMode;
+import org.apache.drill.exec.types.Types.MajorType;
 import org.apache.drill.exec.vector.complex.impl.NullReader;
 
 <@pp.dropOutputFile />
@@ -43,7 +45,7 @@ public class UnionReader extends AbstractFieldReader {
 
   static {
     for (MinorType minorType : MinorType.values()) {
-      TYPES[minorType.getNumber()] = Types.optional(minorType);
+      TYPES[minorType.ordinal()] = new MajorType(minorType, DataMode.OPTIONAL);
     }
   }
 
@@ -70,22 +72,22 @@ public class UnionReader extends AbstractFieldReader {
     if (reader != null) {
       return reader;
     }
-    switch (typeValue) {
-    case 0:
+    switch (MinorType.values()[typeValue]) {
+    case LATE:
       return NullReader.INSTANCE;
-    case MinorType.MAP_VALUE:
+    case MAP:
       return (FieldReader) getMap();
-    case MinorType.LIST_VALUE:
+    case LIST:
       return (FieldReader) getList();
     <#list vv.types as type><#list type.minor as minor><#assign name = minor.class?cap_first />
     <#assign uncappedName = name?uncap_first/>
     <#if !minor.class?starts_with("Decimal")>
-    case MinorType.${name?upper_case}_VALUE:
+    case ${name?upper_case}:
       return (FieldReader) get${name}();
     </#if>
     </#list></#list>
     default:
-      throw new UnsupportedOperationException("Unsupported type: " + MinorType.valueOf(typeValue));
+      throw new UnsupportedOperationException("Unsupported type: " + MinorType.values()[typeValue]);
     }
   }
 
@@ -95,7 +97,7 @@ public class UnionReader extends AbstractFieldReader {
     if (mapReader == null) {
       mapReader = (SingleMapReaderImpl) data.getMap().getReader();
       mapReader.setPosition(idx());
-      readers[MinorType.MAP_VALUE] = mapReader;
+      readers[MinorType.MAP.ordinal()] = mapReader;
     }
     return mapReader;
   }
@@ -106,7 +108,7 @@ public class UnionReader extends AbstractFieldReader {
     if (listReader == null) {
       listReader = new UnionListReader(data.getList());
       listReader.setPosition(idx());
-      readers[MinorType.LIST_VALUE] = listReader;
+      readers[MinorType.LIST.ordinal()] = listReader;
     }
     return listReader;
   }
@@ -149,7 +151,7 @@ public class UnionReader extends AbstractFieldReader {
     if (${uncappedName}Reader == null) {
       ${uncappedName}Reader = new Nullable${name}ReaderImpl(data.get${name}Vector());
       ${uncappedName}Reader.setPosition(idx());
-      readers[MinorType.${name?upper_case}_VALUE] = ${uncappedName}Reader;
+      readers[MinorType.${name?upper_case}.ordinal()] = ${uncappedName}Reader;
     }
     return ${uncappedName}Reader;
   }

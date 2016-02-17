@@ -23,7 +23,6 @@ import io.netty.buffer.DrillBuf;
 
 import org.apache.drill.exec.exception.OutOfMemoryException;
 import org.apache.drill.exec.memory.BufferAllocator;
-import org.apache.drill.exec.proto.UserBitShared.SerializedField;
 import org.apache.drill.exec.record.MaterializedField;
 import org.apache.drill.exec.record.TransferPair;
 import org.apache.drill.exec.vector.complex.reader.FieldReader;
@@ -134,7 +133,7 @@ public interface ValueVector extends Closeable, Iterable<ValueVector> {
    *
    * @return FieldMetadata for this field.
    */
-  SerializedField getMetadata();
+//  SerializedField getMetadata();
 
   /**
    * Returns the number of bytes that is used by this vector instance.
@@ -173,7 +172,7 @@ public interface ValueVector extends Closeable, Iterable<ValueVector> {
    * @param buffer
    *          The buffer that contains the ValueVector.
    */
-  void load(SerializedField metadata, DrillBuf buffer);
+//  void load(SerializedField metadata, DrillBuf buffer);
 
   /**
    * An abstraction that is used to read from this vector instance.

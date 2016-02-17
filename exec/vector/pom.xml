@@ -22,16 +22,16 @@
 
   <dependencies>
 
-    <dependency>
-      <groupId>org.apache.drill</groupId>
-      <artifactId>drill-protocol</artifactId>
-      <version>${project.version}</version>
-    </dependency>
-    <dependency>
-      <groupId>org.apache.drill</groupId>
-      <artifactId>drill-common</artifactId>
-      <version>${project.version}</version>
-    </dependency>
+    <!--<dependency>-->
+      <!--<groupId>org.apache.drill</groupId>-->
+      <!--<artifactId>drill-protocol</artifactId>-->
+      <!--<version>${project.version}</version>-->
+    <!--</dependency>-->
+    <!--<dependency>-->
+      <!--<groupId>org.apache.drill</groupId>-->
+      <!--<artifactId>drill-common</artifactId>-->
+      <!--<version>${project.version}</version>-->
+    <!--</dependency>-->
     <dependency>
       <groupId>org.apache.drill.memory</groupId>
       <artifactId>drill-memory-base</artifactId>

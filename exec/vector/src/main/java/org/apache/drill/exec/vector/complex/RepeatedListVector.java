@@ -24,16 +24,15 @@ import io.netty.buffer.DrillBuf;
 import java.util.Iterator;
 import java.util.List;
 
-import org.apache.drill.common.types.TypeProtos.MajorType;
-import org.apache.drill.common.types.TypeProtos.MinorType;
-import org.apache.drill.common.types.Types;
 import org.apache.drill.exec.expr.holders.ComplexHolder;
 import org.apache.drill.exec.expr.holders.RepeatedListHolder;
 import org.apache.drill.exec.memory.BufferAllocator;
 import org.apache.drill.exec.exception.OutOfMemoryException;
-import org.apache.drill.exec.proto.UserBitShared.SerializedField;
 import org.apache.drill.exec.record.MaterializedField;
 import org.apache.drill.exec.record.TransferPair;
+import org.apache.drill.exec.types.Types.DataMode;
+import org.apache.drill.exec.types.Types.MajorType;
+import org.apache.drill.exec.types.Types.MinorType;
 import org.apache.drill.exec.util.JsonStringArrayList;
 import org.apache.drill.exec.vector.AddOrGetResult;
 import org.apache.drill.exec.util.CallBack;
@@ -47,7 +46,7 @@ import org.apache.drill.exec.vector.complex.reader.FieldReader;
 public class RepeatedListVector extends AbstractContainerVector
     implements RepeatedValueVector, RepeatedFixedWidthVectorLike {
 
-  public final static MajorType TYPE = Types.repeated(MinorType.LIST);
+  public final static MajorType TYPE = new MajorType(MinorType.LIST, DataMode.REPEATED);
   private final RepeatedListReaderImpl reader = new RepeatedListReaderImpl(null, this);
   private final DelegateRepeatedVector delegate;
 
@@ -369,15 +368,15 @@ public class RepeatedListVector extends AbstractContainerVector
   }
 
 
-  @Override
-  public void load(SerializedField metadata, DrillBuf buf) {
-    delegate.load(metadata, buf);
-  }
+//  @Override
+//  public void load(SerializedField metadata, DrillBuf buf) {
+//    delegate.load(metadata, buf);
+//  }
 
-  @Override
-  public SerializedField getMetadata() {
-    return delegate.getMetadata();
-  }
+//  @Override
+//  public SerializedField getMetadata() {
+//    return delegate.getMetadata();
+//  }
 
   @Override
   public Iterator<ValueVector> iterator() {

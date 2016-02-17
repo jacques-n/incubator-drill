@@ -78,7 +78,7 @@ public class FragmentWritableBatch{
     final RecordBatchDef.Builder def = RecordBatchDef.newBuilder();
     if (schema != null) {
       for (final MaterializedField field : schema) {
-        def.addField(field.getSerializedField());
+        def.addField(SerializedFieldHelper.getSerializedField(field));
       }
     }
     return new FragmentWritableBatch(isLast, queryId, sendMajorFragmentId, sendMinorFragmentId, receiveMajorFragmentId,

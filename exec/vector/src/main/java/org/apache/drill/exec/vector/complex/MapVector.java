@@ -26,15 +26,14 @@ import java.util.Map;
 
 import javax.annotation.Nullable;
 
-import org.apache.drill.common.types.TypeProtos.MajorType;
-import org.apache.drill.common.types.TypeProtos.MinorType;
-import org.apache.drill.common.types.Types;
 import org.apache.drill.exec.expr.BasicTypeHelper;
 import org.apache.drill.exec.expr.holders.ComplexHolder;
 import org.apache.drill.exec.memory.BufferAllocator;
-import org.apache.drill.exec.proto.UserBitShared.SerializedField;
 import org.apache.drill.exec.record.MaterializedField;
 import org.apache.drill.exec.record.TransferPair;
+import org.apache.drill.exec.types.Types.DataMode;
+import org.apache.drill.exec.types.Types.MajorType;
+import org.apache.drill.exec.types.Types.MinorType;
 import org.apache.drill.exec.util.CallBack;
 import org.apache.drill.exec.util.JsonStringHashMap;
 import org.apache.drill.exec.vector.BaseValueVector;
@@ -50,7 +49,7 @@ import com.google.common.primitives.Ints;
 public class MapVector extends AbstractMapVector {
   //private static final org.slf4j.Logger logger = org.slf4j.LoggerFactory.getLogger(MapVector.class);
 
-  public final static MajorType TYPE = Types.required(MinorType.MAP);
+  public final static MajorType TYPE = new MajorType(MinorType.MAP, DataMode.OPTIONAL);
 
   private final SingleMapReaderImpl reader = new SingleMapReaderImpl(MapVector.this);
   private final Accessor accessor = new Accessor();
@@ -254,45 +253,45 @@ public class MapVector extends AbstractMapVector {
     return accessor;
   }
 
-  @Override
-  public void load(SerializedField metadata, DrillBuf buf) {
-    final List<SerializedField> fields = metadata.getChildList();
-    valueCount = metadata.getValueCount();
-
-    int bufOffset = 0;
-    for (final SerializedField child : fields) {
-      final MaterializedField fieldDef = MaterializedField.create(child);
-
-      ValueVector vector = getChild(fieldDef.getLastName());
-      if (vector == null) {
-        // if we arrive here, we didn't have a matching vector.
-        vector = BasicTypeHelper.getNewVector(fieldDef, allocator);
-        putChild(fieldDef.getLastName(), vector);
-      }
-      if (child.getValueCount() == 0) {
-        vector.clear();
-      } else {
-        vector.load(child, buf.slice(bufOffset, child.getBufferLength()));
-      }
-      bufOffset += child.getBufferLength();
-    }
-
-    assert bufOffset == buf.capacity();
-  }
-
-  @Override
-  public SerializedField getMetadata() {
-    SerializedField.Builder b = getField() //
-        .getAsBuilder() //
-        .setBufferLength(getBufferSize()) //
-        .setValueCount(valueCount);
-
-
-    for(ValueVector v : getChildren()) {
-      b.addChild(v.getMetadata());
-    }
-    return b.build();
-  }
+//  @Override
+//  public void load(SerializedField metadata, DrillBuf buf) {
+//    final List<SerializedField> fields = metadata.getChildList();
+//    valueCount = metadata.getValueCount();
+//
+//    int bufOffset = 0;
+//    for (final SerializedField child : fields) {
+//      final MaterializedField fieldDef = SerializedFieldHelper.create(child);
+//
+//      ValueVector vector = getChild(fieldDef.getLastName());
+//      if (vector == null) {
+//         if we arrive here, we didn't have a matching vector.
+//        vector = BasicTypeHelper.getNewVector(fieldDef, allocator);
+//        putChild(fieldDef.getLastName(), vector);
+//      }
+//      if (child.getValueCount() == 0) {
+//        vector.clear();
+//      } else {
+//        vector.load(child, buf.slice(bufOffset, child.getBufferLength()));
+//      }
+//      bufOffset += child.getBufferLength();
+//    }
+//
+//    assert bufOffset == buf.capacity();
+//  }
+//
+//  @Override
+//  public SerializedField getMetadata() {
+//    SerializedField.Builder b = getField() //
+//        .getAsBuilder() //
+//        .setBufferLength(getBufferSize()) //
+//        .setValueCount(valueCount);
+//
+//
+//    for(ValueVector v : getChildren()) {
+//      b.addChild(v.getMetadata());
+//    }
+//    return b.build();
+//  }
 
   @Override
   public Mutator getMutator() {

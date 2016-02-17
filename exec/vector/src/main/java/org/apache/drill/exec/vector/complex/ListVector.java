@@ -20,13 +20,14 @@ package org.apache.drill.exec.vector.complex;
 
 import com.google.common.collect.ObjectArrays;
 import io.netty.buffer.DrillBuf;
-import org.apache.drill.common.types.TypeProtos.MinorType;
-import org.apache.drill.common.types.Types;
 import org.apache.drill.exec.memory.BufferAllocator;
 import org.apache.drill.exec.exception.OutOfMemoryException;
 import org.apache.drill.exec.proto.UserBitShared;
 import org.apache.drill.exec.record.MaterializedField;
 import org.apache.drill.exec.record.TransferPair;
+import org.apache.drill.exec.types.Types.DataMode;
+import org.apache.drill.exec.types.Types.MajorType;
+import org.apache.drill.exec.types.Types.MinorType;
 import org.apache.drill.exec.util.CallBack;
 import org.apache.drill.exec.util.JsonStringArrayList;
 import org.apache.drill.exec.vector.AddOrGetResult;
@@ -55,7 +56,7 @@ public class ListVector extends BaseRepeatedValueVector {
 
   public ListVector(MaterializedField field, BufferAllocator allocator, CallBack callBack) {
     super(field, allocator);
-    this.bits = new UInt1Vector(MaterializedField.create("$bits$", Types.required(MinorType.UINT1)), allocator);
+    this.bits = new UInt1Vector(MaterializedField.create("$bits$", new MajorType(MinorType.UINT1, DataMode.REQUIRED)), allocator);
     offsets = getOffsetVector();
     this.field.addChild(getDataVector().getField());
     this.writer = new UnionListWriter(this);
@@ -187,15 +188,15 @@ public class ListVector extends BaseRepeatedValueVector {
     return success;
   }
 
-  @Override
-  protected UserBitShared.SerializedField.Builder getMetadataBuilder() {
-    return getField().getAsBuilder()
-            .setValueCount(getAccessor().getValueCount())
-            .setBufferLength(getBufferSize())
-            .addChild(offsets.getMetadata())
-            .addChild(bits.getMetadata())
-            .addChild(vector.getMetadata());
-  }
+//  @Override
+//  protected UserBitShared.SerializedField.Builder getMetadataBuilder() {
+//    return getField().getAsBuilder()
+//            .setValueCount(getAccessor().getValueCount())
+//            .setBufferLength(getBufferSize())
+//            .addChild(offsets.getMetadata())
+//            .addChild(bits.getMetadata())
+//            .addChild(vector.getMetadata());
+//  }
   public <T extends ValueVector> AddOrGetResult<T> addOrGetVector(VectorDescriptor descriptor) {
     AddOrGetResult<T> result = super.addOrGetVector(descriptor);
     reader = new UnionListReader(this);
@@ -232,27 +233,27 @@ public class ListVector extends BaseRepeatedValueVector {
     return buffers;
   }
 
-  @Override
-  public void load(UserBitShared.SerializedField metadata, DrillBuf buffer) {
-    final UserBitShared.SerializedField offsetMetadata = metadata.getChild(0);
-    offsets.load(offsetMetadata, buffer);
-
-    final int offsetLength = offsetMetadata.getBufferLength();
-    final UserBitShared.SerializedField bitMetadata = metadata.getChild(1);
-    final int bitLength = bitMetadata.getBufferLength();
-    bits.load(bitMetadata, buffer.slice(offsetLength, bitLength));
-
-    final UserBitShared.SerializedField vectorMetadata = metadata.getChild(2);
-    if (getDataVector() == DEFAULT_DATA_VECTOR) {
-      addOrGetVector(VectorDescriptor.create(vectorMetadata.getMajorType()));
-    }
-
-    final int vectorLength = vectorMetadata.getBufferLength();
-    vector.load(vectorMetadata, buffer.slice(offsetLength + bitLength, vectorLength));
-  }
+//  @Override
+//  public void load(UserBitShared.SerializedField metadata, DrillBuf buffer) {
+//    final UserBitShared.SerializedField offsetMetadata = metadata.getChild(0);
+//    offsets.load(offsetMetadata, buffer);
+//
+//    final int offsetLength = offsetMetadata.getBufferLength();
+//    final UserBitShared.SerializedField bitMetadata = metadata.getChild(1);
+//    final int bitLength = bitMetadata.getBufferLength();
+//    bits.load(bitMetadata, buffer.slice(offsetLength, bitLength));
+//
+//    final UserBitShared.SerializedField vectorMetadata = metadata.getChild(2);
+//    if (getDataVector() == DEFAULT_DATA_VECTOR) {
+//      addOrGetVector(VectorDescriptor.create(vectorMetadata.getMajorType()));
+//    }
+//
+//    final int vectorLength = vectorMetadata.getBufferLength();
+//    vector.load(vectorMetadata, buffer.slice(offsetLength + bitLength, vectorLength));
+//  }
 
   public UnionVector promoteToUnion() {
-    MaterializedField newField = MaterializedField.create(getField().getPath(), Types.optional(MinorType.UNION));
+    MaterializedField newField = MaterializedField.create(getField().getPath(), new MajorType(MinorType.UNION, DataMode.OPTIONAL));
     UnionVector vector = new UnionVector(newField, allocator, null);
     replaceDataVector(vector);
     reader = new UnionListReader(this);

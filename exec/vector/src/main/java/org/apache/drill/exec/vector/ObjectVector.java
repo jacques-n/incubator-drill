@@ -175,15 +175,15 @@ public class ObjectVector extends BaseValueVector {
     throw new UnsupportedOperationException("ObjectVector does not support this");
   }
 
-  @Override
-  public void load(UserBitShared.SerializedField metadata, DrillBuf buffer) {
-    throw new UnsupportedOperationException("ObjectVector does not support this");
-  }
-
-  @Override
-  public UserBitShared.SerializedField getMetadata() {
-    throw new UnsupportedOperationException("ObjectVector does not support this");
-  }
+//  @Override
+//  public void load(UserBitShared.SerializedField metadata, DrillBuf buffer) {
+//    throw new UnsupportedOperationException("ObjectVector does not support this");
+//  }
+//
+//  @Override
+//  public UserBitShared.SerializedField getMetadata() {
+//    throw new UnsupportedOperationException("ObjectVector does not support this");
+//  }
 
   @Override
   public Mutator getMutator() {

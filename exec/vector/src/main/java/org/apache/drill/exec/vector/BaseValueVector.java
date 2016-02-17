@@ -25,7 +25,6 @@ import com.google.common.base.Preconditions;
 import com.google.common.collect.Iterators;
 
 import org.apache.drill.exec.memory.BufferAllocator;
-import org.apache.drill.exec.proto.UserBitShared.SerializedField;
 import org.apache.drill.exec.record.MaterializedField;
 import org.apache.drill.exec.record.TransferPair;
 import org.slf4j.Logger;
@@ -74,16 +73,15 @@ public abstract class BaseValueVector implements ValueVector {
     return getTransferPair(getField().getPath(), allocator);
   }
 
-  @Override
-  public SerializedField getMetadata() {
-    return getMetadataBuilder().build();
-  }
-
-  protected SerializedField.Builder getMetadataBuilder() {
-    return getField().getAsBuilder()
-        .setValueCount(getAccessor().getValueCount())
-        .setBufferLength(getBufferSize());
-  }
+//  public static SerializedField getMetadata(BaseValueVector vector) {
+//    return getMetadataBuilder(vector).build();
+//  }
+//
+//  protected static SerializedField.Builder getMetadataBuilder(BaseValueVector vector) {
+//    return SerializedFieldHelper.getAsBuilder(vector.getField())
+//        .setValueCount(vector.getAccessor().getValueCount())
+//        .setBufferLength(vector.getBufferSize());
+//  }
 
   public abstract static class BaseAccessor implements ValueVector.Accessor {
     protected BaseAccessor() { }

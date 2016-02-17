@@ -17,9 +17,9 @@
  */
 package org.apache.drill.exec.vector.complex.impl;
 
-import org.apache.drill.common.types.TypeProtos.MinorType;
-import org.apache.drill.common.types.Types;
 import org.apache.drill.exec.record.MaterializedField;
+import org.apache.drill.exec.types.Types;
+import org.apache.drill.exec.types.Types.MinorType;
 import org.apache.drill.exec.vector.complex.MapVector;
 import org.apache.drill.exec.vector.complex.StateTool;
 import org.apache.drill.exec.vector.complex.writer.BaseWriter.ComplexWriter;

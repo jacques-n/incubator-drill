@@ -94,7 +94,7 @@ public class RecordBatchLoader implements VectorAccessible, Iterable<VectorWrapp
       final List<SerializedField> fields = def.getFieldList();
       int bufOffset = 0;
       for(final SerializedField field : fields) {
-        final MaterializedField fieldDef = MaterializedField.create(field);
+        final MaterializedField fieldDef = SerializedFieldHelper.create(field);
         ValueVector vector = oldFields.remove(fieldDef.getPath());
 
         if (vector == null) {

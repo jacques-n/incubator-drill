@@ -17,6 +17,11 @@
  */
 
 import org.apache.drill.common.types.TypeProtos.MinorType;
+import org.apache.drill.exec.record.MaterializedField;
+import org.apache.drill.exec.types.Types;
+import org.apache.drill.exec.types.Types.DataMode;
+import org.apache.drill.exec.types.Types.MajorType;
+import org.apache.drill.exec.vector.UInt1Vector;
 import org.apache.drill.exec.vector.ValueVector;
 
 <@pp.dropOutputFile />
@@ -28,6 +33,7 @@ import org.apache.drill.exec.vector.ValueVector;
 package org.apache.drill.exec.vector.complex;
 
 <#include "/@includes/vv_imports.ftl" />
+import java.util.ArrayList;
 import java.util.Iterator;
 import org.apache.drill.exec.vector.complex.impl.ComplexCopier;
 import org.apache.drill.exec.util.CallBack;
@@ -74,7 +80,7 @@ public class UnionVector implements ValueVector {
     this.field = field.clone();
     this.allocator = allocator;
     this.internalMap = new MapVector("internal", allocator, callBack);
-    this.typeVector = internalMap.addOrGet("types", Types.required(MinorType.UINT1), UInt1Vector.class);
+    this.typeVector = internalMap.addOrGet("types", new MajorType(MinorType.UINT1, DataMode.REQUIRED), UInt1Vector.class);
     this.field.addChild(internalMap.getField().clone());
     this.majorType = field.getType();
     this.callBack = callBack;
@@ -85,21 +91,25 @@ public class UnionVector implements ValueVector {
   }
 
   public List<MinorType> getSubTypes() {
-    return majorType.getSubTypeList();
+    return majorType.getSubTypes();
   }
 
   public void addSubType(MinorType type) {
-    if (majorType.getSubTypeList().contains(type)) {
+    if (majorType.getSubTypes().contains(type)) {
       return;
     }
-    majorType =  MajorType.newBuilder(this.majorType).addSubType(type).build();
+    List<MinorType> subTypes = this.majorType.getSubTypes();
+    List<MinorType> newSubTypes = new ArrayList<>(subTypes);
+    newSubTypes.add(type);
+    majorType =  new MajorType(this.majorType.getMinorType(), this.majorType.getMode(), this.majorType.getPrecision(),
+            this.majorType.getScale(), this.majorType.getTimezone(), newSubTypes);
     field = MaterializedField.create(field.getName(), majorType);
     if (callBack != null) {
       callBack.doWork();
     }
   }
 
-  private static final MajorType MAP_TYPE = Types.optional(MinorType.MAP);
+  private static final MajorType MAP_TYPE = new MajorType(MinorType.MAP, DataMode.OPTIONAL);
 
   public MapVector getMap() {
     if (mapVector == null) {
@@ -119,7 +129,7 @@ public class UnionVector implements ValueVector {
   <#if !minor.class?starts_with("Decimal")>
 
   private Nullable${name}Vector ${uncappedName}Vector;
-  private static final MajorType ${name?upper_case}_TYPE = Types.optional(MinorType.${name?upper_case});
+  private static final MajorType ${name?upper_case}_TYPE = new MajorType(MinorType.${name?upper_case}, DataMode.OPTIONAL);
 
   public Nullable${name}Vector get${name}Vector() {
     if (${uncappedName}Vector == null) {
@@ -137,7 +147,7 @@ public class UnionVector implements ValueVector {
 
   </#list></#list>
 
-  private static final MajorType LIST_TYPE = Types.optional(MinorType.LIST);
+  private static final MajorType LIST_TYPE = new MajorType(MinorType.LIST, DataMode.OPTIONAL);
 
   public ListVector getList() {
     if (listVector == null) {
@@ -301,16 +311,16 @@ public class UnionVector implements ValueVector {
     return mutator.writer;
   }
 
-  @Override
-  public UserBitShared.SerializedField getMetadata() {
-    SerializedField.Builder b = getField() //
-            .getAsBuilder() //
-            .setBufferLength(getBufferSize()) //
-            .setValueCount(valueCount);
-
-    b.addChild(internalMap.getMetadata());
-    return b.build();
-  }
+//  @Override
+//  public UserBitShared.SerializedField getMetadata() {
+//    SerializedField.Builder b = getField() //
+//            .getAsBuilder() //
+//            .setBufferLength(getBufferSize()) //
+//            .setValueCount(valueCount);
+//
+//    b.addChild(internalMap.getMetadata());
+//    return b.build();
+//  }
 
   @Override
   public int getBufferSize() {
@@ -336,12 +346,12 @@ public class UnionVector implements ValueVector {
     return internalMap.getBuffers(clear);
   }
 
-  @Override
-  public void load(UserBitShared.SerializedField metadata, DrillBuf buffer) {
-    valueCount = metadata.getValueCount();
-
-    internalMap.load(metadata.getChild(0), buffer);
-  }
+//  @Override
+//  public void load(UserBitShared.SerializedField metadata, DrillBuf buffer) {
+//    valueCount = metadata.getValueCount();
+//
+//    internalMap.load(metadata.getChild(0), buffer);
+//  }
 
   @Override
   public Iterator<ValueVector> iterator() {
@@ -356,24 +366,24 @@ public class UnionVector implements ValueVector {
     @Override
     public Object getObject(int index) {
       int type = typeVector.getAccessor().get(index);
-      switch (type) {
-      case 0:
+      switch (MinorType.values()[type]) {
+      case LATE:
         return null;
       <#list vv.types as type><#list type.minor as minor><#assign name = minor.class?cap_first />
       <#assign fields = minor.fields!type.fields />
       <#assign uncappedName = name?uncap_first/>
       <#if !minor.class?starts_with("Decimal")>
-      case MinorType.${name?upper_case}_VALUE:
+      case ${name?upper_case}:
         return get${name}Vector().getAccessor().getObject(index);
       </#if>
 
       </#list></#list>
-      case MinorType.MAP_VALUE:
+      case MAP:
         return getMap().getAccessor().getObject(index);
-      case MinorType.LIST_VALUE:
+      case LIST:
         return getList().getAccessor().getObject(index);
       default:
-        throw new UnsupportedOperationException("Cannot support type: " + MinorType.valueOf(type));
+        throw new UnsupportedOperationException("Cannot support type: " + MinorType.values()[type]);
       }
     }
 
@@ -460,7 +470,7 @@ public class UnionVector implements ValueVector {
     </#list></#list>
 
     public void setType(int index, MinorType type) {
-      typeVector.getMutator().setSafe(index, type.getNumber());
+      typeVector.getMutator().setSafe(index, type.ordinal());
     }
 
     @Override

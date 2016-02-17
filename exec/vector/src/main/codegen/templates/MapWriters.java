@@ -34,7 +34,6 @@ package org.apache.drill.exec.vector.complex.impl;
 <#include "/@includes/vv_imports.ftl" />
 import java.util.Map;
 
-import org.apache.drill.common.types.TypeProtos.DataMode;
 import org.apache.drill.exec.expr.holders.RepeatedMapHolder;
 import org.apache.drill.exec.vector.AllocationHelper;
 import org.apache.drill.exec.vector.complex.reader.FieldReader;
@@ -207,7 +206,7 @@ public class ${mode}MapWriter extends AbstractFieldWriter {
   }
 
   public ${minor.class}Writer ${lowerName}(String name, int scale, int precision) {
-    final MajorType ${upperName}_TYPE = Types.withScaleAndPrecision(MinorType.${upperName}, DataMode.OPTIONAL, scale, precision);
+    final MajorType ${upperName}_TYPE = new MajorType(MinorType.${upperName}, DataMode.OPTIONAL, scale, precision, null, null);
   <#else>
   private static final MajorType ${upperName}_TYPE = Types.optional(MinorType.${upperName});
   @Override

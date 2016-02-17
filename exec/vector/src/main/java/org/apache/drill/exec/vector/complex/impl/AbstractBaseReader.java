@@ -19,10 +19,12 @@ package org.apache.drill.exec.vector.complex.impl;
 
 import java.util.Iterator;
 
-import org.apache.drill.common.types.TypeProtos.MajorType;
 import org.apache.drill.common.types.Types;
 import org.apache.drill.exec.expr.holders.UnionHolder;
 import org.apache.drill.exec.record.MaterializedField;
+import org.apache.drill.exec.types.Types.DataMode;
+import org.apache.drill.exec.types.Types.MajorType;
+import org.apache.drill.exec.types.Types.MinorType;
 import org.apache.drill.exec.vector.complex.reader.FieldReader;
 import org.apache.drill.exec.vector.complex.writer.BaseWriter.ListWriter;
 import org.apache.drill.exec.vector.complex.writer.FieldWriter;
@@ -31,6 +33,7 @@ import org.apache.drill.exec.vector.complex.writer.FieldWriter;
 abstract class AbstractBaseReader implements FieldReader{
 
   static final org.slf4j.Logger logger = org.slf4j.LoggerFactory.getLogger(AbstractBaseReader.class);
+  private static final MajorType LATE_BIND_TYPE = new MajorType(MinorType.LATE, DataMode.OPTIONAL);
 
   private int index;
 
@@ -62,7 +65,7 @@ abstract class AbstractBaseReader implements FieldReader{
 
   @Override
   public MaterializedField getField() {
-    return MaterializedField.create("unknown", Types.LATE_BIND_TYPE);
+    return MaterializedField.create("unknown", LATE_BIND_TYPE);
   }
 
   @Override

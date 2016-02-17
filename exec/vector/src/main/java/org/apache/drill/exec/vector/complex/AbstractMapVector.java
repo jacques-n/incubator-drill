@@ -24,7 +24,7 @@ import java.util.Iterator;
 import java.util.List;
 
 import org.apache.drill.common.collections.MapWithOrdinal;
-import org.apache.drill.common.types.TypeProtos;
+import org.apache.drill.exec.types.Types.MajorType;
 import org.apache.drill.exec.expr.BasicTypeHelper;
 import org.apache.drill.exec.memory.BufferAllocator;
 import org.apache.drill.exec.record.MaterializedField;
@@ -118,7 +118,7 @@ public abstract class AbstractMapVector extends AbstractContainerVector {
    * @return resultant {@link org.apache.drill.exec.vector.ValueVector}
    */
   @Override
-  public <T extends ValueVector> T addOrGet(String name, TypeProtos.MajorType type, Class<T> clazz) {
+  public <T extends ValueVector> T addOrGet(String name, MajorType type, Class<T> clazz) {
     final ValueVector existing = getChild(name);
     boolean create = false;
     if (existing == null) {
