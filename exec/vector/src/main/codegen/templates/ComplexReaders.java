@@ -19,10 +19,10 @@
 import java.lang.Override;
 import java.util.List;
 
-import org.apache.drill.exec.record.TransferPair;
-import org.apache.drill.exec.vector.complex.IndexHolder;
-import org.apache.drill.exec.vector.complex.writer.IntervalWriter;
-import org.apache.drill.exec.vector.complex.writer.BaseWriter.MapWriter;
+import org.apache.arrow.record.TransferPair;
+import org.apache.arrow.vector.complex.IndexHolder;
+import org.apache.arrow.vector.complex.writer.IntervalWriter;
+import org.apache.arrow.vector.complex.writer.BaseWriter.MapWriter;
 
 <@pp.dropOutputFile />
 <#list vv.types as type>
@@ -40,10 +40,10 @@ import org.apache.drill.exec.vector.complex.writer.BaseWriter.MapWriter;
 
 <#list ["", "Nullable"] as nullMode>
 <#if (mode == "Repeated" && nullMode  == "") || mode == "" >
-<@pp.changeOutputFile name="/org/apache/drill/exec/vector/complex/impl/${nullMode}${name}ReaderImpl.java" />
+<@pp.changeOutputFile name="/org/apache/arrow/vector/complex/impl/${nullMode}${name}ReaderImpl.java" />
 <#include "/@includes/license.ftl" />
 
-package org.apache.drill.exec.vector.complex.impl;
+package org.apache.arrow.vector.complex.impl;
 
 <#include "/@includes/vv_imports.ftl" />
 
@@ -147,10 +147,10 @@ public class ${nullMode}${name}ReaderImpl extends AbstractFieldReader {
 }
 </#if>
 </#list>
-<@pp.changeOutputFile name="/org/apache/drill/exec/vector/complex/reader/${name}Reader.java" />
+<@pp.changeOutputFile name="/org/apache/arrow/vector/complex/reader/${name}Reader.java" />
 <#include "/@includes/license.ftl" />
 
-package org.apache.drill.exec.vector.complex.reader;
+package org.apache.arrow.vector.complex.reader;
 
 <#include "/@includes/vv_imports.ftl" />
 @SuppressWarnings("unused")

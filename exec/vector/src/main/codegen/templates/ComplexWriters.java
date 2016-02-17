@@ -16,14 +16,6 @@
  * limitations under the License.
  */
 
-import java.lang.Override;
-import java.util.Vector;
-
-import org.apache.drill.exec.vector.AllocationHelper;
-import org.apache.drill.exec.vector.ValueVector.Mutator;
-import org.apache.drill.exec.vector.complex.IndexHolder;
-import org.apache.drill.exec.vector.complex.reader.FieldReader;
-
 <@pp.dropOutputFile />
 <#list vv.types as type>
 <#list type.minor as minor>
@@ -33,10 +25,10 @@ import org.apache.drill.exec.vector.complex.reader.FieldReader;
 <#assign javaType = (minor.javaType!type.javaType) />
 <#assign fields = minor.fields!type.fields />
 
-<@pp.changeOutputFile name="/org/apache/drill/exec/vector/complex/impl/${eName}WriterImpl.java" />
+<@pp.changeOutputFile name="/org/apache/arrow/vector/complex/impl/${eName}WriterImpl.java" />
 <#include "/@includes/license.ftl" />
 
-package org.apache.drill.exec.vector.complex.impl;
+package org.apache.arrow.vector.complex.impl;
 
 <#include "/@includes/vv_imports.ftl" />
 
@@ -139,10 +131,10 @@ public class ${eName}WriterImpl extends AbstractFieldWriter {
   </#if>
 }
 
-<@pp.changeOutputFile name="/org/apache/drill/exec/vector/complex/writer/${eName}Writer.java" />
+<@pp.changeOutputFile name="/org/apache/arrow/vector/complex/writer/${eName}Writer.java" />
 <#include "/@includes/license.ftl" />
 
-package org.apache.drill.exec.vector.complex.writer;
+package org.apache.arrow.vector.complex.writer;
 
 <#include "/@includes/vv_imports.ftl" />
 @SuppressWarnings("unused")

@@ -15,12 +15,6 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-import org.apache.drill.exec.vector.BaseDataValueVector;
-import org.apache.drill.exec.vector.NullableVectorDefinitionSetter;
-
-import java.lang.Override;
-import java.lang.UnsupportedOperationException;
-
 <@pp.dropOutputFile />
 <#list vv.types as type>
 <#list type.minor as minor>
@@ -29,11 +23,11 @@ import java.lang.UnsupportedOperationException;
 <#assign valuesName = "${minor.class}Vector" />
 <#assign friendlyType = (minor.friendlyType!minor.boxedType!type.boxedType) />
 
-<@pp.changeOutputFile name="/org/apache/drill/exec/vector/${className}.java" />
+<@pp.changeOutputFile name="/org/apache/arrow/vector/${className}.java" />
 
 <#include "/@includes/license.ftl" />
 
-package org.apache.drill.exec.vector;
+package org.apache.arrow.vector;
 
 <#include "/@includes/vv_imports.ftl" />
 
@@ -72,10 +66,10 @@ public final class ${className} extends BaseDataValueVector implements <#if type
   }
 
   @Override
-  public DrillBuf[] getBuffers(boolean clear) {
-    final DrillBuf[] buffers = ObjectArrays.concat(bits.getBuffers(false), values.getBuffers(false), DrillBuf.class);
+  public ArrowBuf[] getBuffers(boolean clear) {
+    final ArrowBuf[] buffers = ObjectArrays.concat(bits.getBuffers(false), values.getBuffers(false), ArrowBuf.class);
     if (clear) {
-      for (final DrillBuf buffer:buffers) {
+      for (final ArrowBuf buffer:buffers) {
         buffer.retain(1);
       }
       clear();
@@ -113,7 +107,7 @@ public final class ${className} extends BaseDataValueVector implements <#if type
   }
 
   @Override
-  public DrillBuf getBuffer() {
+  public ArrowBuf getBuffer() {
     return values.getBuffer();
   }
 
@@ -230,7 +224,7 @@ public final class ${className} extends BaseDataValueVector implements <#if type
 
 
 //  @Override
-//  public void load(SerializedField metadata, DrillBuf buffer) {
+//  public void load(SerializedField metadata, ArrowBuf buffer) {
 //    clear();
     // the bits vector is the first child (the order in which the children are added in getMetadataBuilder is significant)
 //    final SerializedField bitsField = metadata.getChild(0);

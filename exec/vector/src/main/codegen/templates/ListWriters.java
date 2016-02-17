@@ -19,12 +19,12 @@
 <@pp.dropOutputFile />
 
 <#list ["Single", "Repeated"] as mode>
-<@pp.changeOutputFile name="/org/apache/drill/exec/vector/complex/impl/${mode}ListWriter.java" />
+<@pp.changeOutputFile name="/org/apache/arrow/vector/complex/impl/${mode}ListWriter.java" />
 
 
 <#include "/@includes/license.ftl" />
 
-package org.apache.drill.exec.vector.complex.impl;
+package org.apache.arrow.vector.complex.impl;
 <#if mode == "Single">
   <#assign containerClass = "AbstractContainerVector" />
   <#assign index = "idx()">
@@ -118,7 +118,7 @@ public class ${mode}ListWriter extends AbstractFieldWriter {
       return writer;
     }
 
-  throw UserException.unsupportedError().message(getUnsupportedErrorMsg("MAP", mode.name())).build(logger);
+    throw new RuntimeException(getUnsupportedErrorMsg("MAP", mode.name()));
 
   }
 
@@ -140,7 +140,7 @@ public class ${mode}ListWriter extends AbstractFieldWriter {
       return writer;
     }
 
-  throw UserException.unsupportedError().message(getUnsupportedErrorMsg("LIST", mode.name())).build(logger);
+    throw new RuntimeException(getUnsupportedErrorMsg("LIST", mode.name()));
 
   }
 
@@ -170,7 +170,7 @@ public class ${mode}ListWriter extends AbstractFieldWriter {
       return writer;
     }
 
-  throw UserException.unsupportedError().message(getUnsupportedErrorMsg("${upperName}", mode.name())).build(logger);
+    throw new RuntimeException(getUnsupportedErrorMsg("${upperName}", mode.name()));
 
   }
   </#list></#list>

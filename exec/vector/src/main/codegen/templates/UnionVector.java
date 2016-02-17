@@ -16,28 +16,20 @@
  * limitations under the License.
  */
 
-import org.apache.drill.common.types.TypeProtos.MinorType;
-import org.apache.drill.exec.record.MaterializedField;
-import org.apache.drill.exec.types.Types;
-import org.apache.drill.exec.types.Types.DataMode;
-import org.apache.drill.exec.types.Types.MajorType;
-import org.apache.drill.exec.vector.UInt1Vector;
-import org.apache.drill.exec.vector.ValueVector;
-
 <@pp.dropOutputFile />
-<@pp.changeOutputFile name="/org/apache/drill/exec/vector/complex/UnionVector.java" />
+<@pp.changeOutputFile name="/org/apache/arrow/vector/complex/UnionVector.java" />
 
 
 <#include "/@includes/license.ftl" />
 
-package org.apache.drill.exec.vector.complex;
+package org.apache.arrow.vector.complex;
 
 <#include "/@includes/vv_imports.ftl" />
 import java.util.ArrayList;
 import java.util.Iterator;
-import org.apache.drill.exec.vector.complex.impl.ComplexCopier;
-import org.apache.drill.exec.util.CallBack;
-import org.apache.drill.exec.expr.BasicTypeHelper;
+import org.apache.arrow.vector.complex.impl.ComplexCopier;
+import org.apache.arrow.vector.util.CallBack;
+import org.apache.arrow.vector.util.BasicTypeHelper;
 
 /*
  * This class is generated using freemarker and the ${.template_name} template.
@@ -342,16 +334,9 @@ public class UnionVector implements ValueVector {
   }
 
   @Override
-  public DrillBuf[] getBuffers(boolean clear) {
+  public ArrowBuf[] getBuffers(boolean clear) {
     return internalMap.getBuffers(clear);
   }
-
-//  @Override
-//  public void load(UserBitShared.SerializedField metadata, DrillBuf buffer) {
-//    valueCount = metadata.getValueCount();
-//
-//    internalMap.load(metadata.getChild(0), buffer);
-//  }
 
   @Override
   public Iterator<ValueVector> iterator() {

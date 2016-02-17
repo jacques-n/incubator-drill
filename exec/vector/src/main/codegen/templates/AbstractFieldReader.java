@@ -17,12 +17,12 @@
  */
 
 <@pp.dropOutputFile />
-<@pp.changeOutputFile name="/org/apache/drill/exec/vector/complex/impl/AbstractFieldReader.java" />
+<@pp.changeOutputFile name="/org/apache/arrow/vector/complex/impl/AbstractFieldReader.java" />
 
 
 <#include "/@includes/license.ftl" />
 
-package org.apache.drill.exec.vector.complex.impl;
+package org.apache.arrow.vector.complex.impl;
 
 <#include "/@includes/vv_imports.ftl" />
 

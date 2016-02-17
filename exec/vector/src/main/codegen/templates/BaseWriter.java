@@ -17,12 +17,12 @@
  */
 
 <@pp.dropOutputFile />
-<@pp.changeOutputFile name="/org/apache/drill/exec/vector/complex/writer/BaseWriter.java" />
+<@pp.changeOutputFile name="/org/apache/arrow/vector/complex/writer/BaseWriter.java" />
 
 
 <#include "/@includes/license.ftl" />
 
-package org.apache.drill.exec.vector.complex.writer;
+package org.apache.arrow.vector.complex.writer;
 
 <#include "/@includes/vv_imports.ftl" />
 

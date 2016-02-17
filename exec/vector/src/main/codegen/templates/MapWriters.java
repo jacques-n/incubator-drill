@@ -18,7 +18,7 @@
 
 <@pp.dropOutputFile />
 <#list ["Single", "Repeated"] as mode>
-<@pp.changeOutputFile name="/org/apache/drill/exec/vector/complex/impl/${mode}MapWriter.java" />
+<@pp.changeOutputFile name="/org/apache/arrow/vector/complex/impl/${mode}MapWriter.java" />
 <#if mode == "Single">
 <#assign containerClass = "MapVector" />
 <#assign index = "idx()">
@@ -29,15 +29,15 @@
 
 <#include "/@includes/license.ftl" />
 
-package org.apache.drill.exec.vector.complex.impl;
+package org.apache.arrow.vector.complex.impl;
 
 <#include "/@includes/vv_imports.ftl" />
 import java.util.Map;
 
-import org.apache.drill.exec.expr.holders.RepeatedMapHolder;
-import org.apache.drill.exec.vector.AllocationHelper;
-import org.apache.drill.exec.vector.complex.reader.FieldReader;
-import org.apache.drill.exec.vector.complex.writer.FieldWriter;
+import org.apache.arrow.vector.holders.RepeatedMapHolder;
+import org.apache.arrow.vector.AllocationHelper;
+import org.apache.arrow.vector.complex.reader.FieldReader;
+import org.apache.arrow.vector.complex.writer.FieldWriter;
 
 import com.google.common.collect.Maps;
 

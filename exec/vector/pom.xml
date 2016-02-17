@@ -22,51 +22,35 @@
 
   <dependencies>
 
-    <!--<dependency>-->
-      <!--<groupId>org.apache.drill</groupId>-->
-      <!--<artifactId>drill-protocol</artifactId>-->
-      <!--<version>${project.version}</version>-->
-    <!--</dependency>-->
-    <!--<dependency>-->
-      <!--<groupId>org.apache.drill</groupId>-->
-      <!--<artifactId>drill-common</artifactId>-->
-      <!--<version>${project.version}</version>-->
-    <!--</dependency>-->
     <dependency>
       <groupId>org.apache.drill.memory</groupId>
       <artifactId>drill-memory-base</artifactId>
       <version>${project.version}</version>
     </dependency>
     <dependency>
-        <groupId>joda-time</groupId>
-        <artifactId>joda-time</artifactId>
-        <version>2.9</version>
+      <groupId>joda-time</groupId>
+      <artifactId>joda-time</artifactId>
+      <version>2.9</version>
     </dependency>
     <dependency>
       <groupId>com.fasterxml.jackson.core</groupId>
       <artifactId>jackson-annotations</artifactId>
-      <version>2.4.3</version>
+      <version>2.7.1</version>
     </dependency>
     <dependency>
       <groupId>com.fasterxml.jackson.core</groupId>
       <artifactId>jackson-databind</artifactId>
-      <version>2.4.3</version>
-    </dependency>
-    <dependency>
-      <groupId>org.apache.hadoop</groupId>
-      <artifactId>hadoop-common</artifactId>
       <version>2.7.1</version>
-      <scope>provided</scope>
-    </dependency>
-    <dependency>
-      <groupId>com.google.protobuf</groupId>
-      <artifactId>protobuf-java</artifactId>
-      <version>2.5.0</version>
     </dependency>
     <dependency>
       <groupId>com.carrotsearch</groupId>
       <artifactId>hppc</artifactId>
       <version>0.7.1</version>
+    </dependency>
+    <dependency>
+      <groupId>org.apache.commons</groupId>
+      <artifactId>commons-lang3</artifactId>
+      <version>3.4</version>
     </dependency>
 
 
@@ -74,7 +58,7 @@
 
 
   <build>
-  
+
     <resources>
       <resource>
         <!-- Copy freemarker template and fmpp configuration files of Vector's 
@@ -83,7 +67,7 @@
         <targetPath>codegen</targetPath>
       </resource>
     </resources>
-      
+
     <plugins>
       <plugin>
         <artifactId>maven-resources-plugin</artifactId>
@@ -91,7 +75,9 @@
           <execution> <!-- copy all templates in the same location to compile them at once -->
             <id>copy-fmpp-resources</id>
             <phase>initialize</phase>
-            <goals><goal>copy-resources</goal></goals>
+            <goals>
+              <goal>copy-resources</goal>
+            </goals>
             <configuration>
               <outputDirectory>${project.build.directory}/codegen</outputDirectory>
               <resources>
@@ -112,7 +98,9 @@
           <execution>
             <id>generate-fmpp</id>
             <phase>generate-sources</phase>
-            <goals><goal>generate</goal></goals>
+            <goals>
+              <goal>generate</goal>
+            </goals>
             <configuration>
               <config>src/main/codegen/config.fmpp</config>
               <output>${project.build.directory}/generated-sources</output>

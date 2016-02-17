@@ -17,20 +17,16 @@
  */
 
 <@pp.dropOutputFile />
-<@pp.changeOutputFile name="/org/apache/drill/exec/expr/BasicTypeHelper.java" />
+<@pp.changeOutputFile name="/org/apache/arrow/vector/util/BasicTypeHelper.java" />
 
 <#include "/@includes/license.ftl" />
 
-package org.apache.drill.exec.expr;
+package org.apache.arrow.vector.util;
 
 <#include "/@includes/vv_imports.ftl" />
-import org.apache.drill.exec.types.Types.DataMode;
-import org.apache.drill.exec.types.Types.MajorType;
-import org.apache.drill.exec.types.Types.MinorType;
-import org.apache.drill.exec.vector.complex.UnionVector;
-import org.apache.drill.exec.record.MaterializedField;
-import org.apache.drill.exec.vector.complex.RepeatedMapVector;
-import org.apache.drill.exec.util.CallBack;
+import org.apache.arrow.vector.complex.UnionVector;
+import org.apache.arrow.vector.complex.RepeatedMapVector;
+import org.apache.arrow.vector.util.CallBack;
 
 public class BasicTypeHelper {
   static final org.slf4j.Logger logger = org.slf4j.LoggerFactory.getLogger(BasicTypeHelper.class);

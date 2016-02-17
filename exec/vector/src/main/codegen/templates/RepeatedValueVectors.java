@@ -16,22 +16,16 @@
  * limitations under the License.
  */
 
-import java.lang.Override;
-
-import org.apache.drill.exec.record.TransferPair;
-import org.apache.drill.exec.vector.complex.BaseRepeatedValueVector;
-import org.mortbay.jetty.servlet.Holder;
-
 <@pp.dropOutputFile />
 <#list vv.types as type>
 <#list type.minor as minor>
 <#assign friendlyType = (minor.friendlyType!minor.boxedType!type.boxedType) />
 <#assign fields = minor.fields!type.fields />
 
-<@pp.changeOutputFile name="/org/apache/drill/exec/vector/Repeated${minor.class}Vector.java" />
+<@pp.changeOutputFile name="/org/apache/arrow/vector/Repeated${minor.class}Vector.java" />
 <#include "/@includes/license.ftl" />
 
-package org.apache.drill.exec.vector;
+package org.apache.arrow.vector;
 
 <#include "/@includes/vv_imports.ftl" />
 

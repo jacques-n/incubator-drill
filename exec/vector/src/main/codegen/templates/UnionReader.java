@@ -16,18 +16,14 @@
  * limitations under the License.
  */
 
-import org.apache.drill.common.types.TypeProtos.MinorType;
-import org.apache.drill.exec.types.Types.DataMode;
-import org.apache.drill.exec.types.Types.MajorType;
-import org.apache.drill.exec.vector.complex.impl.NullReader;
 
 <@pp.dropOutputFile />
-<@pp.changeOutputFile name="/org/apache/drill/exec/vector/complex/impl/UnionReader.java" />
+<@pp.changeOutputFile name="/org/apache/arrow/vector/complex/impl/UnionReader.java" />
 
 
 <#include "/@includes/license.ftl" />
 
-package org.apache.drill.exec.vector.complex.impl;
+package org.apache.arrow.vector.complex.impl;
 
 <#include "/@includes/vv_imports.ftl" />
 

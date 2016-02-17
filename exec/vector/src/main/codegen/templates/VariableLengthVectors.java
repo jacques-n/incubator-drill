@@ -30,11 +30,11 @@ import org.apache.drill.exec.vector.VariableWidthVector;
 <#assign friendlyType = (minor.friendlyType!minor.boxedType!type.boxedType) />
 
 <#if type.major == "VarLen">
-<@pp.changeOutputFile name="/org/apache/drill/exec/vector/${minor.class}Vector.java" />
+<@pp.changeOutputFile name="/org/apache/arrow/vector/${minor.class}Vector.java" />
 
 <#include "/@includes/license.ftl" />
 
-package org.apache.drill.exec.vector;
+package org.apache.arrow.vector;
 
 <#include "/@includes/vv_imports.ftl" />
 
@@ -42,7 +42,7 @@ package org.apache.drill.exec.vector;
  * ${minor.class}Vector implements a vector of variable width values.  Elements in the vector
  * are accessed by position from the logical start of the vector.  A fixed width offsetVector
  * is used to convert an element's position to it's offset from the start of the (0-based)
- * DrillBuf.  Size is inferred by adjacent elements.
+ * ArrowBuf.  Size is inferred by adjacent elements.
  *   The width of each element is ${type.width} byte(s)
  *   The equivalent Java primitive is '${minor.javaType!type.javaType}'
  *
@@ -135,7 +135,7 @@ public final class ${minor.class}Vector extends BaseDataValueVector implements V
 //  }
 //
 //  @Override
-//  public void load(SerializedField metadata, DrillBuf buffer) {
+//  public void load(SerializedField metadata, ArrowBuf buffer) {
 //     the bits vector is the first child (the order in which the children are added in getMetadataBuilder is significant)
 //    final SerializedField offsetField = metadata.getChild(0);
 //    offsetVector.load(offsetField, buffer);
@@ -153,11 +153,11 @@ public final class ${minor.class}Vector extends BaseDataValueVector implements V
   }
 
   @Override
-  public DrillBuf[] getBuffers(boolean clear) {
-    final DrillBuf[] buffers = ObjectArrays.concat(offsetVector.getBuffers(false), super.getBuffers(false), DrillBuf.class);
+  public ArrowBuf[] getBuffers(boolean clear) {
+    final ArrowBuf[] buffers = ObjectArrays.concat(offsetVector.getBuffers(false), super.getBuffers(false), ArrowBuf.class);
     if (clear) {
       // does not make much sense but we have to retain buffers even when clear is set. refactor this interface.
-      for (final DrillBuf buffer:buffers) {
+      for (final ArrowBuf buffer:buffers) {
         buffer.retain(1);
       }
       clear();
@@ -353,7 +353,7 @@ public final class ${minor.class}Vector extends BaseDataValueVector implements V
       throw new OversizedAllocationException("Unable to expand the buffer. Max allowed buffer size is reached.");
     }
 
-    final DrillBuf newBuf = allocator.buffer((int)newAllocationSize);
+    final ArrowBuf newBuf = allocator.buffer((int)newAllocationSize);
     newBuf.setBytes(0, data, 0, data.capacity());
     data.release();
     data = newBuf;
@@ -458,7 +458,7 @@ public final class ${minor.class}Vector extends BaseDataValueVector implements V
    * Mutable${minor.class} implements a vector of variable width values.  Elements in the vector
    * are accessed by position from the logical start of the vector.  A fixed width offsetVector
    * is used to convert an element's position to it's offset from the start of the (0-based)
-   * DrillBuf.  Size is inferred by adjacent elements.
+   * ArrowBuf.  Size is inferred by adjacent elements.
    *   The width of each element is ${type.width} byte(s)
    *   The equivalent Java primitive is '${minor.javaType!type.javaType}'
    *
@@ -539,7 +539,7 @@ public final class ${minor.class}Vector extends BaseDataValueVector implements V
     }
 
 
-    public void setSafe(int index, int start, int end, DrillBuf buffer){
+    public void setSafe(int index, int start, int end, ArrowBuf buffer){
       final int len = end - start;
       final int outputStart = offsetVector.data.get${(minor.javaType!type.javaType)?cap_first}(index * ${type.width});
 
@@ -582,11 +582,11 @@ public final class ${minor.class}Vector extends BaseDataValueVector implements V
       offsetVector.getMutator().setSafe( index+1,  outputStart + len);
     }
 
-    protected void set(int index, int start, int length, DrillBuf buffer){
+    protected void set(int index, int start, int length, ArrowBuf buffer){
       assert index >= 0;
       final int currentOffset = offsetVector.getAccessor().get(index);
       offsetVector.getMutator().set(index + 1, currentOffset + length);
-      final DrillBuf bb = buffer.slice(start, length);
+      final ArrowBuf bb = buffer.slice(start, length);
       data.setBytes(currentOffset, bb);
     }
 

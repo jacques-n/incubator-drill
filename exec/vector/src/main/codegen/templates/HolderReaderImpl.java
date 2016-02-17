@@ -32,17 +32,16 @@
 <#if safeType=="byte[]"><#assign safeType="ByteArray" /></#if>
 <#assign fields = minor.fields!type.fields />
 
-<@pp.changeOutputFile name="/org/apache/drill/exec/vector/complex/impl/${holderMode}${name}HolderReaderImpl.java" />
+<@pp.changeOutputFile name="/org/apache/arrow/vector/complex/impl/${holderMode}${name}HolderReaderImpl.java" />
 <#include "/@includes/license.ftl" />
 
-package org.apache.drill.exec.vector.complex.impl;
+package org.apache.arrow.vector.complex.impl;
 
 <#include "/@includes/vv_imports.ftl" />
 
 import java.math.BigDecimal;
 import java.math.BigInteger;
 
-import org.apache.drill.exec.expr.holders.*;
 import org.joda.time.Period;
 
 // Source code generated using FreeMarker template ${.template_name}
@@ -184,7 +183,7 @@ public class ${holderMode}${name}HolderReaderImpl extends AbstractFieldReader {
 
 <#elseif minor.class == "Decimal28Dense" ||
          minor.class == "Decimal38Dense">
-      return org.apache.drill.exec.util.DecimalUtility.getBigDecimalFromDense(holder.buffer,
+      return org.apache.arrow.vector.util.DecimalUtility.getBigDecimalFromDense(holder.buffer,
                                                                                 holder.start,
                                                                                 holder.nDecimalDigits,
                                                                                 holder.scale,
@@ -193,7 +192,7 @@ public class ${holderMode}${name}HolderReaderImpl extends AbstractFieldReader {
 
 <#elseif minor.class == "Decimal28Sparse" ||
          minor.class == "Decimal38Sparse">
-      return org.apache.drill.exec.util.DecimalUtility.getBigDecimalFromSparse(holder.buffer,
+      return org.apache.arrow.vector.util.DecimalUtility.getBigDecimalFromSparse(holder.buffer,
                                                                                  holder.start,
                                                                                  holder.nDecimalDigits,
                                                                                  holder.scale);
@@ -257,7 +256,7 @@ public class ${holderMode}${name}HolderReaderImpl extends AbstractFieldReader {
 
 <#elseif minor.class == "Decimal28Dense" ||
          minor.class == "Decimal38Dense">
-      return org.apache.drill.exec.util.DecimalUtility.getBigDecimalFromDense(holder.buffer,
+      return org.apache.arrow.vector.util.DecimalUtility.getBigDecimalFromDense(holder.buffer,
                                                                                 holder.start,
                                                                                 holder.nDecimalDigits,
                                                                                 holder.scale,
@@ -266,7 +265,7 @@ public class ${holderMode}${name}HolderReaderImpl extends AbstractFieldReader {
 
 <#elseif minor.class == "Decimal28Sparse" ||
          minor.class == "Decimal38Sparse">
-      return org.apache.drill.exec.util.DecimalUtility.getBigDecimalFromSparse(holder.buffer,
+      return org.apache.arrow.vector.util.DecimalUtility.getBigDecimalFromSparse(holder.buffer,
                                                                                  holder.start,
                                                                                  holder.nDecimalDigits,
                                                                                  holder.scale);

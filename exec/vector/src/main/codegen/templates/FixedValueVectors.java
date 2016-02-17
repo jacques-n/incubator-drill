@@ -24,10 +24,10 @@ import java.lang.Override;
 <#assign friendlyType = (minor.friendlyType!minor.boxedType!type.boxedType) />
 
 <#if type.major == "Fixed">
-<@pp.changeOutputFile name="/org/apache/drill/exec/vector/${minor.class}Vector.java" />
+<@pp.changeOutputFile name="/org/apache/arrow/vector/${minor.class}Vector.java" />
 <#include "/@includes/license.ftl" />
 
-package org.apache.drill.exec.vector;
+package org.apache.arrow.vector;
 
 <#include "/@includes/vv_imports.ftl" />
 
@@ -124,7 +124,7 @@ public final class ${minor.class}Vector extends BaseDataValueVector implements F
    * Note that the maximum number of values a vector can allocate is Integer.MAX_VALUE / value width.
    *
    * @param valueCount
-   * @throws org.apache.drill.exec.memory.OutOfMemoryException if it can't allocate the new buffer
+   * @throws org.apache.arrow.memory.OutOfMemoryException if it can't allocate the new buffer
    */
   @Override
   public void allocateNew(final int valueCount) {
@@ -154,7 +154,7 @@ public final class ${minor.class}Vector extends BaseDataValueVector implements F
 /**
  * Allocate new buffer with double capacity, and copy data into the new buffer. Replace vector's buffer with new buffer, and release old one
  *
- * @throws org.apache.drill.exec.memory.OutOfMemoryException if it can't allocate the new buffer
+ * @throws org.apache.arrow.memory.OutOfMemoryException if it can't allocate the new buffer
  */
   public void reAlloc() {
     final long newAllocationSize = allocationSizeInBytes * 2L;
@@ -163,7 +163,7 @@ public final class ${minor.class}Vector extends BaseDataValueVector implements F
     }
 
     logger.debug("Reallocating vector [{}]. # of bytes: [{}] -> [{}]", field, allocationSizeInBytes, newAllocationSize);
-    final DrillBuf newBuf = allocator.buffer((int)newAllocationSize);
+    final ArrowBuf newBuf = allocator.buffer((int)newAllocationSize);
     newBuf.setBytes(0, data, 0, data.capacity());
     final int halfNewCapacity = newBuf.capacity() / 2;
     newBuf.setZero(halfNewCapacity, halfNewCapacity);
@@ -182,7 +182,7 @@ public final class ${minor.class}Vector extends BaseDataValueVector implements F
   }
 
 //  @Override
-//  public void load(SerializedField metadata, DrillBuf buffer) {
+//  public void load(SerializedField metadata, ArrowBuf buffer) {
 //    Preconditions.checkArgument(this.field.getPath().equals(metadata.getNamePart().getName()), "The field %s doesn't match the provided metadata %s.", this.field, metadata);
 //    final int actualLength = metadata.getBufferLength();
 //    final int valueCount = metadata.getValueCount();
@@ -339,17 +339,17 @@ public final class ${minor.class}Vector extends BaseDataValueVector implements F
       final int days    = data.getInt(offsetIndex + ${minor.daysOffset});
       int millis = data.getInt(offsetIndex + ${minor.millisecondsOffset});
 
-      final int years  = (months / org.apache.drill.exec.expr.fn.impl.DateUtility.yearsToMonths);
-      months = (months % org.apache.drill.exec.expr.fn.impl.DateUtility.yearsToMonths);
+      final int years  = (months / org.apache.arrow.vector.util.DateUtility.yearsToMonths);
+      months = (months % org.apache.arrow.vector.util.DateUtility.yearsToMonths);
 
-      final int hours  = millis / (org.apache.drill.exec.expr.fn.impl.DateUtility.hoursToMillis);
-      millis     = millis % (org.apache.drill.exec.expr.fn.impl.DateUtility.hoursToMillis);
+      final int hours  = millis / (org.apache.arrow.vector.util.DateUtility.hoursToMillis);
+      millis     = millis % (org.apache.arrow.vector.util.DateUtility.hoursToMillis);
 
-      final int minutes = millis / (org.apache.drill.exec.expr.fn.impl.DateUtility.minutesToMillis);
-      millis      = millis % (org.apache.drill.exec.expr.fn.impl.DateUtility.minutesToMillis);
+      final int minutes = millis / (org.apache.arrow.vector.util.DateUtility.minutesToMillis);
+      millis      = millis % (org.apache.arrow.vector.util.DateUtility.minutesToMillis);
 
-      final long seconds = millis / (org.apache.drill.exec.expr.fn.impl.DateUtility.secondsToMillis);
-      millis      = millis % (org.apache.drill.exec.expr.fn.impl.DateUtility.secondsToMillis);
+      final long seconds = millis / (org.apache.arrow.vector.util.DateUtility.secondsToMillis);
+      millis      = millis % (org.apache.arrow.vector.util.DateUtility.secondsToMillis);
 
       final String yearString = (Math.abs(years) == 1) ? " year " : " years ";
       final String monthString = (Math.abs(months) == 1) ? " month " : " months ";
@@ -397,14 +397,14 @@ public final class ${minor.class}Vector extends BaseDataValueVector implements F
       int millis = data.getInt(offsetIndex + ${minor.millisecondsOffset});
       final int  days   = data.getInt(offsetIndex);
 
-      final int hours  = millis / (org.apache.drill.exec.expr.fn.impl.DateUtility.hoursToMillis);
-      millis     = millis % (org.apache.drill.exec.expr.fn.impl.DateUtility.hoursToMillis);
+      final int hours  = millis / (org.apache.arrow.vector.util.DateUtility.hoursToMillis);
+      millis     = millis % (org.apache.arrow.vector.util.DateUtility.hoursToMillis);
 
-      final int minutes = millis / (org.apache.drill.exec.expr.fn.impl.DateUtility.minutesToMillis);
-      millis      = millis % (org.apache.drill.exec.expr.fn.impl.DateUtility.minutesToMillis);
+      final int minutes = millis / (org.apache.arrow.vector.util.DateUtility.minutesToMillis);
+      millis      = millis % (org.apache.arrow.vector.util.DateUtility.minutesToMillis);
 
-      final int seconds = millis / (org.apache.drill.exec.expr.fn.impl.DateUtility.secondsToMillis);
-      millis      = millis % (org.apache.drill.exec.expr.fn.impl.DateUtility.secondsToMillis);
+      final int seconds = millis / (org.apache.arrow.vector.util.DateUtility.secondsToMillis);
+      millis      = millis % (org.apache.arrow.vector.util.DateUtility.secondsToMillis);
 
       final String dayString = (Math.abs(days) == 1) ? " day " : " days ";
 
@@ -437,9 +437,9 @@ public final class ${minor.class}Vector extends BaseDataValueVector implements F
       public ${friendlyType} getObject(int index) {
       <#if (minor.class == "Decimal28Sparse") || (minor.class == "Decimal38Sparse")>
       // Get the BigDecimal object
-      return org.apache.drill.exec.util.DecimalUtility.getBigDecimalFromSparse(data, index * ${type.width}, ${minor.nDecimalDigits}, getField().getScale());
+      return org.apache.arrow.vector.util.DecimalUtility.getBigDecimalFromSparse(data, index * ${type.width}, ${minor.nDecimalDigits}, getField().getScale());
       <#else>
-      return org.apache.drill.exec.util.DecimalUtility.getBigDecimalFromDense(data, index * ${type.width}, ${minor.nDecimalDigits}, getField().getScale(), ${minor.maxPrecisionDigits}, ${type.width});
+      return org.apache.arrow.vector.util.DecimalUtility.getBigDecimalFromDense(data, index * ${type.width}, ${minor.nDecimalDigits}, getField().getScale(), ${minor.maxPrecisionDigits}, ${type.width});
       </#if>
     }
 
@@ -496,8 +496,8 @@ public final class ${minor.class}Vector extends BaseDataValueVector implements F
 
       final int value = get(index);
 
-      final int years  = (value / org.apache.drill.exec.expr.fn.impl.DateUtility.yearsToMonths);
-      final int months = (value % org.apache.drill.exec.expr.fn.impl.DateUtility.yearsToMonths);
+      final int years  = (value / org.apache.arrow.vector.util.DateUtility.yearsToMonths);
+      final int months = (value % org.apache.arrow.vector.util.DateUtility.yearsToMonths);
       final Period p = new Period();
       return p.plusYears(years).plusMonths(months);
     }
@@ -506,8 +506,8 @@ public final class ${minor.class}Vector extends BaseDataValueVector implements F
 
       int months  = data.getInt(index);
 
-      final int years  = (months / org.apache.drill.exec.expr.fn.impl.DateUtility.yearsToMonths);
-      months = (months % org.apache.drill.exec.expr.fn.impl.DateUtility.yearsToMonths);
+      final int years  = (months / org.apache.arrow.vector.util.DateUtility.yearsToMonths);
+      months = (months % org.apache.arrow.vector.util.DateUtility.yearsToMonths);
 
       final String yearString = (Math.abs(years) == 1) ? " year " : " years ";
       final String monthString = (Math.abs(months) == 1) ? " month " : " months ";
@@ -576,7 +576,7 @@ public final class ${minor.class}Vector extends BaseDataValueVector implements F
     private Mutator(){};
    /**
     * Set the element at the given index to the given value.  Note that widths smaller than
-    * 32 bits are handled by the DrillBuf interface.
+    * 32 bits are handled by the ArrowBuf interface.
     *
     * @param index   position of the bit to set
     * @param value   value to set
@@ -670,14 +670,14 @@ public final class ${minor.class}Vector extends BaseDataValueVector implements F
      setSafe(index, holder.start, holder.buffer);
    }
 
-   public void setSafe(int index, int start, DrillBuf buffer){
+   public void setSafe(int index, int start, ArrowBuf buffer){
      while(index >= getValueCapacity()) {
        reAlloc();
      }
      set(index, start, buffer);
    }
 
-   public void set(int index, int start, DrillBuf buffer){
+   public void set(int index, int start, ArrowBuf buffer){
      data.setBytes(index * ${type.width}, buffer, start, ${type.width});
    }
 
@@ -691,7 +691,7 @@ public final class ${minor.class}Vector extends BaseDataValueVector implements F
      set(index, holder.start, holder.buffer);
    }
 
-   public void set(int index, int start, DrillBuf buffer){
+   public void set(int index, int start, ArrowBuf buffer){
      data.setBytes(index * ${type.width}, buffer, start, ${type.width});
    }
 
@@ -702,7 +702,7 @@ public final class ${minor.class}Vector extends BaseDataValueVector implements F
      setSafe(index, holder.start, holder.buffer);
    }
 
-   public void setSafe(int index, int start, DrillBuf buffer){
+   public void setSafe(int index, int start, ArrowBuf buffer){
      while(index >= getValueCapacity()) {
        reAlloc();
      }

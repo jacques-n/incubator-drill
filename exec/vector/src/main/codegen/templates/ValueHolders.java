@@ -21,11 +21,11 @@
 <#list type.minor as minor>
 
 <#assign className="${mode.prefix}${minor.class}Holder" />
-<@pp.changeOutputFile name="/org/apache/drill/exec/expr/holders/${className}.java" />
+<@pp.changeOutputFile name="/org/apache/arrow/vector/holders/${className}.java" />
 
 <#include "/@includes/license.ftl" />
 
-package org.apache.drill.exec.expr.holders;
+package org.apache.arrow.vector.holders;
 
 <#include "/@includes/vv_imports.ftl" />
 
@@ -60,7 +60,7 @@ public final class ${className} implements ValueHolder{
     <#if minor.class.startsWith("Decimal28") || minor.class.startsWith("Decimal38")>
     public static final int nDecimalDigits = ${minor.nDecimalDigits};
     
-    public static int getInteger(int index, int start, DrillBuf buffer) {
+    public static int getInteger(int index, int start, ArrowBuf buffer) {
       int value = buffer.getInt(start + (index * 4));
 
       if (index == 0) {
@@ -74,11 +74,11 @@ public final class ${className} implements ValueHolder{
       return value;
     }
 
-    public static void setInteger(int index, int value, int start, DrillBuf buffer) {
+    public static void setInteger(int index, int value, int start, ArrowBuf buffer) {
         buffer.setInt(start + (index * 4), value);
     }
   
-    public static void setSign(boolean sign, int start, DrillBuf buffer) {
+    public static void setSign(boolean sign, int start, ArrowBuf buffer) {
       // Set MSB to 1 if sign is negative
       if (sign == true) {
         int value = getInteger(0, start, buffer);
@@ -86,7 +86,7 @@ public final class ${className} implements ValueHolder{
       }
     }
   
-    public static boolean getSign(int start, DrillBuf buffer) {
+    public static boolean getSign(int start, ArrowBuf buffer) {
       return ((buffer.getInt(start) & 0x80000000) != 0);
     }
     </#if></#if>
