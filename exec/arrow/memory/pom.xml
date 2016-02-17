@@ -13,12 +13,12 @@
   xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
   <modelVersion>4.0.0</modelVersion>
   <parent>
-    <artifactId>memory-parent</artifactId>
-    <groupId>org.apache.drill.memory</groupId>
-    <version>1.5.0-SNAPSHOT</version>
+    <groupId>org.apache.arrow</groupId>
+    <artifactId>arrow-java-root</artifactId>
+    <version>0.1-SNAPSHOT</version>
   </parent>
-  <artifactId>drill-memory-base</artifactId>
-  <name>exec/memory/base</name>
+  <artifactId>arrow-memory</artifactId>
+  <name>arrow-memory</name>
 
   <dependencies>
 
@@ -27,13 +27,6 @@
       <artifactId>metrics-core</artifactId>
       <version>3.0.1</version>
     </dependency>
-
-
-<!--     <dependency> -->
-<!--       <groupId>org.apache.drill</groupId> -->
-<!--       <artifactId>drill-common</artifactId> -->
-<!--       <version>${project.version}</version> -->
-<!--     </dependency> -->
 
     <dependency>
       <groupId>com.google.code.findbugs</groupId>

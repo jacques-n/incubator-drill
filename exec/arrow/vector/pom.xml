@@ -13,18 +13,18 @@
   xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
   <modelVersion>4.0.0</modelVersion>
   <parent>
-    <artifactId>exec-parent</artifactId>
-    <groupId>org.apache.drill.exec</groupId>
-    <version>1.5.0-SNAPSHOT</version>
+    <groupId>org.apache.arrow</groupId>
+    <artifactId>arrow-java-root</artifactId>
+    <version>0.1-SNAPSHOT</version>
   </parent>
   <artifactId>vector</artifactId>
-  <name>exec/Vectors</name>
+  <name>vectors</name>
 
   <dependencies>
 
     <dependency>
-      <groupId>org.apache.drill.memory</groupId>
-      <artifactId>drill-memory-base</artifactId>
+      <groupId>org.apache.arrow</groupId>
+      <artifactId>arrow-memory</artifactId>
       <version>${project.version}</version>
     </dependency>
     <dependency>
@@ -56,7 +56,20 @@
 
   </dependencies>
 
-
+    <pluginRepositories>
+        <pluginRepository>
+            <id>apache</id>
+            <name>apache</name>
+            <url>https://repo.maven.apache.org/</url>
+            <releases>
+                <enabled>true</enabled>
+            </releases>
+            <snapshots>
+                <enabled>false</enabled>
+            </snapshots>
+        </pluginRepository>
+    </pluginRepositories>  
+    
   <build>
 
     <resources>
@@ -93,7 +106,7 @@
       <plugin> <!-- generate sources from fmpp -->
         <groupId>org.apache.drill.tools</groupId>
         <artifactId>drill-fmpp-maven-plugin</artifactId>
-        <version>${project.version}</version>
+        <version>1.4.0</version>
         <executions>
           <execution>
             <id>generate-fmpp</id>
@@ -143,6 +156,8 @@
         </plugin>
       </plugins>
     </pluginManagement>
+    
+  
   </build>
 
 
