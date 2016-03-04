@@ -210,7 +210,13 @@ public class FragmentContext implements AutoCloseable, UdfUtilities {
    * @return false if the action should terminate immediately, true if everything is okay.
    */
   public boolean shouldContinue() {
-    return executorState.shouldContinue();
+    final boolean shouldContinue = executorState.shouldContinue();
+    if (shouldContinue) {
+      // this is a good place to yield for other threads.
+      Thread.currentThread().yield();
+    }
+
+    return shouldContinue;
   }
 
   public DrillbitContext getDrillbitContext() {
