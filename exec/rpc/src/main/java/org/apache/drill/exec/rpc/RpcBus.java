@@ -67,8 +67,6 @@ public abstract class RpcBus<T extends EnumLite, C extends RemoteConnection> imp
 
   protected abstract Response handle(C connection, int rpcType, ByteBuf pBody, ByteBuf dBody) throws RpcException;
 
-  public abstract boolean isClient();
-
   protected final RpcConfig rpcConfig;
 
   protected volatile SocketAddress local;

@@ -126,11 +126,12 @@ public abstract class RemoteConnection implements ConnectionThrottle, AutoClosea
   }
 
   /**
-   * For incoming messages, remove the outcome listener and return it. Can only be done once per coordinationId.
+   * For incoming messages, remove the outcome listener and return it. Can only be done once per coordinationId
+   * creation. CoordinationId's are recycled so they will show up once we run through all 4B of them.
    * @param rpcType The rpc type associated with the coordination.
    * @param coordinationId The coordination id that was returned with the listener was created.
    * @param clazz The class that is expected in response.
-   * @return
+   * @return An RpcOutcome associated with the provided coordinationId.
    */
   <V> RpcOutcome<V> getAndRemoveRpcOutcome(int rpcType, int coordinationId, Class<V> clazz) {
     return requestIdMap.getAndRemoveRpcOutcome(rpcType, coordinationId, clazz);

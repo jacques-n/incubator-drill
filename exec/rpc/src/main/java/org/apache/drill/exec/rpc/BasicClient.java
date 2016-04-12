@@ -169,11 +169,6 @@ public abstract class BasicClient<T extends EnumLite, R extends RemoteConnection
     return super.send(connection, rpcType, protobufBody, clazz, dataBodies);
   }
 
-  @Override
-  public boolean isClient() {
-    return true;
-  }
-
   protected void connectAsClient(RpcConnectionHandler<R> connectionListener, HANDSHAKE_SEND handshakeValue,
       String host, int port) {
     ConnectionMultiListener cml = new ConnectionMultiListener(connectionListener, handshakeValue);

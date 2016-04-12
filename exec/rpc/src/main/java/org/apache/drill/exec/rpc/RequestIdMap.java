@@ -38,10 +38,10 @@ import com.google.common.base.Preconditions;
  * else works via Atomic variables.
  */
 class RequestIdMap {
-  static final org.slf4j.Logger logger = org.slf4j.LoggerFactory.getLogger(RequestIdMap.class);
+  private static final org.slf4j.Logger logger = org.slf4j.LoggerFactory.getLogger(RequestIdMap.class);
 
-  private final AtomicInteger value = new AtomicInteger();
-  private final AtomicBoolean acceptMessage = new AtomicBoolean(true);
+  private final AtomicInteger lastCoordinationId = new AtomicInteger();
+  private final AtomicBoolean isOpen = new AtomicBoolean(true);
 
   /** Access to map must be protected. **/
   private final IntObjectHashMap<RpcOutcome<?>> map;
@@ -51,20 +51,20 @@ class RequestIdMap {
   }
 
   void channelClosed(Throwable ex) {
-    acceptMessage.set(false);
+    isOpen.set(false);
     if (ex != null) {
       final RpcException e = RpcException.mapException(ex);
       synchronized (map) {
-        map.forEach(new Closer(e));
+        map.forEach(new SetExceptionProcedure(e));
         map.clear();
       }
     }
   }
 
-  private class Closer implements IntObjectProcedure<RpcOutcome<?>> {
+  private class SetExceptionProcedure implements IntObjectProcedure<RpcOutcome<?>> {
     final RpcException exception;
 
-    public Closer(RpcException exception) {
+    public SetExceptionProcedure(RpcException exception) {
       this.exception = exception;
     }
 
@@ -81,11 +81,11 @@ class RequestIdMap {
 
   public <V> ChannelListenerWithCoordinationId createNewRpcListener(RpcOutcomeListener<V> handler, Class<V> clazz,
       RemoteConnection connection) {
-    int i = value.incrementAndGet();
-    RpcListener<V> future = new RpcListener<V>(handler, clazz, i, connection);
+    final int i = lastCoordinationId.incrementAndGet();
+    final RpcListener<V> future = new RpcListener<V>(handler, clazz, i, connection);
     final Object old;
     synchronized (map) {
-      Preconditions.checkArgument(acceptMessage.get(),
+      Preconditions.checkArgument(isOpen.get(),
           "Attempted to send a message when connection is no longer valid.");
       old = map.put(i, future);
     }
